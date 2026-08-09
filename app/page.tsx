@@ -74,7 +74,7 @@ function Hero() {
           width={1536}
           height={1024}
           priority
-          className="h-auto max-h-[560px] w-full object-cover object-[center_35%] lg:max-h-[640px]"
+          className="h-auto max-h-[680px] w-full object-cover object-[center_35%] lg:max-h-[800px]"
         />
 
         {/* large screens: text over the image's open left side */}

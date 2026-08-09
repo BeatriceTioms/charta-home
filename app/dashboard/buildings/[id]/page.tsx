@@ -18,10 +18,10 @@ const UNIT_PHOTOS = [
 function PriorityChip({ daysOpen }: { daysOpen: number }) {
   const [label, cls] =
     daysOpen >= 5
-      ? ["Urgent", "bg-white text-onyx"]
+      ? ["Urgent", "bg-onyx text-azure-950 dark:text-white dark:bg-white dark:text-onyx"]
       : daysOpen >= 3
         ? ["High", "bg-soft-500 text-azure-950"]
-        : ["Normal", "border border-white/15 text-white/70"];
+        : ["Normal", "border border-azure-900/15 dark:border-white/15 text-onyx/70 dark:text-white/70"];
   return (
     <span className={`inline-block rounded-full px-3.5 py-1 text-[11px] font-bold uppercase tracking-wide ${cls}`}>
       {label}
@@ -60,7 +60,7 @@ function WorkOrdersDonut({
   return (
     <div className="relative h-36 w-36 shrink-0">
       <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
-        <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="11" />
+        <circle cx="50" cy="50" r="42" fill="none" stroke="var(--donut-track)" strokeWidth="11" />
         {segments.map((s, i) => {
           const len = total === 0 ? 0 : (s.value / total) * C;
           const el = (
@@ -78,8 +78,8 @@ function WorkOrdersDonut({
       </svg>
       <div className="absolute inset-0 grid place-items-center text-center">
         <div>
-          <p className="text-2xl font-extrabold text-white">{total}</p>
-          <p className="text-[11px] text-white/45">total</p>
+          <p className="text-2xl font-extrabold text-azure-950 dark:text-white">{total}</p>
+          <p className="text-[11px] text-onyx/45 dark:text-white/45">total</p>
         </div>
       </div>
     </div>
@@ -127,18 +127,18 @@ export default async function BuildingPage({
           <Link
             href="/dashboard/buildings"
             aria-label="Back to buildings"
-            className="grid h-11 w-11 place-items-center rounded-full border border-white/10 text-white transition hover:bg-white/10"
+            className="grid h-11 w-11 place-items-center rounded-full border border-azure-900/10 dark:border-white/10 text-azure-950 dark:text-white transition hover:bg-azure-900/10 dark:hover:bg-white/10"
           >
             <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M19 12H5M11 18l-6-6 6-6" />
             </svg>
           </Link>
           <div>
-            <h1 className="font-serif text-3xl font-medium tracking-tight text-white sm:text-4xl">
+            <h1 className="font-serif text-3xl font-medium tracking-tight text-azure-950 dark:text-white sm:text-4xl">
               {building.name}
             </h1>
-            <p className="mt-0.5 flex items-center gap-1.5 text-sm text-white/50">
-              <svg viewBox="0 0 24 24" className="h-4 w-4 text-soft-500" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <p className="mt-0.5 flex items-center gap-1.5 text-sm text-onyx/50 dark:text-white/50">
+              <svg viewBox="0 0 24 24" className="h-4 w-4 text-azure-600 dark:text-soft-500" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1118 0z" /><circle cx="12" cy="10" r="3" />
               </svg>
               {building.address} · {building.city}
@@ -156,30 +156,30 @@ export default async function BuildingPage({
           {/* payments */}
           <Card>
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-[15px] font-bold text-white">Payments</h2>
+              <h2 className="text-[15px] font-bold text-azure-950 dark:text-white">Payments</h2>
               <span className="rounded-full bg-soft-100 px-3.5 py-1.5 text-xs font-semibold text-azure-950">
                 This month
               </span>
             </div>
             <div className="grid grid-cols-2 gap-6 lg:grid-cols-4">
               <div>
-                <p className="text-2xl font-extrabold tracking-tight text-white">{fmt(rentCollected)}</p>
-                <p className="mt-0.5 text-xs text-white/45">Rent collected</p>
+                <p className="text-2xl font-extrabold tracking-tight text-azure-950 dark:text-white">{fmt(rentCollected)}</p>
+                <p className="mt-0.5 text-xs text-onyx/45 dark:text-white/45">Rent collected</p>
               </div>
               <div>
-                <p className="text-2xl font-extrabold tracking-tight text-white">{fmt(services)}</p>
-                <p className="mt-0.5 text-xs text-white/45">Charges and services</p>
+                <p className="text-2xl font-extrabold tracking-tight text-azure-950 dark:text-white">{fmt(services)}</p>
+                <p className="mt-0.5 text-xs text-onyx/45 dark:text-white/45">Charges and services</p>
               </div>
               <div>
-                <p className="text-2xl font-extrabold tracking-tight text-white">{fmt(maintenanceCost)}</p>
-                <p className="mt-0.5 text-xs text-white/45">Maintenance</p>
+                <p className="text-2xl font-extrabold tracking-tight text-azure-950 dark:text-white">{fmt(maintenanceCost)}</p>
+                <p className="mt-0.5 text-xs text-onyx/45 dark:text-white/45">Maintenance</p>
               </div>
               <div>
-                <p className="flex items-center gap-1.5 text-2xl font-extrabold tracking-tight text-white">
-                  <span className="grid h-5 w-5 place-items-center rounded-full bg-white text-[11px] font-bold text-onyx">!</span>
+                <p className="flex items-center gap-1.5 text-2xl font-extrabold tracking-tight text-azure-950 dark:text-white">
+                  <span className="grid h-5 w-5 place-items-center rounded-full bg-white text-[11px] font-bold">!</span>
                   {fmt(debt)}
                 </p>
-                <p className="mt-0.5 text-xs text-white/45">Outstanding debt</p>
+                <p className="mt-0.5 text-xs text-onyx/45 dark:text-white/45">Outstanding debt</p>
               </div>
             </div>
           </Card>
@@ -190,27 +190,27 @@ export default async function BuildingPage({
               Delayed work orders
             </CardTitle>
             {delayed.length === 0 ? (
-              <p className="text-sm text-white/45">Nothing is running late. Well kept.</p>
+              <p className="text-sm text-onyx/45 dark:text-white/45">Nothing is running late. Well kept.</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[560px] text-left text-sm">
                   <tbody>
                     {delayed.map((t) => (
-                      <tr key={t.id} className="border-b border-white/10 last:border-0">
-                        <td className="py-3.5 text-xs font-semibold text-white/40">{t.id}</td>
-                        <td className="py-3.5 font-semibold text-white">{t.apartment}</td>
-                        <td className="py-3.5 text-white/70">{t.title}</td>
+                      <tr key={t.id} className="border-b border-azure-900/10 dark:border-white/10 last:border-0">
+                        <td className="py-3.5 text-xs font-semibold text-onyx/40 dark:text-white/40">{t.id}</td>
+                        <td className="py-3.5 font-semibold text-azure-950 dark:text-white">{t.apartment}</td>
+                        <td className="py-3.5 text-onyx/70 dark:text-white/70">{t.title}</td>
                         <td className="py-3.5">
                           {t.assignee ? (
                             <span className="flex items-center gap-2.5">
                               <Initials text={t.assignee} dark />
-                              <span className="text-white/60">{t.assignee}</span>
+                              <span className="text-onyx/60 dark:text-white/60">{t.assignee}</span>
                             </span>
                           ) : (
-                            <span className="italic text-white/35">Unassigned</span>
+                            <span className="italic text-onyx/35 dark:text-white/35">Unassigned</span>
                           )}
                         </td>
-                        <td className="whitespace-nowrap py-3.5 text-white/55">
+                        <td className="whitespace-nowrap py-3.5 text-onyx/55 dark:text-white/55">
                           {t.daysOpen} days open
                         </td>
                         <td className="py-3.5 text-right">
@@ -230,19 +230,19 @@ export default async function BuildingPage({
               New requests
             </CardTitle>
             {fresh.length === 0 ? (
-              <p className="text-sm text-white/45">No new requests today.</p>
+              <p className="text-sm text-onyx/45 dark:text-white/45">No new requests today.</p>
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
                 {fresh.map((t) => (
-                  <div key={t.id} className="rounded-2xl border border-white/10 p-4">
+                  <div key={t.id} className="rounded-2xl border border-azure-900/10 dark:border-white/10 p-4">
                     <div className="flex items-center gap-3">
                       <Initials text={t.apartment} />
                       <div>
-                        <p className="text-sm font-bold text-white">{t.apartment}</p>
-                        <p className="text-xs text-white/45">reported {t.openedOn}</p>
+                        <p className="text-sm font-bold text-azure-950 dark:text-white">{t.apartment}</p>
+                        <p className="text-xs text-onyx/45 dark:text-white/45">reported {t.openedOn}</p>
                       </div>
                     </div>
-                    <p className="mt-3 text-sm leading-relaxed text-white/65">
+                    <p className="mt-3 text-sm leading-relaxed text-onyx/65 dark:text-white/65">
                       {t.title}. Awaiting assignment to a contractor.
                     </p>
                     <div className="mt-3">
@@ -257,7 +257,7 @@ export default async function BuildingPage({
           {/* apartments as unit cards */}
           <Card>
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-[15px] font-bold text-white">Apartments</h2>
+              <h2 className="text-[15px] font-bold text-azure-950 dark:text-white">Apartments</h2>
               <span className="rounded-full bg-soft-100 px-3.5 py-1.5 text-xs font-semibold text-azure-950">
                 {building.apartments.length} units
               </span>
@@ -282,7 +282,7 @@ export default async function BuildingPage({
                           ? "bg-white/90 text-azure-950"
                           : a.rentStatus === "overdue"
                             ? "bg-onyx/85 text-white"
-                            : "bg-white/105 text-white"
+                            : "bg-white/105 text-azure-950 dark:text-white"
                       }`}
                     >
                       {!a.tenant ? "To let" : a.rentStatus === "overdue" ? "Overdue" : "Occupied"}
@@ -290,16 +290,16 @@ export default async function BuildingPage({
                   </div>
                   <div className="mt-3 flex items-start justify-between gap-2">
                     <div>
-                      <p className="text-sm font-bold text-white group-hover/unit:text-soft-500">
+                      <p className="text-sm font-bold text-azure-950 dark:text-white group-hover/unit:text-soft-500">
                         {a.label}
                       </p>
-                      <p className="text-xs text-white/45">
+                      <p className="text-xs text-onyx/45 dark:text-white/45">
                         {a.rooms} {a.rooms === 1 ? "room" : "rooms"} · {a.sqm} m²
                       </p>
                     </div>
-                    <p className="text-sm font-extrabold text-white">
+                    <p className="text-sm font-extrabold text-azure-950 dark:text-white">
                       {fmt(a.rent)}
-                      <span className="text-xs font-medium text-white/40"> /m</span>
+                      <span className="text-xs font-medium text-onyx/40 dark:text-white/40"> /m</span>
                     </p>
                   </div>
                 </Link>
@@ -317,7 +317,7 @@ export default async function BuildingPage({
             </div>
             <div className="p-6">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-bold text-white">{building.name}</h2>
+                <h2 className="text-lg font-bold text-azure-950 dark:text-white">{building.name}</h2>
                 <span className="grid h-9 w-9 place-items-center rounded-full bg-soft-100 text-azure-950">
                   <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M7 17L17 7M9 7h8v8" />
@@ -332,8 +332,8 @@ export default async function BuildingPage({
                   [String(viewings), "Viewings"],
                 ].map(([v, l]) => (
                   <div key={l}>
-                    <p className="text-xl font-extrabold text-white">{v}</p>
-                    <p className="text-[11px] text-white/45">{l}</p>
+                    <p className="text-xl font-extrabold text-azure-950 dark:text-white">{v}</p>
+                    <p className="text-[11px] text-onyx/45 dark:text-white/45">{l}</p>
                   </div>
                 ))}
               </div>
@@ -341,7 +341,7 @@ export default async function BuildingPage({
                 pct={(occ.length / building.apartments.length) * 100}
                 className="mt-5"
               />
-              <p className="mt-2 text-xs text-white/45">
+              <p className="mt-2 text-xs text-onyx/45 dark:text-white/45">
                 Leased at {Math.round((occ.length / building.apartments.length) * 100)}%
               </p>
             </div>
@@ -356,25 +356,25 @@ export default async function BuildingPage({
               <WorkOrdersDonut
                 total={bTickets.length}
                 segments={[
-                  { value: counts.new, color: "#ffffff" },
+                  { value: counts.new, color: "var(--donut-strong)" },
                   { value: counts.assigned, color: "#addfe1" },
                   { value: counts.progress, color: "#14639b" },
-                  { value: counts.resolved, color: "rgba(255,255,255,0.3)" },
+                  { value: counts.resolved, color: "var(--donut-muted)" },
                 ]}
               />
               <div className="grid flex-1 grid-cols-2 gap-x-4 gap-y-3 text-sm">
                 {[
-                  [counts.new, "New", "bg-white"],
+                  [counts.new, "New", "bg-onyx dark:bg-white"],
                   [counts.assigned, "Assigned", "bg-soft-500"],
                   [counts.progress, "In progress", "bg-azure-600"],
-                  [counts.resolved, "Resolved", "bg-white/30"],
+                  [counts.resolved, "Resolved", "bg-onyx/30 dark:bg-white/30"],
                 ].map(([v, l, dot]) => (
                   <div key={l as string}>
-                    <p className="flex items-center gap-2 text-lg font-extrabold text-white">
+                    <p className="flex items-center gap-2 text-lg font-extrabold text-azure-950 dark:text-white">
                       <span className={`h-2.5 w-2.5 rounded-full ${dot}`} />
                       {v}
                     </p>
-                    <p className="text-[11px] text-white/45">{l}</p>
+                    <p className="text-[11px] text-onyx/45 dark:text-white/45">{l}</p>
                   </div>
                 ))}
               </div>
@@ -386,21 +386,21 @@ export default async function BuildingPage({
             <CardTitle>On site staff</CardTitle>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-white/40">
+                <p className="text-xs font-semibold uppercase tracking-wide text-onyx/40 dark:text-white/40">
                   Caretaker
                 </p>
-                <p className="mt-1 font-bold text-white">Fatou Ba</p>
-                <p className="text-xs text-white/50">+1 555 014 0021</p>
+                <p className="mt-1 font-bold text-azure-950 dark:text-white">Fatou Ba</p>
+                <p className="text-xs text-onyx/50 dark:text-white/50">+1 555 014 0021</p>
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-white/40">
+                <p className="text-xs font-semibold uppercase tracking-wide text-onyx/40 dark:text-white/40">
                   Maintenance
                 </p>
-                <p className="mt-1 font-bold text-white">B. Keita</p>
-                <p className="text-xs text-white/50">+1 555 014 0764</p>
+                <p className="mt-1 font-bold text-azure-950 dark:text-white">B. Keita</p>
+                <p className="text-xs text-onyx/50 dark:text-white/50">+1 555 014 0764</p>
               </div>
             </div>
-            <div className="mt-5 flex items-center gap-3 border-t border-white/10 pt-4">
+            <div className="mt-5 flex items-center gap-3 border-t border-azure-900/10 dark:border-white/10 pt-4">
               <div className="flex -space-x-2">
                 {["FB", "BK", "SD", "MF"].map((t) => (
                   <span
@@ -411,7 +411,7 @@ export default async function BuildingPage({
                   </span>
                 ))}
               </div>
-              <p className="text-xs text-white/50">8 staff members across the portfolio</p>
+              <p className="text-xs text-onyx/50 dark:text-white/50">8 staff members across the portfolio</p>
             </div>
           </Card>
         </div>

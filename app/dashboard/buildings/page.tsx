@@ -5,8 +5,8 @@ import { PageTitle, ProgressBar } from "@/components/dashboard/ui";
 
 function SpecChip({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
-    <span className="flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-xs font-semibold text-white/60">
-      <span className="text-soft-500">{icon}</span>
+    <span className="flex items-center gap-1.5 rounded-full border border-azure-900/10 dark:border-white/10 px-3 py-1.5 text-xs font-semibold text-onyx/60 dark:text-white/60">
+      <span className="text-azure-600 dark:text-soft-500">{icon}</span>
       {label}
     </span>
   );
@@ -40,7 +40,7 @@ export default function BuildingsPage() {
           <div className="flex items-center gap-3">
             <button
               aria-label="Filter"
-              className="grid h-12 w-12 place-items-center rounded-full border border-white/10 text-white transition hover:bg-white/10"
+              className="grid h-12 w-12 place-items-center rounded-full border border-azure-900/10 dark:border-white/10 text-azure-950 dark:text-white transition hover:bg-azure-900/10 dark:hover:bg-white/10"
             >
               <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M22 3H2l8 9.5V19l4 2v-8.5L22 3z" />
@@ -65,7 +65,7 @@ export default function BuildingsPage() {
           return (
             <div
               key={b.id}
-              className="group rounded-[2rem] border border-white/8 bg-white/[0.04] p-2.5 transition hover:border-white/20"
+              className="group rounded-[2rem] border border-azure-900/8 dark:border-white/8 bg-white/[0.04] p-2.5 transition hover:border-white/20"
             >
               <Link href={`/dashboard/buildings/${b.id}`} className="relative block h-48 overflow-hidden rounded-[1.6rem]">
                 <Image
@@ -87,17 +87,17 @@ export default function BuildingsPage() {
               </Link>
 
               <div className="px-3.5 pb-3.5 pt-5">
-                <h2 className="text-lg font-bold text-white">{b.name}</h2>
-                <p className="mt-1 flex items-center gap-1.5 text-sm text-white/45">
-                  <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-soft-500" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <h2 className="text-lg font-bold text-azure-950 dark:text-white">{b.name}</h2>
+                <p className="mt-1 flex items-center gap-1.5 text-sm text-onyx/45 dark:text-white/45">
+                  <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-azure-600 dark:text-soft-500" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1118 0z" /><circle cx="12" cy="10" r="3" />
                   </svg>
                   {b.address}, {b.city}
                 </p>
 
-                <p className="mt-3.5 text-3xl font-extrabold tracking-tight text-white">
+                <p className="mt-3.5 text-3xl font-extrabold tracking-tight text-azure-950 dark:text-white">
                   {fmt(rentRoll)}
-                  <span className="ml-1.5 text-sm font-medium text-white/40">/ month</span>
+                  <span className="ml-1.5 text-sm font-medium text-onyx/40 dark:text-white/40">/ month</span>
                 </p>
 
                 <div className="mt-4 flex flex-wrap gap-2">
@@ -108,7 +108,7 @@ export default function BuildingsPage() {
 
                 <div className="mt-5">
                   <ProgressBar pct={(occ / b.apartments.length) * 100} />
-                  <div className="mt-2 flex items-center justify-between text-xs text-white/45">
+                  <div className="mt-2 flex items-center justify-between text-xs text-onyx/45 dark:text-white/45">
                     <span>Leased at {Math.round((occ / b.apartments.length) * 100)}%</span>
                     <span>{fmt(b.incomeYtd)} income YTD</span>
                   </div>
@@ -118,7 +118,7 @@ export default function BuildingsPage() {
                   href={`/dashboard/buildings/${b.id}`}
                   className={`mt-5 block rounded-full py-3 text-center text-sm font-semibold transition ${
                     healthy
-                      ? "border border-white/15 text-white hover:bg-soft-500 hover:text-azure-950"
+                      ? "border border-azure-900/15 dark:border-white/15 text-azure-950 dark:text-white hover:bg-soft-500 hover:text-azure-950"
                       : "bg-soft-500 text-azure-950 hover:bg-soft-400"
                   }`}
                 >

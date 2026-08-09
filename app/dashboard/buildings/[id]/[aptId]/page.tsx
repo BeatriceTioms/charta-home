@@ -50,7 +50,7 @@ export default async function ApartmentPage({
           <Link
             href={`/dashboard/buildings/${building.id}`}
             aria-label={`Back to ${building.name}`}
-            className="grid h-11 w-11 place-items-center rounded-full border border-white/10 text-white transition hover:bg-white/10"
+            className="grid h-11 w-11 place-items-center rounded-full border border-azure-900/10 dark:border-white/10 text-azure-950 dark:text-white transition hover:bg-azure-900/10 dark:hover:bg-white/10"
           >
             <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M19 12H5M11 18l-6-6 6-6" />
@@ -64,11 +64,11 @@ export default async function ApartmentPage({
             className="h-14 w-14 rounded-2xl object-cover"
           />
           <div>
-            <h1 className="font-serif text-3xl font-medium tracking-tight text-white sm:text-4xl">
+            <h1 className="font-serif text-3xl font-medium tracking-tight text-azure-950 dark:text-white sm:text-4xl">
               {apartment.label}
             </h1>
-            <p className="mt-0.5 flex items-center gap-1.5 text-sm text-white/50">
-              <svg viewBox="0 0 24 24" className="h-4 w-4 text-soft-500" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <p className="mt-0.5 flex items-center gap-1.5 text-sm text-onyx/50 dark:text-white/50">
+              <svg viewBox="0 0 24 24" className="h-4 w-4 text-azure-600 dark:text-soft-500" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1118 0z" /><circle cx="12" cy="10" r="3" />
               </svg>
               {building.name} · {apartment.cycle} lease
@@ -96,8 +96,8 @@ export default async function ApartmentPage({
               <span className="rounded-full bg-azure-800 px-4 py-1.5 text-xs font-bold text-white">
                 Living room
               </span>
-              <span className="px-3 py-1.5 text-xs font-semibold text-white/60">Kitchen</span>
-              <span className="px-3 py-1.5 text-xs font-semibold text-white/60">Bedrooms</span>
+              <span className="px-3 py-1.5 text-xs font-semibold text-azure-900/60">Kitchen</span>
+              <span className="px-3 py-1.5 text-xs font-semibold text-azure-900/60">Bedrooms</span>
             </div>
             <div className="absolute inset-x-4 bottom-4 grid max-w-sm grid-cols-3 gap-2">
               {[
@@ -136,14 +136,14 @@ export default async function ApartmentPage({
           <Card>
             <CardTitle>Payment history</CardTitle>
             {apartment.payments.length === 0 ? (
-              <p className="text-sm text-white/45">
+              <p className="text-sm text-onyx/45 dark:text-white/45">
                 No payments yet. This apartment is waiting for its first lease.
               </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[480px] text-left text-sm">
                   <thead>
-                    <tr className="border-b border-white/10 text-xs uppercase tracking-wide text-white/40">
+                    <tr className="border-b border-azure-900/10 dark:border-white/10 text-xs uppercase tracking-wide text-onyx/40 dark:text-white/40">
                       <th className="pb-3 font-semibold">Period</th>
                       <th className="pb-3 font-semibold">Amount</th>
                       <th className="pb-3 font-semibold">Paid on</th>
@@ -152,10 +152,10 @@ export default async function ApartmentPage({
                   </thead>
                   <tbody>
                     {[...apartment.payments].reverse().map((p) => (
-                      <tr key={p.month} className="border-b border-white/10 last:border-0">
-                        <td className="py-3.5 font-semibold text-white">{p.month}</td>
-                        <td className="py-3.5 text-white/75">{fmt(p.amount)}</td>
-                        <td className="py-3.5 text-white/60">{p.paidOn ?? "Not paid"}</td>
+                      <tr key={p.month} className="border-b border-azure-900/10 dark:border-white/10 last:border-0">
+                        <td className="py-3.5 font-semibold text-azure-950 dark:text-white">{p.month}</td>
+                        <td className="py-3.5 text-onyx/75 dark:text-white/75">{fmt(p.amount)}</td>
+                        <td className="py-3.5 text-onyx/60 dark:text-white/60">{p.paidOn ?? "Not paid"}</td>
                         <td className="py-3.5 text-right">
                           <RentChip status={p.status} />
                         </td>
@@ -180,30 +180,30 @@ export default async function ApartmentPage({
                     {apartment.tenant.name.split(" ").map((w) => w[0]).join("")}
                   </span>
                   <div>
-                    <p className="font-bold text-white">{apartment.tenant.name}</p>
-                    <p className="text-xs text-white/45">Tenant since {apartment.tenant.since}</p>
+                    <p className="font-bold text-azure-950 dark:text-white">{apartment.tenant.name}</p>
+                    <p className="text-xs text-onyx/45 dark:text-white/45">Tenant since {apartment.tenant.since}</p>
                   </div>
                 </div>
                 <dl className="mt-5 space-y-2.5 text-sm">
                   <div className="flex justify-between">
-                    <dt className="text-white/45">Phone / WhatsApp</dt>
-                    <dd className="font-medium text-white">{apartment.tenant.phone}</dd>
+                    <dt className="text-onyx/45 dark:text-white/45">Phone / WhatsApp</dt>
+                    <dd className="font-medium text-azure-950 dark:text-white">{apartment.tenant.phone}</dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-white/45">Lease cycle</dt>
-                    <dd className="font-medium capitalize text-white">{apartment.cycle}</dd>
+                    <dt className="text-onyx/45 dark:text-white/45">Lease cycle</dt>
+                    <dd className="font-medium capitalize text-azure-950 dark:text-white">{apartment.cycle}</dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-white/45">Rent</dt>
-                    <dd className="font-medium text-white">{fmt(apartment.rent)} / month</dd>
+                    <dt className="text-onyx/45 dark:text-white/45">Rent</dt>
+                    <dd className="font-medium text-azure-950 dark:text-white">{fmt(apartment.rent)} / month</dd>
                   </div>
                 </dl>
-                <button className="mt-5 w-full rounded-full border border-white/15 py-2.5 text-sm font-semibold text-soft-500 transition hover:bg-white/10">
+                <button className="mt-5 w-full rounded-full border border-azure-900/15 dark:border-white/15 py-2.5 text-sm font-semibold text-azure-600 dark:text-soft-500 transition hover:bg-azure-900/10 dark:hover:bg-white/10">
                   Message on WhatsApp
                 </button>
               </div>
             ) : (
-              <p className="text-sm text-white/45">
+              <p className="text-sm text-onyx/45 dark:text-white/45">
                 Vacant. Add a lease to start collecting rent and tracking yield.
               </p>
             )}
@@ -212,8 +212,8 @@ export default async function ApartmentPage({
           {/* activity */}
           <Card>
             <div className="mb-1 flex items-center justify-between">
-              <h2 className="text-[15px] font-bold text-white">Building activity</h2>
-              <span className="text-xs text-white/45">August 2026</span>
+              <h2 className="text-[15px] font-bold text-azure-950 dark:text-white">Building activity</h2>
+              <span className="text-xs text-onyx/45 dark:text-white/45">August 2026</span>
             </div>
 
             <div className="mt-4 grid grid-cols-7 gap-1">
@@ -221,18 +221,18 @@ export default async function ApartmentPage({
                 <div
                   key={d.day}
                   className={`rounded-2xl py-2.5 text-center ${
-                    d.active ? "bg-azure-800 text-white" : "text-white/55"
+                    d.active ? "bg-azure-800 text-white" : "text-onyx/55 dark:text-white/55"
                   }`}
                 >
                   <p className="text-sm font-bold">{d.day}</p>
-                  <p className={`text-[10px] ${d.active ? "text-soft-500" : "text-white/35"}`}>
+                  <p className={`text-[10px] ${d.active ? "text-azure-600 dark:text-soft-500" : "text-onyx/35 dark:text-white/35"}`}>
                     {d.label}
                   </p>
                 </div>
               ))}
             </div>
 
-            <p className="mt-6 text-xs font-semibold uppercase tracking-wide text-white/40">
+            <p className="mt-6 text-xs font-semibold uppercase tracking-wide text-onyx/40 dark:text-white/40">
               On duty today
             </p>
             <div className="mt-2.5 flex -space-x-2">
@@ -250,19 +250,19 @@ export default async function ApartmentPage({
               {schedule.map((item) => (
                 <div key={`${item.time}-${item.title}`} className="flex gap-3">
                   <div className="w-12 shrink-0 pt-3 text-right">
-                    <p className="text-sm font-bold text-white">{item.time}</p>
+                    <p className="text-sm font-bold text-azure-950 dark:text-white">{item.time}</p>
                   </div>
                   <div
                     className={`flex-1 rounded-2xl p-4 ${
                       item.kind === "viewing"
                         ? "bg-soft-200 text-azure-950"
-                        : "border border-white/10 bg-white/8 text-white"
+                        : "border border-azure-900/10 dark:border-white/10 bg-azure-900/8 dark:bg-white/8 text-azure-950 dark:text-white"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-sm font-bold">{item.title}</p>
-                        <p className={`mt-0.5 text-xs ${item.kind === "viewing" ? "text-white/60" : "text-white/65"}`}>
+                        <p className={`mt-0.5 text-xs ${item.kind === "viewing" ? "text-onyx/60 dark:text-white/60" : "text-onyx/65 dark:text-white/65"}`}>
                           {item.detail}
                         </p>
                       </div>
@@ -270,7 +270,7 @@ export default async function ApartmentPage({
                         className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-[10px] font-bold ${
                           item.kind === "viewing"
                             ? "bg-white text-azure-950"
-                            : "bg-white/15 text-soft-500"
+                            : "bg-azure-900/10 dark:bg-white/15 text-azure-600 dark:text-soft-500"
                         }`}
                       >
                         {item.who}
@@ -286,14 +286,14 @@ export default async function ApartmentPage({
           <Card>
             <CardTitle>Maintenance</CardTitle>
             {aptTickets.length === 0 ? (
-              <p className="text-sm text-white/45">No tickets for this apartment.</p>
+              <p className="text-sm text-onyx/45 dark:text-white/45">No tickets for this apartment.</p>
             ) : (
               <div className="space-y-3.5">
                 {aptTickets.map((t) => (
                   <div key={t.id} className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-sm font-bold text-white">{t.title}</p>
-                      <p className="text-xs text-white/45">opened {t.openedOn}</p>
+                      <p className="text-sm font-bold text-azure-950 dark:text-white">{t.title}</p>
+                      <p className="text-xs text-onyx/45 dark:text-white/45">opened {t.openedOn}</p>
                     </div>
                     <TicketChip status={t.status} />
                   </div>

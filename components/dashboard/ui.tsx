@@ -9,7 +9,9 @@ export function Card({
   className?: string;
 }) {
   return (
-    <div className={`rounded-3xl border border-white/8 bg-white/[0.04] p-6 ${className}`}>
+    <div
+      className={`rounded-3xl border border-azure-900/8 bg-white shadow-sm shadow-azure-900/5 p-6 dark:border-white/8 dark:bg-white/[0.04] dark:shadow-none ${className}`}
+    >
       {children}
     </div>
   );
@@ -24,11 +26,11 @@ export function CardTitle({
 }) {
   return (
     <div className="mb-5 flex items-center justify-between gap-4">
-      <h2 className="text-[15px] font-bold text-white">{children}</h2>
+      <h2 className="text-[15px] font-bold text-azure-950 dark:text-white">{children}</h2>
       {action && (
         <Link
           href={action.href}
-          className="text-sm font-semibold text-soft-500 transition hover:text-soft-400"
+          className="text-sm font-semibold text-azure-600 transition hover:text-azure-800 dark:text-soft-500 dark:hover:text-soft-400"
         >
           {action.label}
         </Link>
@@ -49,10 +51,12 @@ export function PageTitle({
   return (
     <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
       <div>
-        <h1 className="font-serif text-3xl font-medium tracking-tight text-white sm:text-4xl">
+        <h1 className="font-serif text-3xl font-medium tracking-tight text-azure-950 sm:text-4xl dark:text-white">
           {title}
         </h1>
-        {subtitle && <p className="mt-1.5 text-[15px] text-white/45">{subtitle}</p>}
+        {subtitle && (
+          <p className="mt-1.5 text-[15px] text-onyx/50 dark:text-white/45">{subtitle}</p>
+        )}
       </div>
       {action}
     </div>
@@ -75,29 +79,38 @@ export function StatCard({
       className={`rounded-3xl p-6 ${
         emphasis
           ? "bg-soft-500 text-azure-950 shadow-lg shadow-soft-500/10"
-          : "border border-white/8 bg-white/[0.04]"
+          : "border border-azure-900/8 bg-white shadow-sm shadow-azure-900/5 dark:border-white/8 dark:bg-white/[0.04] dark:shadow-none"
       }`}
     >
-      <p className={`text-[13px] font-medium ${emphasis ? "text-azure-950/70" : "text-white/45"}`}>
+      <p className={`text-[13px] font-medium ${emphasis ? "text-azure-950/70" : "text-onyx/50 dark:text-white/45"}`}>
         {label}
       </p>
-      <p className={`mt-1.5 text-3xl font-extrabold tracking-tight ${emphasis ? "text-azure-950" : "text-white"}`}>
+      <p
+        className={`mt-1.5 text-3xl font-extrabold tracking-tight ${
+          emphasis ? "text-azure-950" : "text-azure-950 dark:text-white"
+        }`}
+      >
         {value}
       </p>
       {hint && (
-        <p className={`mt-1 text-xs ${emphasis ? "text-azure-950/60" : "text-white/40"}`}>{hint}</p>
+        <p className={`mt-1 text-xs ${emphasis ? "text-azure-950/60" : "text-onyx/45 dark:text-white/40"}`}>
+          {hint}
+        </p>
       )}
     </div>
   );
 }
 
-/* Status chips: soft blue for settled, glass for pending, white on onyx for alerts */
+/* Status chips: soft blue for settled, quiet outline for pending, onyx for alerts */
 
 export function RentChip({ status }: { status: RentStatus }) {
   const styles: Record<RentStatus, [string, string]> = {
     paid: ["Paid", "bg-soft-500 text-azure-950"],
-    pending: ["Pending", "border border-white/15 bg-white/5 text-white/75"],
-    overdue: ["Overdue", "bg-white text-onyx"],
+    pending: [
+      "Pending",
+      "border border-azure-900/15 bg-azure-900/5 text-onyx/60 dark:border-white/15 dark:bg-white/5 dark:text-white/75",
+    ],
+    overdue: ["Overdue", "bg-onyx text-white dark:bg-white dark:text-onyx"],
   };
   const [label, cls] = styles[status];
   return (
@@ -109,10 +122,16 @@ export function RentChip({ status }: { status: RentStatus }) {
 
 export function TicketChip({ status }: { status: TicketStatus }) {
   const styles: Record<TicketStatus, [string, string]> = {
-    new: ["New", "bg-white text-onyx"],
-    assigned: ["Assigned", "border border-white/15 bg-white/5 text-white/75"],
+    new: ["New", "bg-onyx text-white dark:bg-white dark:text-onyx"],
+    assigned: [
+      "Assigned",
+      "border border-azure-900/15 bg-azure-900/5 text-onyx/60 dark:border-white/15 dark:bg-white/5 dark:text-white/75",
+    ],
     "in-progress": ["In progress", "bg-soft-500 text-azure-950"],
-    resolved: ["Resolved", "border border-white/10 bg-white/5 text-white/45"],
+    resolved: [
+      "Resolved",
+      "border border-azure-900/10 bg-azure-900/5 text-onyx/45 dark:border-white/10 dark:bg-white/5 dark:text-white/45",
+    ],
   };
   const [label, cls] = styles[status];
   return (
@@ -125,8 +144,8 @@ export function TicketChip({ status }: { status: TicketStatus }) {
 export function ViaBadge({ via }: { via: "whatsapp" | "phone" | "email" }) {
   const label = via === "whatsapp" ? "WhatsApp" : via === "phone" ? "Phone" : "Email";
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 px-2.5 py-1 text-[11px] font-semibold text-white/55">
-      <span className="h-1.5 w-1.5 rounded-full bg-soft-500" />
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-azure-900/15 px-2.5 py-1 text-[11px] font-semibold text-onyx/55 dark:border-white/15 dark:text-white/55">
+      <span className="h-1.5 w-1.5 rounded-full bg-azure-600 dark:bg-soft-500" />
       {label}
     </span>
   );
@@ -134,9 +153,9 @@ export function ViaBadge({ via }: { via: "whatsapp" | "phone" | "email" }) {
 
 export function ProgressBar({ pct, className = "" }: { pct: number; className?: string }) {
   return (
-    <div className={`h-2.5 overflow-hidden rounded-full bg-white/10 ${className}`}>
+    <div className={`h-2.5 overflow-hidden rounded-full bg-azure-900/10 dark:bg-white/10 ${className}`}>
       <div
-        className="h-full rounded-full bg-soft-500 transition-all"
+        className="h-full rounded-full bg-azure-700 transition-all dark:bg-soft-500"
         style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
       />
     </div>

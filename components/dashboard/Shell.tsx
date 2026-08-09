@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Logo } from "@/components/Logo";
+import { ThemeToggle } from "./ThemeToggle";
 
 const NAV = [
   {
@@ -63,9 +64,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <div className="flex min-h-screen bg-onyx text-white">
-      {/* sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-white/5 bg-onyx lg:flex">
+    <div className="flex min-h-screen bg-soft-50 text-azure-950 dark:bg-onyx dark:text-white">
+      {/* sidebar, Charta blue in both themes */}
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col bg-azure-800 text-white lg:flex">
         <div className="px-6 py-7">
           <Logo dark textClassName="text-xl" markClassName="h-9 w-9" />
         </div>
@@ -79,7 +80,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-[15px] font-medium transition ${
                   active
                     ? "bg-soft-500 text-azure-950"
-                    : "text-white/55 hover:bg-white/5 hover:text-white"
+                    : "text-white/65 hover:bg-white/10 hover:text-white"
                 }`}
               >
                 {item.icon}
@@ -88,9 +89,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
-        <div className="m-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+        <div className="m-4 rounded-2xl border border-white/10 bg-white/10 p-4">
           <p className="text-sm font-semibold text-soft-500">Growth plan</p>
-          <p className="mt-1 text-xs leading-relaxed text-white/50">
+          <p className="mt-1 text-xs leading-relaxed text-white/60">
             Trial ends in 21 days. Your data stays yours.
           </p>
           <Link
@@ -100,8 +101,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
             Manage plan
           </Link>
         </div>
-        <div className="border-t border-white/5 px-6 py-4">
-          <Link href="/" className="text-xs text-white/35 transition hover:text-white/70">
+        <div className="border-t border-white/10 px-6 py-4">
+          <Link href="/" className="text-xs text-white/45 transition hover:text-white/80">
             Back to chartahome.com
           </Link>
         </div>
@@ -110,37 +111,43 @@ export function Shell({ children }: { children: React.ReactNode }) {
       {/* main column */}
       <div className="flex min-w-0 flex-1 flex-col lg:pl-64">
         {/* topbar */}
-        <header className="sticky top-0 z-30 border-b border-white/5 bg-onyx/85 backdrop-blur-md">
+        <header className="sticky top-0 z-30 border-b border-azure-900/8 bg-white/85 backdrop-blur-md dark:border-white/5 dark:bg-onyx/85">
           <div className="flex h-16 items-center justify-between gap-4 px-5 sm:px-8">
             <div className="lg:hidden">
-              <Logo dark textClassName="text-lg" markClassName="h-8 w-8" />
+              <span className="dark:hidden">
+                <Logo textClassName="text-lg" markClassName="h-8 w-8" />
+              </span>
+              <span className="hidden dark:block">
+                <Logo dark textClassName="text-lg" markClassName="h-8 w-8" />
+              </span>
             </div>
-            <div className="hidden max-w-md flex-1 items-center gap-2.5 rounded-full border border-white/10 bg-white/5 px-4 py-2 md:flex">
-              <svg viewBox="0 0 24 24" className="h-4 w-4 text-white/35" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <div className="hidden max-w-md flex-1 items-center gap-2.5 rounded-full border border-azure-900/10 bg-white px-4 py-2 md:flex dark:border-white/10 dark:bg-white/5">
+              <svg viewBox="0 0 24 24" className="h-4 w-4 text-onyx/35 dark:text-white/35" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" />
               </svg>
               <input
                 placeholder="Search buildings, tenants, tickets…"
-                className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/30"
+                className="w-full bg-transparent text-sm text-azure-950 outline-none placeholder:text-onyx/30 dark:text-white dark:placeholder:text-white/30"
               />
             </div>
             <div className="flex items-center gap-3">
+              <ThemeToggle />
               <button
                 aria-label="Notifications"
-                className="relative grid h-10 w-10 place-items-center rounded-full border border-white/10 text-white/70 transition hover:bg-white/5 hover:text-white"
+                className="relative grid h-10 w-10 place-items-center rounded-full border border-azure-900/10 text-azure-800 transition hover:bg-azure-900/5 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/5"
               >
                 <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0" />
                 </svg>
-                <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-soft-500" />
+                <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-azure-600 dark:bg-soft-500" />
               </button>
               <div className="flex items-center gap-2.5">
-                <span className="grid h-10 w-10 place-items-center rounded-full bg-soft-500 text-sm font-bold text-azure-950">
+                <span className="grid h-10 w-10 place-items-center rounded-full bg-azure-800 text-sm font-bold text-soft-500 dark:bg-soft-500 dark:text-azure-950">
                   AS
                 </span>
                 <div className="hidden sm:block">
-                  <p className="text-sm font-semibold leading-tight text-white">Amina Sow</p>
-                  <p className="text-xs leading-tight text-white/40">Horizon Realty</p>
+                  <p className="text-sm font-semibold leading-tight text-azure-950 dark:text-white">Amina Sow</p>
+                  <p className="text-xs leading-tight text-onyx/45 dark:text-white/40">Horizon Realty</p>
                 </div>
               </div>
             </div>
@@ -155,7 +162,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
                   key={item.href}
                   href={item.href}
                   className={`whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium ${
-                    active ? "bg-soft-500 text-azure-950" : "text-white/55 hover:bg-white/5"
+                    active
+                      ? "bg-azure-800 text-white dark:bg-soft-500 dark:text-azure-950"
+                      : "text-onyx/55 hover:bg-azure-900/5 dark:text-white/55 dark:hover:bg-white/5"
                   }`}
                 >
                   {item.label}

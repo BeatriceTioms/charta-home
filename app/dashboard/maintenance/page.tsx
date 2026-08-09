@@ -40,16 +40,16 @@ export default function MaintenancePage() {
           {open.map((t) => {
             const b = getBuilding(t.buildingId)!;
             return (
-              <div key={t.id} className="rounded-2xl border border-white/10 p-5">
+              <div key={t.id} className="rounded-2xl border border-azure-900/10 dark:border-white/10 p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-xs font-semibold text-white/40">{t.id}</p>
-                    <p className="mt-0.5 font-bold text-white">{t.title}</p>
+                    <p className="text-xs font-semibold text-onyx/40 dark:text-white/40">{t.id}</p>
+                    <p className="mt-0.5 font-bold text-azure-950 dark:text-white">{t.title}</p>
                   </div>
                   <TicketChip status={t.status} />
                 </div>
-                <p className="mt-2 text-sm text-white/55">
-                  <Link href={`/dashboard/buildings/${b.id}`} className="transition hover:text-soft-500">
+                <p className="mt-2 text-sm text-onyx/55 dark:text-white/55">
+                  <Link href={`/dashboard/buildings/${b.id}`} className="transition hover:text-azure-600 dark:hover:text-soft-500">
                     {b.name}
                   </Link>{" "}
                   · {t.apartment}
@@ -57,14 +57,14 @@ export default function MaintenancePage() {
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5">
                     <ViaBadge via={t.reportedVia} />
-                    <span className="text-xs text-white/45">
+                    <span className="text-xs text-onyx/45 dark:text-white/45">
                       opened {t.openedOn} · {t.daysOpen} {t.daysOpen === 1 ? "day" : "days"} ago
                     </span>
                   </div>
                   {t.assignee ? (
-                    <span className="text-xs font-semibold text-soft-500">{t.assignee}</span>
+                    <span className="text-xs font-semibold text-azure-600 dark:text-soft-500">{t.assignee}</span>
                   ) : (
-                    <button className="rounded-full border border-white/15 px-3.5 py-1.5 text-xs font-semibold text-soft-500 transition hover:bg-white/10">
+                    <button className="rounded-full border border-azure-900/15 dark:border-white/15 px-3.5 py-1.5 text-xs font-semibold text-azure-600 dark:text-soft-500 transition hover:bg-azure-900/10 dark:hover:bg-white/10">
                       Assign
                     </button>
                   )}
@@ -81,7 +81,7 @@ export default function MaintenancePage() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[560px] text-left text-sm">
             <thead>
-              <tr className="border-b border-white/10 text-xs uppercase tracking-wide text-white/40">
+              <tr className="border-b border-azure-900/10 dark:border-white/10 text-xs uppercase tracking-wide text-onyx/40 dark:text-white/40">
                 <th className="pb-3 font-semibold">Ticket</th>
                 <th className="pb-3 font-semibold">Location</th>
                 <th className="pb-3 font-semibold">Handled by</th>
@@ -93,16 +93,16 @@ export default function MaintenancePage() {
               {resolved.map((t) => {
                 const b = getBuilding(t.buildingId)!;
                 return (
-                  <tr key={t.id} className="border-b border-white/10 last:border-0">
+                  <tr key={t.id} className="border-b border-azure-900/10 dark:border-white/10 last:border-0">
                     <td className="py-3.5">
-                      <p className="font-bold text-white">{t.title}</p>
-                      <p className="text-xs text-white/40">{t.id}</p>
+                      <p className="font-bold text-azure-950 dark:text-white">{t.title}</p>
+                      <p className="text-xs text-onyx/40 dark:text-white/40">{t.id}</p>
                     </td>
-                    <td className="py-3.5 text-white/60">
+                    <td className="py-3.5 text-onyx/60 dark:text-white/60">
                       {b.name} · {t.apartment}
                     </td>
-                    <td className="py-3.5 text-white/60">{t.assignee}</td>
-                    <td className="py-3.5 text-white/60">
+                    <td className="py-3.5 text-onyx/60 dark:text-white/60">{t.assignee}</td>
+                    <td className="py-3.5 text-onyx/60 dark:text-white/60">
                       {t.daysOpen} {t.daysOpen === 1 ? "day" : "days"}
                     </td>
                     <td className="py-3.5 text-right">

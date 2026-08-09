@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-azure-950: #001a2c;
   --color-azure-900: #00243c;
@@ -20,6 +22,18 @@
 
 html {
   scroll-behavior: smooth;
+}
+
+/* donut chart tones that adapt to the active theme */
+:root {
+  --donut-track: rgba(0, 49, 82, 0.08);
+  --donut-strong: #020202;
+  --donut-muted: rgba(2, 2, 2, 0.25);
+}
+.dark {
+  --donut-track: rgba(255, 255, 255, 0.08);
+  --donut-strong: rgba(255, 255, 255, 0.9);
+  --donut-muted: rgba(255, 255, 255, 0.3);
 }
 
 body {
