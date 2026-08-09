@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { Navbar } from "@/components/Navbar";
@@ -10,6 +11,20 @@ import {
   ShowcaseSection,
   Stats,
 } from "@/components/sections";
+
+export const metadata: Metadata = {
+  title: "Charta Home | Property management software for real estate agencies",
+  description:
+    "Open the door to smarter property management. Charta Home gives real estate agencies the ROI of every building, rent collected on time with WhatsApp reminders, and maintenance handled gracefully. First month free, no credit card.",
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: "Charta Home | Open the door to smarter property management",
+    description:
+      "ROI on every building, rent collected on time, maintenance over WhatsApp. Built for real estate agencies. First month free.",
+    url: "/",
+    images: ["/hero-door.png"],
+  },
+};
 
 /* ---------- hero ---------- */
 

@@ -63,10 +63,6 @@ export default function ContactPage() {
           <div className="mx-auto grid max-w-7xl gap-10 px-5 sm:px-8 lg:grid-cols-[1fr_1.2fr] lg:gap-16">
             {/* channels */}
             <div className="relative space-y-5">
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute -inset-5 rounded-[2.5rem] bg-gradient-to-br from-soft-200 via-soft-100 to-white"
-              />
               <div className="relative overflow-hidden rounded-3xl border border-white/60 shadow-xl shadow-azure-800/10">
                 <Image
                   src="/photos/people-6.jpg"
@@ -96,9 +92,9 @@ export default function ContactPage() {
                 </a>
               ))}
               <div className="relative rounded-3xl bg-azure-800 p-6 text-white">
-                <p className="font-serif text-xl">Immeuble Kakimbo, Kaloum</p>
+                <p className="font-serif text-xl">Location</p>
                 <p className="mt-1 text-sm text-white/65">
-                  Boulevard du Commerce, Conakry, Republic of Guinea
+                  Conakry, Republic of Guinea
                 </p>
               </div>
             </div>

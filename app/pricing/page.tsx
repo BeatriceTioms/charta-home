@@ -3,6 +3,7 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import {
   CtaBanner,
+  FAQS,
   FaqSection,
   PageHero,
   PricingSection,
@@ -10,9 +11,27 @@ import {
 } from "@/components/sections";
 
 export const metadata: Metadata = {
-  title: "Pricing | Charta Home",
+  title: "Pricing",
   description:
-    "Three transparent monthly plans. Every plan begins with a full month free. No credit card required.",
+    "Three transparent monthly plans for real estate agencies: Starter at $29, Growth at $79, and Agency at $199. Every plan begins with a full month free, no credit card required.",
+  alternates: { canonical: "/pricing" },
+  openGraph: {
+    title: "Charta Home pricing | Simple plans, first month free",
+    description:
+      "Starter $29, Growth $79, Agency $199 per month. Every plan starts with a free month, no credit card.",
+    url: "/pricing",
+    images: ["/hero-door.png"],
+  },
+};
+
+const faqStructuredData = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: FAQS.map((f) => ({
+    "@type": "Question",
+    name: f.q,
+    acceptedAnswer: { "@type": "Answer", text: f.a },
+  })),
 };
 
 const COMPARISON: { label: string; values: [string, string, string] }[] = [
@@ -29,6 +48,10 @@ const COMPARISON: { label: string; values: [string, string, string] }[] = [
 export default function PricingPage() {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqStructuredData) }}
+      />
       <Navbar />
       <main>
         <PageHero
@@ -92,7 +115,7 @@ export default function PricingPage() {
                           className={`px-5 py-4 ${col === 1 ? "bg-azure-800/[0.04] font-semibold text-azure-950" : "text-onyx/65"}`}
                         >
                           {v === "Included" ? (
-                            <span className="grid h-7 w-7 place-items-center rounded-full bg-soft-500 text-azure-950">
+                            <span className="grid h-7 w-7 place-items-center rounded-full bg-onyx text-white">
                               <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M20 6L9 17l-5-5" />
                               </svg>

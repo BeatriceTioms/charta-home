@@ -10,9 +10,17 @@ import {
 } from "@/components/sections";
 
 export const metadata: Metadata = {
-  title: "Features | Charta Home",
+  title: "Features",
   description:
-    "ROI on every building, smart payment reminders, and maintenance handled over WhatsApp. Every feature built for real estate agencies.",
+    "ROI on every building, smart payment reminders over WhatsApp, SMS, and email, and maintenance tracked from tenant report to confirmed fix. Every Charta Home feature, built for real estate agencies.",
+  alternates: { canonical: "/features" },
+  openGraph: {
+    title: "Charta Home features | ROI, rent, and maintenance in one place",
+    description:
+      "Know what every building earns, collect rent without chasing, and resolve maintenance over WhatsApp.",
+    url: "/features",
+    images: ["/hero-door.png"],
+  },
 };
 
 /* ---------- small pieces ---------- */
@@ -150,7 +158,7 @@ const AUDIENCES = [
 
 function WhoWeServe() {
   return (
-    <section className="bg-white py-24">
+    <section className="bg-gradient-to-b from-soft-100 via-soft-50 to-white py-24">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <p className="font-script text-3xl font-semibold text-azure-600">Who we serve?</p>
@@ -167,7 +175,7 @@ function WhoWeServe() {
           {AUDIENCES.map((a) => (
             <div
               key={a.title}
-              className="rounded-[2rem] border border-azure-800/8 bg-soft-50 p-4 transition hover:shadow-xl hover:shadow-azure-800/10"
+              className="rounded-[2rem] border border-white/60 bg-white/30 p-4 shadow-lg shadow-azure-800/5 backdrop-blur-xl transition hover:bg-white/50 hover:shadow-xl hover:shadow-azure-800/10"
             >
               <Image
                 src={a.image}
@@ -209,14 +217,14 @@ function WhoWeServe() {
 
 function YieldCard() {
   return (
-    <div className="glass w-56 rounded-2xl p-4">
+    <div className="glass w-44 rounded-2xl p-3.5">
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold text-onyx/60">Portfolio ROI</span>
         <span className="rounded-full bg-soft-200 px-2.5 py-0.5 text-[11px] font-bold text-azure-800">
           This year
         </span>
       </div>
-      <p className="mt-1.5 text-3xl font-extrabold text-azure-800">+12.4%</p>
+      <p className="mt-1 text-2xl font-extrabold text-azure-800">+12.4%</p>
       <p className="text-[11px] text-onyx/45">vs last year</p>
     </div>
   );
@@ -235,7 +243,7 @@ function PropertyCard() {
       <div className="p-2">
         <div className="flex items-center justify-between">
           <p className="text-sm font-bold text-azure-950">Résidence Les Palmiers</p>
-          <span className="rounded-full bg-soft-200 px-2 py-0.5 text-[10px] font-bold text-azure-800">
+          <span className="whitespace-nowrap rounded-full bg-onyx px-2.5 py-0.5 text-[10px] font-bold text-white">
             9.2% net
           </span>
         </div>
@@ -387,7 +395,7 @@ function PillarRows() {
                 height={700}
                 className="aspect-[5/4] w-full rounded-[2.5rem] object-cover shadow-2xl shadow-azure-800/15"
               />
-              <div className="absolute -left-3 -top-6 sm:-left-8">{p.topCard}</div>
+              <div className="absolute -left-3 -top-12 sm:-left-8">{p.topCard}</div>
               <div className="absolute -bottom-6 -right-3 sm:-right-8">{p.bottomCard}</div>
             </div>
 
