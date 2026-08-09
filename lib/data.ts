@@ -44,8 +44,12 @@ export type Ticket = {
   status: TicketStatus;
   reportedVia: "whatsapp" | "phone" | "email";
   assignee?: string;
+  tenant?: string;
+  cost?: number;
   openedOn: string;
   daysOpen: number;
+  month: string;
+  year: number;
 };
 
 const history = (
@@ -172,32 +176,52 @@ export const tickets: Ticket[] = [
   {
     id: "T-1042", title: "Water heater not heating", buildingId: "palmiers", apartment: "Apt 2A",
     status: "in-progress", reportedVia: "whatsapp", assignee: "B. Keita (plumber)",
-    openedOn: "4 Aug", daysOpen: 4,
+    tenant: "Sofia Benali", openedOn: "4 Aug", daysOpen: 4, month: "Aug", year: 2026,
   },
   {
     id: "T-1041", title: "Front gate lock jammed", buildingId: "ocean", apartment: "Common area",
     status: "assigned", reportedVia: "whatsapp", assignee: "S. Diop (locksmith)",
-    openedOn: "5 Aug", daysOpen: 3,
+    openedOn: "5 Aug", daysOpen: 3, month: "Aug", year: 2026,
   },
   {
     id: "T-1040", title: "Kitchen tap leaking", buildingId: "palmiers", apartment: "Apt 1B",
     status: "new", reportedVia: "whatsapp",
-    openedOn: "7 Aug", daysOpen: 1,
-  },
-  {
-    id: "T-1039", title: "Balcony door seal worn", buildingId: "andalouse", apartment: "Terrace Suite",
-    status: "resolved", reportedVia: "whatsapp", assignee: "M. Fall (carpenter)",
-    openedOn: "28 Jul", daysOpen: 6,
-  },
-  {
-    id: "T-1038", title: "Corridor light flickering", buildingId: "ocean", apartment: "Common area",
-    status: "resolved", reportedVia: "phone", assignee: "A. Ndiaye (electrician)",
-    openedOn: "25 Jul", daysOpen: 2,
+    tenant: "Karim Osei", openedOn: "7 Aug", daysOpen: 1, month: "Aug", year: 2026,
   },
   {
     id: "T-1037", title: "Air conditioning service", buildingId: "andalouse", apartment: "Garden Suite",
     status: "in-progress", reportedVia: "email", assignee: "Coolair Services",
-    openedOn: "1 Aug", daysOpen: 7,
+    tenant: "Nadia El Fassi", openedOn: "1 Aug", daysOpen: 7, month: "Aug", year: 2026,
+  },
+  {
+    id: "T-1039", title: "Balcony door seal worn", buildingId: "andalouse", apartment: "Terrace Suite",
+    status: "resolved", reportedVia: "whatsapp", assignee: "M. Fall (carpenter)",
+    tenant: "Omar Sy", cost: 85, openedOn: "28 Jul", daysOpen: 6, month: "Jul", year: 2026,
+  },
+  {
+    id: "T-1038", title: "Corridor light flickering", buildingId: "ocean", apartment: "Common area",
+    status: "resolved", reportedVia: "phone", assignee: "A. Ndiaye (electrician)",
+    cost: 30, openedOn: "25 Jul", daysOpen: 2, month: "Jul", year: 2026,
+  },
+  {
+    id: "T-1036", title: "Repaint stairwell", buildingId: "ocean", apartment: "Common area",
+    status: "resolved", reportedVia: "phone", assignee: "M. Fall (carpenter)",
+    cost: 260, openedOn: "12 Jul", daysOpen: 5, month: "Jul", year: 2026,
+  },
+  {
+    id: "T-1035", title: "Broken window latch", buildingId: "palmiers", apartment: "Apt 1A",
+    status: "resolved", reportedVia: "whatsapp", assignee: "S. Diop (locksmith)",
+    tenant: "Mariam Diallo", cost: 45, openedOn: "18 Jun", daysOpen: 2, month: "Jun", year: 2026,
+  },
+  {
+    id: "T-1030", title: "Boiler annual service", buildingId: "andalouse", apartment: "Garden Suite",
+    status: "resolved", reportedVia: "email", assignee: "Coolair Services",
+    tenant: "Nadia El Fassi", cost: 180, openedOn: "9 Dec", daysOpen: 3, month: "Dec", year: 2025,
+  },
+  {
+    id: "T-1029", title: "Gate motor replacement", buildingId: "ocean", apartment: "Common area",
+    status: "resolved", reportedVia: "phone", assignee: "S. Diop (locksmith)",
+    cost: 420, openedOn: "22 Nov", daysOpen: 6, month: "Nov", year: 2025,
   },
 ];
 

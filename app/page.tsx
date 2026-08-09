@@ -22,7 +22,11 @@ function HeroContent({ className = "" }: { className?: string }) {
         The trusted platform for real estate agencies
       </span>
       <h1 className="mt-6 font-serif text-4xl font-medium leading-[1.08] tracking-tight text-azure-950 sm:text-6xl lg:text-[64px]">
-        Open the door to smarter property management
+        Open the door to{" "}
+        <span className="bg-gradient-to-r from-azure-800 via-azure-600 to-[#5ab5dc] bg-clip-text text-transparent">
+          smarter
+        </span>{" "}
+        property management
       </h1>
       <p className="mt-6 max-w-md text-lg leading-relaxed text-azure-900/70">
         Charta Home gives your agency complete clarity. The return on every
@@ -74,8 +78,11 @@ function Hero() {
           width={1536}
           height={1024}
           priority
-          className="h-auto max-h-[680px] w-full object-cover object-[center_35%] lg:max-h-[800px]"
+          className="h-auto max-h-[760px] w-full object-cover object-[center_35%] lg:max-h-[880px]"
         />
+
+        {/* cloud fade into the stats section */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-white via-white/60 to-transparent lg:h-56" />
 
         {/* large screens: text over the image's open left side */}
         <div className="absolute inset-0 hidden items-center lg:flex">

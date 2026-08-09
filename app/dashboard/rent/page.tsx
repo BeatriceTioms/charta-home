@@ -1,31 +1,50 @@
+"use client";
+
+import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { allApartments, collections, fmt } from "@/lib/data";
+import { allApartments, buildings, collections, fmt, type RentStatus } from "@/lib/data";
 import { PageTitle, RentChip } from "@/components/dashboard/ui";
+import { ReceiptModal, type ReceiptData } from "@/components/dashboard/ReceiptModal";
 
-function FilterButton({ children }: { children: React.ReactNode }) {
-  return (
-    <button className="flex items-center gap-2 rounded-2xl border border-azure-900/10 bg-white px-4 py-2.5 text-sm font-semibold text-azure-950 transition hover:bg-azure-900/5 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10">
-      {children}
-      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-onyx/40 dark:text-white/40" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M6 9l6 6 6-6" />
-      </svg>
-    </button>
-  );
-}
+const selectCls =
+  "rounded-2xl border border-azure-900/10 bg-white px-4 py-2.5 text-sm font-semibold text-azure-950 outline-none transition hover:bg-azure-900/5 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10 dark:[&>option]:bg-onyx";
+
+type Tab = "all" | RentStatus;
 
 export default function RentPage() {
+  const [tab, setTab] = useState<Tab>("all");
+  const [search, setSearch] = useState("");
+  const [buildingId, setBuildingId] = useState("all");
+  const [reminded, setReminded] = useState<string[]>([]);
+  const [receipt, setReceipt] = useState<ReceiptData | null>(null);
+
   const leased = allApartments().filter((a) => a.tenant);
   const august = collections[collections.length - 1];
-  const paid = leased.filter((a) => a.rentStatus === "paid").length;
-  const pending = leased.filter((a) => a.rentStatus === "pending").length;
-  const overdue = leased.filter((a) => a.rentStatus === "overdue").length;
 
-  const tabs = [
-    { label: "All leases", count: leased.length, active: true },
-    { label: "Paid", count: paid, active: false },
-    { label: "Pending", count: pending, active: false },
-    { label: "Overdue", count: overdue, active: false },
+  const counts = {
+    all: leased.length,
+    paid: leased.filter((a) => a.rentStatus === "paid").length,
+    pending: leased.filter((a) => a.rentStatus === "pending").length,
+    overdue: leased.filter((a) => a.rentStatus === "overdue").length,
+  };
+
+  const rows = useMemo(
+    () =>
+      leased.filter(
+        (a) =>
+          (tab === "all" || a.rentStatus === tab) &&
+          (buildingId === "all" || a.building.id === buildingId) &&
+          a.tenant!.name.toLowerCase().includes(search.toLowerCase())
+      ),
+    [leased, tab, buildingId, search]
+  );
+
+  const tabs: { key: Tab; label: string }[] = [
+    { key: "all", label: "All leases" },
+    { key: "paid", label: "Paid" },
+    { key: "pending", label: "Pending" },
+    { key: "overdue", label: "Overdue" },
   ];
 
   return (
@@ -50,27 +69,31 @@ export default function RentPage() {
 
       {/* tabs */}
       <div className="mb-6 flex gap-7 overflow-x-auto border-b border-azure-900/10 dark:border-white/10">
-        {tabs.map((t) => (
-          <button
-            key={t.label}
-            className={`-mb-px flex shrink-0 items-center gap-2 border-b-2 pb-3 text-[15px] font-semibold transition ${
-              t.active
-                ? "border-azure-800 text-azure-950 dark:border-soft-500 dark:text-white"
-                : "border-transparent text-onyx/45 hover:text-azure-950 dark:text-white/45 dark:hover:text-white"
-            }`}
-          >
-            {t.label}
-            <span
-              className={`rounded-full px-2 py-0.5 text-xs font-bold ${
-                t.active
-                  ? "bg-soft-500 text-azure-950"
-                  : "bg-azure-900/8 text-onyx/50 dark:bg-white/10 dark:text-white/50"
+        {tabs.map((t) => {
+          const active = tab === t.key;
+          return (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={`-mb-px flex shrink-0 items-center gap-2 border-b-2 pb-3 text-[15px] font-semibold transition ${
+                active
+                  ? "border-azure-800 text-azure-950 dark:border-soft-500 dark:text-white"
+                  : "border-transparent text-onyx/45 hover:text-azure-950 dark:text-white/45 dark:hover:text-white"
               }`}
             >
-              {t.count}
-            </span>
-          </button>
-        ))}
+              {t.label}
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                  active
+                    ? "bg-soft-500 text-azure-950"
+                    : "bg-azure-900/8 text-onyx/50 dark:bg-white/10 dark:text-white/50"
+                }`}
+              >
+                {counts[t.key]}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* table card */}
@@ -80,7 +103,7 @@ export default function RentPage() {
           <p className="text-lg font-bold text-azure-950 dark:text-white">
             Leases{" "}
             <span className="ml-1 text-sm font-medium text-onyx/40 dark:text-white/40">
-              Total {leased.length}
+              Total {rows.length}
             </span>
           </p>
           <div className="flex flex-wrap items-center gap-3">
@@ -89,17 +112,36 @@ export default function RentPage() {
                 <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" />
               </svg>
               <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search tenants"
                 className="w-40 bg-transparent text-sm text-azure-950 outline-none placeholder:text-onyx/35 dark:text-white dark:placeholder:text-white/35"
               />
             </div>
-            <FilterButton>Building</FilterButton>
-            <FilterButton>Status</FilterButton>
-            <button className="flex items-center gap-2 rounded-2xl border border-azure-900/10 bg-white px-4 py-2.5 text-sm font-semibold text-azure-950 transition hover:bg-azure-900/5 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10">
+            <select
+              value={buildingId}
+              onChange={(e) => setBuildingId(e.target.value)}
+              className={selectCls}
+              aria-label="Filter by building"
+            >
+              <option value="all">All buildings</option>
+              {buildings.map((b) => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </select>
+            <button
+              onClick={() => {
+                setTab("all");
+                setBuildingId("all");
+                setSearch("");
+              }}
+              className="flex items-center gap-2 rounded-2xl border border-azure-900/10 bg-white px-4 py-2.5 text-sm font-semibold text-azure-950 transition hover:bg-azure-900/5 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
+            >
               <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 6h16M7 12h10M10 18h4" />
+                <path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" />
               </svg>
-              Filter
+              Reset
             </button>
           </div>
         </div>
@@ -119,65 +161,106 @@ export default function RentPage() {
               </tr>
             </thead>
             <tbody>
-              {leased.map((a) => (
-                <tr
-                  key={`${a.building.id}-${a.id}`}
-                  className="border-b border-azure-900/5 last:border-0 dark:border-white/5"
-                >
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3.5">
-                      <Image
-                        src={a.building.photo}
-                        alt={a.building.name}
-                        width={96}
-                        height={96}
-                        className="h-12 w-12 shrink-0 rounded-xl object-cover"
-                      />
-                      <div className="min-w-0">
-                        <p className="whitespace-nowrap font-bold text-azure-950 dark:text-white">
-                          {a.building.name}
-                        </p>
-                        <p className="whitespace-nowrap text-xs text-onyx/45 dark:text-white/45">
-                          {a.building.address}, {a.building.city}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="py-4 pr-4 font-semibold text-azure-950 dark:text-white">{a.label}</td>
-                  <td className="py-4 pr-4 capitalize text-onyx/60 dark:text-white/60">{a.cycle}</td>
-                  <td className="py-4 pr-4">
-                    <RentChip status={a.rentStatus} />
-                  </td>
-                  <td className="py-4 pr-4">
-                    <div className="flex items-center gap-2.5">
-                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-azure-800 text-[11px] font-bold text-soft-500">
-                        {a.tenant!.name.split(" ").map((w) => w[0]).join("")}
-                      </span>
-                      <span className="whitespace-nowrap text-onyx/75 dark:text-white/75">
-                        {a.tenant!.name}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="py-4 pr-4 font-bold text-azure-950 dark:text-white">{fmt(a.rent)}</td>
-                  <td className="py-4 pr-6">
-                    <div className="flex items-center gap-2">
-                      <Link
-                        href={`/dashboard/buildings/${a.building.id}/${a.id}`}
-                        className="rounded-xl bg-onyx px-5 py-2 text-sm font-semibold text-white transition hover:bg-azure-900 dark:bg-white dark:text-onyx dark:hover:bg-soft-400"
-                      >
-                        View
-                      </Link>
-                      <button className="rounded-xl border border-azure-900/15 px-4 py-2 text-sm font-semibold text-azure-950 transition hover:bg-azure-900/5 dark:border-white/15 dark:text-white dark:hover:bg-white/10">
-                        {a.rentStatus === "paid" ? "Receipt" : "Remind"}
-                      </button>
-                    </div>
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="px-6 py-10 text-center text-onyx/45 dark:text-white/45">
+                    No leases match these filters.
                   </td>
                 </tr>
-              ))}
+              )}
+              {rows.map((a) => {
+                const key = `${a.building.id}-${a.id}`;
+                const wasReminded = reminded.includes(key);
+                return (
+                  <tr
+                    key={key}
+                    className="border-b border-azure-900/5 last:border-0 dark:border-white/5"
+                  >
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3.5">
+                        <Image
+                          src={a.building.photo}
+                          alt={a.building.name}
+                          width={96}
+                          height={96}
+                          className="h-12 w-12 shrink-0 rounded-xl object-cover"
+                        />
+                        <div className="min-w-0">
+                          <p className="whitespace-nowrap font-bold text-azure-950 dark:text-white">
+                            {a.building.name}
+                          </p>
+                          <p className="whitespace-nowrap text-xs text-onyx/45 dark:text-white/45">
+                            {a.building.address}, {a.building.city}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-4 pr-4 font-semibold text-azure-950 dark:text-white">{a.label}</td>
+                    <td className="py-4 pr-4 capitalize text-onyx/60 dark:text-white/60">{a.cycle}</td>
+                    <td className="py-4 pr-4">
+                      <RentChip status={a.rentStatus} />
+                    </td>
+                    <td className="py-4 pr-4">
+                      <div className="flex items-center gap-2.5">
+                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-azure-800 text-[11px] font-bold text-soft-500">
+                          {a.tenant!.name.split(" ").map((w) => w[0]).join("")}
+                        </span>
+                        <span className="whitespace-nowrap text-onyx/75 dark:text-white/75">
+                          {a.tenant!.name}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-4 pr-4 font-bold text-azure-950 dark:text-white">{fmt(a.rent)}</td>
+                    <td className="py-4 pr-6">
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/dashboard/buildings/${a.building.id}/${a.id}`}
+                          className="rounded-xl bg-onyx px-5 py-2 text-sm font-semibold text-white transition hover:bg-azure-900 dark:bg-white dark:text-onyx dark:hover:bg-soft-400"
+                        >
+                          View
+                        </Link>
+                        {a.rentStatus === "paid" ? (
+                          <button
+                            onClick={() =>
+                              setReceipt({
+                                tenant: a.tenant!.name,
+                                apartment: a.label,
+                                building: a.building.name,
+                                address: `${a.building.address}, ${a.building.city}`,
+                                amount: a.rent,
+                                period: "August 2026",
+                                paidOn: "2 August 2026",
+                                reference: `RCP-2026-08-${a.building.id.slice(0, 3).toUpperCase()}-${a.id.toUpperCase()}`,
+                              })
+                            }
+                            className="rounded-xl border border-azure-900/15 px-4 py-2 text-sm font-semibold text-azure-950 transition hover:bg-azure-900/5 dark:border-white/15 dark:text-white dark:hover:bg-white/10"
+                          >
+                            Receipt
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => setReminded((r) => [...r, key])}
+                            disabled={wasReminded}
+                            className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                              wasReminded
+                                ? "bg-soft-500/60 text-azure-950/70"
+                                : "border border-azure-900/15 text-azure-950 hover:bg-azure-900/5 dark:border-white/15 dark:text-white dark:hover:bg-white/10"
+                            }`}
+                          >
+                            {wasReminded ? "Reminder sent" : "Remind"}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
+
+      {receipt && <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />}
     </>
   );
 }

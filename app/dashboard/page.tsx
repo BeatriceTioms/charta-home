@@ -90,7 +90,7 @@ const ACTIVITY = [
 
 /* ---------- rent follow up steps ---------- */
 
-const STEPS = ["Reminder sent", "Second reminder", "Escalation", "Paid"];
+const STEPS = ["Reminder", "Follow up", "Escalation", "Paid"];
 
 function FollowUpRow({
   name,
@@ -100,6 +100,7 @@ function FollowUpRow({
   aptId,
   amount,
   step,
+  photo,
 }: {
   name: string;
   unit: string;
@@ -108,43 +109,56 @@ function FollowUpRow({
   aptId: string;
   amount: number;
   step: number;
+  photo: string;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-5 rounded-2xl border border-azure-900/8 dark:border-white/8 p-5">
-      <div className="flex min-w-44 items-center gap-3.5">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-soft-500 text-xs font-bold text-azure-950">
-          {name.split(" ").map((w) => w[0]).join("")}
-        </span>
+    <div className="flex flex-wrap items-center gap-5 rounded-2xl border border-azure-900/8 dark:border-white/8 p-4">
+      <Link
+        href={`/dashboard/buildings/${buildingId}/${aptId}`}
+        className="flex min-w-56 items-center gap-3.5"
+      >
+        <Image
+          src={photo}
+          alt={unit}
+          width={160}
+          height={112}
+          className="h-14 w-20 shrink-0 rounded-xl object-cover"
+        />
         <div>
-          <Link
-            href={`/dashboard/buildings/${buildingId}/${aptId}`}
-            className="text-sm font-bold text-azure-950 dark:text-white transition hover:text-azure-600 dark:hover:text-soft-500"
-          >
+          <p className="text-sm font-bold text-azure-950 dark:text-white transition hover:text-azure-600 dark:hover:text-soft-500">
             {unit} · {name}
-          </Link>
+          </p>
           <p className="text-xs text-onyx/45 dark:text-white/45">
             {building} · {fmt(amount)} due
           </p>
         </div>
-      </div>
-      <div className="flex min-w-0 flex-1 items-center">
+      </Link>
+      <div className="flex min-w-0 flex-1 items-center pt-1">
         {STEPS.map((label, i) => (
           <div key={label} className={`flex items-center ${i === 0 ? "" : "flex-1"}`}>
             {i > 0 && (
               <span
-                className={`mx-1.5 h-px flex-1 ${i <= step ? "bg-soft-500" : "bg-azure-900/10 dark:bg-white/15"}`}
-              />
-            )}
-            <div className="flex flex-col items-center gap-1.5">
-              <span
-                className={`h-3.5 w-3.5 rounded-full border-2 ${
-                  i < step
-                    ? "border-soft-500 bg-soft-500"
-                    : i === step
-                      ? "border-soft-500 bg-onyx"
-                      : "border-white/20 bg-onyx"
+                className={`mx-2 h-[3px] flex-1 rounded-full ${
+                  i <= step
+                    ? "bg-gradient-to-r from-azure-600 to-soft-500"
+                    : "bg-azure-900/10 dark:bg-white/10"
                 }`}
               />
+            )}
+            <div className="relative flex flex-col items-center gap-1.5">
+              {i < step ? (
+                <span className="grid h-5 w-5 place-items-center rounded-full bg-soft-500">
+                  <svg viewBox="0 0 24 24" className="h-3 w-3 text-azure-950" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 6L9 17l-5-5" />
+                  </svg>
+                </span>
+              ) : i === step ? (
+                <span className="grid h-5 w-5 place-items-center rounded-full border-2 border-soft-500">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-soft-500" />
+                </span>
+              ) : (
+                <span className="h-5 w-5 rounded-full border-2 border-azure-900/15 dark:border-white/20" />
+              )}
               <span
                 className={`whitespace-nowrap text-[10px] font-semibold ${
                   i <= step ? "text-azure-600 dark:text-soft-500" : "text-onyx/35 dark:text-white/35"
@@ -290,6 +304,7 @@ export default function DashboardPage() {
                 aptId="a4"
                 amount={780}
                 step={2}
+                photo="/photos/interior-2.jpg"
               />
               <FollowUpRow
                 name="Daniel Mensah"
@@ -299,6 +314,7 @@ export default function DashboardPage() {
                 aptId="a2"
                 amount={1250}
                 step={1}
+                photo="/photos/interior-4.jpg"
               />
             </div>
           </Card>

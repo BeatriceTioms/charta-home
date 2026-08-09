@@ -30,7 +30,7 @@ const columns = [
 
 export function Footer() {
   return (
-    <footer className="bg-onyx text-white">
+    <footer className="bg-azure-950 text-white">
       <div className="mx-auto grid max-w-7xl gap-12 px-5 py-16 sm:px-8 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
         <div>
           <Logo dark />
@@ -61,9 +61,8 @@ export function Footer() {
         ))}
       </div>
       <div className="border-t border-white/10">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-5 py-6 text-sm text-white/50 sm:flex-row sm:px-8">
+        <div className="mx-auto flex max-w-7xl justify-center px-5 py-6 text-sm text-white/50 sm:px-8">
           <span>© {new Date().getFullYear()} Charta Home. All rights reserved.</span>
-          <span>Made for agencies that manage homes people love.</span>
         </div>
       </div>
     </footer>
