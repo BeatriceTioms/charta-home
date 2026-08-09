@@ -103,7 +103,7 @@ export default function Home() {
         <Hero />
         <Stats />
         <ShowcaseSection />
-        <HowItWorksSection compact />
+        <HowItWorksSection />
         <PricingSection />
         <CtaBanner />
       </main>

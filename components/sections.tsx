@@ -301,69 +301,84 @@ export function FeatureCard({ feature }: { feature: (typeof FEATURES)[number] })
 
 /* ---------- how it works ---------- */
 
-export const STEPS = [
-  {
-    n: "01",
-    title: "Create your agency workspace",
-    description:
-      "Set up your agency in minutes. Your name, your team, your branding on every owner report.",
-  },
-  {
-    n: "02",
-    title: "Add your buildings",
-    description:
-      "Register each building and its apartments, with rent amounts, charges, and the owners you represent.",
-  },
-  {
-    n: "03",
-    title: "Onboard tenants and leases",
-    description:
-      "Attach tenants to units with monthly or yearly leases. Reminders and WhatsApp maintenance switch on automatically.",
-  },
-  {
-    n: "04",
-    title: "Let the reminders work",
-    description:
-      "Rent reminders go out at exactly the right moment, in exactly the right tone. Late payments receive measured follow up.",
-  },
-  {
-    n: "05",
-    title: "Review your returns",
-    description:
-      "Your dashboard shows the true ROI of every building, so every renewal, renovation, and acquisition is an informed decision.",
-  },
-];
-
-export function HowItWorksSection({ compact = false }: { compact?: boolean }) {
-  const steps = compact ? [STEPS[1], STEPS[2], STEPS[4]] : STEPS;
+export function HowItWorksSection() {
   return (
-    <section className="bg-azure-800 py-24 text-white">
+    <section className="bg-soft-50 py-24">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
-        <SectionHeading
-          dark
-          eyebrow="How it works"
-          title="Up and running in an afternoon"
-          subtitle="No consultants, no lengthy onboarding. Your portfolio, organized before the day ends."
-        />
-        <div className={`mt-14 grid gap-6 ${compact ? "md:grid-cols-3" : "md:grid-cols-2 lg:grid-cols-3"}`}>
-          {steps.map((s) => (
-            <div key={s.n} className="rounded-3xl border border-white/10 bg-white/5 p-8">
-              <span className="font-serif text-5xl font-medium text-soft-500/60">{s.n}</span>
-              <h3 className="mt-4 text-xl font-bold">{s.title}</h3>
-              <p className="mt-2.5 leading-relaxed text-white/65">{s.description}</p>
-            </div>
-          ))}
+        <div className="mx-auto max-w-2xl text-center">
+          <span className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-azure-800 shadow-sm shadow-azure-800/10">
+            <span className="h-2 w-2 rounded-full bg-azure-600" />
+            How it works
+          </span>
+          <h2 className="mt-5 font-serif text-4xl font-medium tracking-tight text-azure-950 sm:text-5xl">
+            Property care, <span className="text-azure-600">simplified</span>
+          </h2>
+          <p className="mt-5 text-lg leading-relaxed text-onyx/55">
+            From your first building to full owner reports, every step is
+            designed to keep properties organised, maintained, and carefully
+            managed.
+          </p>
         </div>
-        {compact && (
-          <div className="mt-10 text-center">
-            <Link
-              href="/features#journey"
-              className="inline-flex items-center gap-2 font-semibold text-soft-500 transition hover:text-white"
-            >
-              See the full journey <ArrowIcon />
-            </Link>
+
+        <div className="mt-14 grid items-stretch gap-6 lg:grid-cols-3">
+          {/* step 1 */}
+          <div className="flex min-h-[420px] flex-col justify-between rounded-[2rem] border border-azure-800/8 bg-white p-8 shadow-sm shadow-azure-800/5">
+            <p className="text-right font-serif text-7xl font-medium text-azure-900/10">.01</p>
+            <div>
+              <h3 className="text-2xl font-bold text-azure-950">
+                Add buildings, apartments, and tenants
+              </h3>
+              <p className="mt-2.5 text-sm leading-relaxed text-onyx/55">
+                Register each building with its apartments, rents, and leases.
+                Most agencies finish in an afternoon.
+              </p>
+            </div>
           </div>
-        )}
+
+          {/* step 2, featured */}
+          <div className="relative flex min-h-[420px] flex-col overflow-hidden rounded-[2rem] bg-azure-900 text-white shadow-2xl shadow-azure-900/30">
+            <div className="relative z-10 p-8">
+              <div className="flex items-start justify-between gap-4">
+                <h3 className="text-2xl font-bold">Let the reminders work</h3>
+                <p className="font-serif text-7xl font-medium leading-none text-soft-500/80">.02</p>
+              </div>
+              <p className="mt-2.5 max-w-xs text-sm leading-relaxed text-white/70">
+                Rent reminders go out at the right moment and tenants report
+                issues over WhatsApp, with care, consistency, and professional
+                oversight.
+              </p>
+              <Link
+                href="/signup"
+                className="mt-5 inline-block rounded-full bg-soft-500 px-6 py-2.5 text-sm font-bold text-azure-950 transition hover:bg-soft-400"
+              >
+                Begin your free month
+              </Link>
+            </div>
+            <div className="relative mt-auto h-44">
+              <Image
+                src="/photos/building-2.jpg"
+                alt="A building cared for through Charta Home"
+                fill
+                className="object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-b from-azure-900 to-transparent" />
+            </div>
+          </div>
+
+          {/* step 3 */}
+          <div className="flex min-h-[420px] flex-col justify-between rounded-[2rem] border border-azure-800/8 bg-white p-8 shadow-sm shadow-azure-800/5">
+            <p className="text-right font-serif text-7xl font-medium text-azure-900/10">.03</p>
+            <div>
+              <h3 className="text-2xl font-bold text-azure-950">
+                Review returns and owner reports
+              </h3>
+              <p className="mt-2.5 text-sm leading-relaxed text-onyx/55">
+                Net yield per apartment, building, and portfolio, with elegant
+                statements for the owners you represent.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   );

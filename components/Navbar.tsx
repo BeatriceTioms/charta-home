@@ -6,11 +6,16 @@ import { useState } from "react";
 import { Logo } from "./Logo";
 
 const links = [
+  { label: "Home", href: "/" },
   { label: "Features", href: "/features" },
   { label: "Pricing", href: "/pricing" },
-  { label: "FAQ", href: "/pricing#faq" },
   { label: "Contact", href: "/contact" },
 ];
+
+function isActive(pathname: string, href: string) {
+  if (href === "/") return pathname === "/";
+  return pathname.startsWith(href);
+}
 
 export function Navbar({ transparent = false }: { transparent?: boolean }) {
   const [open, setOpen] = useState(false);
@@ -24,23 +29,33 @@ export function Navbar({ transparent = false }: { transparent?: boolean }) {
           : "sticky top-0 z-50 border-b border-azure-800/5 bg-white/80 backdrop-blur-md"
       }
     >
-      <nav className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-5 sm:px-8">
+      <nav className="mx-auto flex h-[76px] max-w-7xl items-center justify-between px-5 sm:px-8">
         <Logo />
 
-        <div className="hidden items-center gap-8 md:flex">
-          {links.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className={`text-[15px] font-medium transition hover:text-azure-800 ${
-                pathname === l.href
-                  ? "text-azure-800 underline decoration-soft-500 decoration-2 underline-offset-8"
-                  : "text-onyx/70"
-              }`}
-            >
-              {l.label}
-            </Link>
-          ))}
+        {/* capsule menu */}
+        <div
+          className={`hidden items-center rounded-full p-1.5 md:flex ${
+            transparent
+              ? "bg-white/60 shadow-sm shadow-azure-800/5 backdrop-blur-md"
+              : "bg-azure-900/5"
+          }`}
+        >
+          {links.map((l) => {
+            const active = isActive(pathname, l.href);
+            return (
+              <Link
+                key={l.href}
+                href={l.href}
+                className={`rounded-full px-5 py-2 text-[15px] transition ${
+                  active
+                    ? "bg-white font-semibold text-azure-950 shadow-sm shadow-azure-800/10"
+                    : "font-medium text-onyx/55 hover:text-azure-950"
+                }`}
+              >
+                {l.label}
+              </Link>
+            );
+          })}
         </div>
 
         <div className="hidden items-center gap-3 md:flex">
@@ -52,12 +67,9 @@ export function Navbar({ transparent = false }: { transparent?: boolean }) {
           </Link>
           <Link
             href="/signup"
-            className="group flex items-center gap-2 rounded-full bg-onyx py-2.5 pl-5 pr-4 text-[15px] font-semibold text-white shadow-lg shadow-onyx/20 transition hover:bg-azure-900"
+            className="rounded-full bg-onyx px-6 py-3 text-[15px] font-semibold text-white shadow-lg shadow-onyx/20 transition hover:bg-azure-900"
           >
             Get Started
-            <span className="grid h-5 w-5 place-items-center rounded-full bg-white/15 text-xs transition group-hover:bg-white/25">
-              +
-            </span>
           </Link>
         </div>
 
@@ -81,7 +93,7 @@ export function Navbar({ transparent = false }: { transparent?: boolean }) {
                 href={l.href}
                 onClick={() => setOpen(false)}
                 className={`rounded-xl px-3 py-2.5 font-medium hover:bg-soft-100 ${
-                  pathname === l.href ? "bg-soft-100 text-azure-800" : "text-onyx/70"
+                  isActive(pathname, l.href) ? "bg-soft-100 text-azure-800" : "text-onyx/70"
                 }`}
               >
                 {l.label}

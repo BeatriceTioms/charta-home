@@ -23,9 +23,9 @@ const CHANNELS = [
   },
   {
     title: "WhatsApp",
-    value: "+1 555 014 0000",
+    value: "+224 620 00 00 00",
     detail: "The channel we know best. Weekdays, 9 to 6.",
-    href: "https://wa.me/15550140000",
+    href: "https://wa.me/224620000000",
     icon: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 12a8.5 8.5 0 01-12.4 7.5L3 21l1.5-5.6A8.5 8.5 0 1121 12z" />
@@ -62,14 +62,18 @@ export default function ContactPage() {
         <section className="bg-white py-20">
           <div className="mx-auto grid max-w-7xl gap-10 px-5 sm:px-8 lg:grid-cols-[1fr_1.2fr] lg:gap-16">
             {/* channels */}
-            <div className="space-y-5">
-              <div className="relative overflow-hidden rounded-3xl shadow-xl shadow-azure-800/10">
+            <div className="relative space-y-5">
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute -inset-5 rounded-[2.5rem] bg-gradient-to-br from-soft-200 via-soft-100 to-white"
+              />
+              <div className="relative overflow-hidden rounded-3xl border border-white/60 shadow-xl shadow-azure-800/10">
                 <Image
-                  src="/photos/people-4.jpg"
-                  alt="The Charta Home team, ready to help"
+                  src="/photos/people-6.jpg"
+                  alt="A member of the Charta Home team in Conakry"
                   width={900}
                   height={506}
-                  className="h-56 w-full object-cover"
+                  className="h-56 w-full object-cover object-[center_22%]"
                 />
                 <span className="absolute bottom-4 left-4 rounded-full bg-white/85 px-4 py-1.5 text-sm font-semibold text-azure-900 backdrop-blur-sm">
                   We reply within the day
@@ -79,9 +83,9 @@ export default function ContactPage() {
                 <a
                   key={c.title}
                   href={c.href}
-                  className="flex items-start gap-4 rounded-3xl border border-azure-800/8 bg-soft-50 p-6 transition hover:border-azure-800/20 hover:shadow-xl hover:shadow-azure-800/5"
+                  className="relative flex items-start gap-4 rounded-3xl border border-white/60 bg-white/30 p-6 shadow-lg shadow-azure-800/5 backdrop-blur-xl transition hover:bg-white/50"
                 >
-                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-azure-800 text-soft-500">
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-azure-800/80 text-white backdrop-blur-sm">
                     {c.icon}
                   </span>
                   <div>
@@ -91,10 +95,10 @@ export default function ContactPage() {
                   </div>
                 </a>
               ))}
-              <div className="rounded-3xl bg-azure-800 p-6 text-white">
-                <p className="font-serif text-xl">Horizon towers, Suite 4</p>
+              <div className="relative rounded-3xl bg-azure-800 p-6 text-white">
+                <p className="font-serif text-xl">Immeuble Kakimbo, Kaloum</p>
                 <p className="mt-1 text-sm text-white/65">
-                  12 Avenue de la République, Riverside District
+                  Boulevard du Commerce, Conakry, Republic of Guinea
                 </p>
               </div>
             </div>
