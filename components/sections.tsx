@@ -357,7 +357,7 @@ export function HowItWorksSection({ compact = false }: { compact?: boolean }) {
         {compact && (
           <div className="mt-10 text-center">
             <Link
-              href="/how-it-works"
+              href="/features#journey"
               className="inline-flex items-center gap-2 font-semibold text-soft-500 transition hover:text-white"
             >
               See the full journey <ArrowIcon />

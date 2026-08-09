@@ -5,7 +5,6 @@ import { Footer } from "@/components/Footer";
 import {
   ArrowIcon,
   CtaBanner,
-  FaqSection,
   HowItWorksSection,
   PricingSection,
   ShowcaseSection,
@@ -44,7 +43,7 @@ function HeroContent({ className = "" }: { className?: string }) {
           </span>
         </Link>
         <Link
-          href="/how-it-works"
+          href="/features#journey"
           className="flex items-center gap-2.5 text-[15px] font-medium text-azure-900/80 transition hover:text-azure-800"
         >
           See how it works
@@ -106,7 +105,6 @@ export default function Home() {
         <ShowcaseSection />
         <HowItWorksSection compact />
         <PricingSection />
-        <FaqSection limit={4} />
         <CtaBanner />
       </main>
       <Footer />

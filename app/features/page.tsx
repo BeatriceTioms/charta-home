@@ -4,13 +4,33 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import {
   ArrowIcon,
+  CheckIcon,
   CtaBanner,
   FEATURES,
   FeatureCard,
+  HowItWorksSection,
   ImageTextRows,
   PageHero,
   type ShowcaseRow,
 } from "@/components/sections";
+
+const REASSURANCES = [
+  {
+    title: "No consultants required",
+    description:
+      "Charta Home is designed to be set up by your own team, in plain language, without training sessions.",
+  },
+  {
+    title: "Bring your existing records",
+    description:
+      "Import tenants and leases from a simple spreadsheet. We provide the template and check it for you.",
+  },
+  {
+    title: "Help from a real person",
+    description:
+      "Our support team answers within the day on every plan, and Agency plans enjoy dedicated support.",
+  },
+];
 
 export const metadata: Metadata = {
   title: "Features | Charta Home",
@@ -92,6 +112,30 @@ export default function FeaturesPage() {
               >
                 See which plan fits your portfolio <ArrowIcon />
               </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* the journey, merged from the former How it works page */}
+        <div id="journey" className="scroll-mt-20">
+          <HowItWorksSection />
+        </div>
+
+        <section className="bg-white py-20">
+          <div className="mx-auto max-w-7xl px-5 sm:px-8">
+            <h2 className="text-center font-serif text-4xl font-medium tracking-tight text-azure-800">
+              Set up with a steady hand
+            </h2>
+            <div className="mt-12 grid gap-6 md:grid-cols-3">
+              {REASSURANCES.map((r) => (
+                <div key={r.title} className="rounded-3xl border border-azure-800/8 bg-soft-50 p-8">
+                  <span className="grid h-10 w-10 place-items-center rounded-full bg-soft-200 text-azure-800">
+                    <CheckIcon className="h-5 w-5" />
+                  </span>
+                  <h3 className="mt-4 text-lg font-bold text-azure-800">{r.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-onyx/60">{r.description}</p>
+                </div>
+              ))}
             </div>
           </div>
         </section>

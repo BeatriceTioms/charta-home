@@ -7,9 +7,9 @@ import { Logo } from "./Logo";
 
 const links = [
   { label: "Features", href: "/features" },
-  { label: "How it works", href: "/how-it-works" },
   { label: "Pricing", href: "/pricing" },
   { label: "FAQ", href: "/faq" },
+  { label: "Contact", href: "/contact" },
 ];
 
 export function Navbar({ transparent = false }: { transparent?: boolean }) {
