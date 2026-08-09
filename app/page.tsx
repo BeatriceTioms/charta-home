@@ -92,7 +92,7 @@ function Hero() {
           width={1536}
           height={1024}
           priority
-          className="h-auto max-h-[760px] w-full object-cover object-[center_35%] lg:max-h-[880px]"
+          className="h-auto max-h-[820px] w-full object-cover object-[center_35%] lg:max-h-[960px]"
         />
 
         {/* cloud fade into the stats section */}

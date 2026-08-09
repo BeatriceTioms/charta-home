@@ -65,12 +65,19 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-soft-50 text-azure-950 dark:bg-onyx dark:text-white">
-      {/* sidebar, Charta blue in both themes */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col bg-azure-800 text-white lg:flex">
-        <div className="px-6 py-7">
-          <Logo dark textClassName="text-xl" markClassName="h-9 w-9" />
+      {/* sidebar, transparent liquid glass */}
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col overflow-hidden border-r border-azure-900/10 bg-white/40 backdrop-blur-2xl lg:flex dark:border-white/10 dark:bg-white/[0.06]">
+        <div aria-hidden="true" className="pointer-events-none absolute -left-20 top-24 h-56 w-56 rounded-full bg-soft-500/30 blur-3xl dark:bg-soft-500/10" />
+        <div aria-hidden="true" className="pointer-events-none absolute -right-16 bottom-32 h-56 w-56 rounded-full bg-azure-600/20 blur-3xl dark:bg-azure-600/15" />
+        <div className="relative px-6 py-7">
+          <span className="dark:hidden">
+            <Logo textClassName="text-xl" markClassName="h-9 w-9" />
+          </span>
+          <span className="hidden dark:block">
+            <Logo dark textClassName="text-xl" markClassName="h-9 w-9" />
+          </span>
         </div>
-        <nav className="flex-1 space-y-1 px-4">
+        <nav className="relative flex-1 space-y-1 px-4">
           {NAV.map((item) => {
             const active = isActive(pathname, item.href);
             return (
@@ -79,8 +86,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 href={item.href}
                 className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-[15px] font-medium transition ${
                   active
-                    ? "bg-soft-500 text-azure-950"
-                    : "text-white/65 hover:bg-white/10 hover:text-white"
+                    ? "bg-soft-500 text-azure-950 shadow-sm shadow-azure-800/10"
+                    : "text-onyx/60 hover:bg-azure-900/5 hover:text-azure-950 dark:text-white/55 dark:hover:bg-white/5 dark:hover:text-white"
                 }`}
               >
                 {item.icon}
@@ -89,9 +96,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
-        <div className="m-4 rounded-2xl border border-white/10 bg-white/10 p-4">
-          <p className="text-sm font-semibold text-soft-500">Growth plan</p>
-          <p className="mt-1 text-xs leading-relaxed text-white/60">
+        <div className="relative m-4 rounded-2xl border border-white/60 bg-white/40 p-4 backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
+          <p className="text-sm font-semibold text-azure-800 dark:text-soft-500">Growth plan</p>
+          <p className="mt-1 text-xs leading-relaxed text-onyx/55 dark:text-white/50">
             Trial ends in 21 days. Your data stays yours.
           </p>
           <Link
@@ -101,8 +108,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
             Manage plan
           </Link>
         </div>
-        <div className="border-t border-white/10 px-6 py-4">
-          <Link href="/" className="text-xs text-white/45 transition hover:text-white/80">
+        <div className="relative border-t border-azure-900/10 px-6 py-4 dark:border-white/10">
+          <Link href="/" className="text-xs text-onyx/40 transition hover:text-azure-800 dark:text-white/40 dark:hover:text-white/80">
             Back to chartahome.com
           </Link>
         </div>
