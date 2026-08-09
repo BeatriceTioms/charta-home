@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { PageHero } from "@/components/sections";
@@ -62,6 +63,18 @@ export default function ContactPage() {
           <div className="mx-auto grid max-w-7xl gap-10 px-5 sm:px-8 lg:grid-cols-[1fr_1.2fr] lg:gap-16">
             {/* channels */}
             <div className="space-y-5">
+              <div className="relative overflow-hidden rounded-3xl shadow-xl shadow-azure-800/10">
+                <Image
+                  src="/photos/people-4.jpg"
+                  alt="The Charta Home team, ready to help"
+                  width={900}
+                  height={506}
+                  className="h-56 w-full object-cover"
+                />
+                <span className="absolute bottom-4 left-4 rounded-full bg-white/85 px-4 py-1.5 text-sm font-semibold text-azure-900 backdrop-blur-sm">
+                  We reply within the day
+                </span>
+              </div>
               {CHANNELS.map((c) => (
                 <a
                   key={c.title}

@@ -18,6 +18,7 @@
 
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Lora", ui-serif, Georgia, serif;
+  --font-script: "Caveat", "Comic Sans MS", cursive;
 }
 
 html {

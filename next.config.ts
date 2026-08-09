@@ -8,6 +8,11 @@ const nextConfig: NextConfig = {
         destination: "/features#journey",
         permanent: true,
       },
+      {
+        source: "/faq",
+        destination: "/pricing#faq",
+        permanent: true,
+      },
     ];
   },
 };

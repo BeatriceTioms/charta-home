@@ -543,7 +543,7 @@ export function FaqSection({ limit, standalone = false }: { limit?: number; stan
         {limit && (
           <div className="mt-10 text-center">
             <Link
-              href="/faq"
+              href="/pricing#faq"
               className="inline-flex items-center gap-2 font-semibold text-azure-600 transition hover:text-azure-800"
             >
               Read all questions <ArrowIcon />
