@@ -10,7 +10,7 @@ export function Card({
 }) {
   return (
     <div
-      className={`rounded-3xl border border-azure-900/8 bg-white shadow-sm shadow-azure-900/5 p-6 dark:border-white/8 dark:bg-white/[0.04] dark:shadow-none ${className}`}
+      className={`rounded-3xl border border-white/70 bg-white/55 p-6 shadow-lg shadow-azure-900/5 backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.05] dark:shadow-none ${className}`}
     >
       {children}
     </div>
@@ -78,22 +78,22 @@ export function StatCard({
     <div
       className={`rounded-3xl p-6 ${
         emphasis
-          ? "bg-soft-500 text-azure-950 shadow-lg shadow-soft-500/10"
-          : "border border-azure-900/8 bg-white shadow-sm shadow-azure-900/5 dark:border-white/8 dark:bg-white/[0.04] dark:shadow-none"
+          ? "bg-onyx text-white shadow-lg shadow-onyx/20 dark:bg-soft-500 dark:text-azure-950 dark:shadow-soft-500/10"
+          : "border border-white/70 bg-white/55 shadow-lg shadow-azure-900/5 backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.05] dark:shadow-none"
       }`}
     >
-      <p className={`text-[13px] font-medium ${emphasis ? "text-azure-950/70" : "text-onyx/50 dark:text-white/45"}`}>
+      <p className={`text-[13px] font-medium ${emphasis ? "text-white/70 dark:text-azure-950/70" : "text-onyx/50 dark:text-white/45"}`}>
         {label}
       </p>
       <p
         className={`mt-1.5 text-3xl font-extrabold tracking-tight ${
-          emphasis ? "text-azure-950" : "text-azure-950 dark:text-white"
+          emphasis ? "text-white dark:text-azure-950" : "text-azure-950 dark:text-white"
         }`}
       >
         {value}
       </p>
       {hint && (
-        <p className={`mt-1 text-xs ${emphasis ? "text-azure-950/60" : "text-onyx/45 dark:text-white/40"}`}>
+        <p className={`mt-1 text-xs ${emphasis ? "text-white/55 dark:text-azure-950/60" : "text-onyx/45 dark:text-white/40"}`}>
           {hint}
         </p>
       )}

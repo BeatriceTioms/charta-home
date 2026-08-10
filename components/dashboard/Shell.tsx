@@ -64,11 +64,16 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <div className="flex min-h-screen bg-soft-50 text-azure-950 dark:bg-onyx dark:text-white">
+    <div className="relative flex min-h-screen bg-gradient-to-br from-soft-100 via-white to-soft-200 text-azure-950 dark:from-onyx dark:via-onyx dark:to-azure-950 dark:text-white">
+      {/* ambient color for the glass to blur */}
+      <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0">
+        <div className="absolute -top-32 left-[15%] h-[32rem] w-[32rem] rounded-full bg-soft-500/60 blur-3xl dark:bg-azure-600/25" />
+        <div className="absolute -right-24 top-1/4 h-[28rem] w-[28rem] rounded-full bg-azure-600/30 blur-3xl dark:bg-soft-500/12" />
+        <div className="absolute -left-32 top-1/2 h-[30rem] w-[30rem] rounded-full bg-azure-700/25 blur-3xl dark:bg-azure-700/30" />
+        <div className="absolute bottom-0 left-1/3 h-[26rem] w-[26rem] rounded-full bg-soft-400/45 blur-3xl dark:bg-azure-600/15" />
+      </div>
       {/* sidebar, transparent liquid glass */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col overflow-hidden border-r border-azure-900/10 bg-white/40 backdrop-blur-2xl lg:flex dark:border-white/10 dark:bg-white/[0.06]">
-        <div aria-hidden="true" className="pointer-events-none absolute -left-20 top-24 h-56 w-56 rounded-full bg-soft-500/30 blur-3xl dark:bg-soft-500/10" />
-        <div aria-hidden="true" className="pointer-events-none absolute -right-16 bottom-32 h-56 w-56 rounded-full bg-azure-600/20 blur-3xl dark:bg-azure-600/15" />
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-white/60 bg-white/35 shadow-xl shadow-azure-900/5 backdrop-blur-2xl lg:flex dark:border-white/10 dark:bg-white/[0.05] dark:shadow-none">
         <div className="relative px-6 py-7">
           <span className="dark:hidden">
             <Logo textClassName="text-xl" markClassName="h-9 w-9" />
@@ -96,14 +101,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
-        <div className="relative m-4 rounded-2xl border border-white/60 bg-white/40 p-4 backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
+        <div className="relative m-4 rounded-2xl border border-white/70 bg-white/45 p-4 backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
           <p className="text-sm font-semibold text-azure-800 dark:text-soft-500">Growth plan</p>
           <p className="mt-1 text-xs leading-relaxed text-onyx/55 dark:text-white/50">
             Trial ends in 21 days. Your data stays yours.
           </p>
           <Link
             href="/dashboard/settings"
-            className="mt-3 block rounded-full bg-soft-500 py-2 text-center text-xs font-bold text-azure-950 transition hover:bg-soft-400"
+            className="mt-3 block rounded-full bg-onyx py-2 text-center text-xs font-bold text-white transition hover:bg-azure-900 dark:bg-soft-500 dark:text-azure-950 dark:hover:bg-soft-400"
           >
             Manage plan
           </Link>
@@ -116,9 +121,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* main column */}
-      <div className="flex min-w-0 flex-1 flex-col lg:pl-64">
+      <div className="relative z-10 flex min-w-0 flex-1 flex-col lg:pl-64">
         {/* topbar */}
-        <header className="sticky top-0 z-30 border-b border-azure-900/8 bg-white/85 backdrop-blur-md dark:border-white/5 dark:bg-onyx/85">
+        <header className="sticky top-0 z-30 border-b border-white/60 bg-white/40 backdrop-blur-2xl dark:border-white/5 dark:bg-white/[0.03]">
           <div className="flex h-16 items-center justify-between gap-4 px-5 sm:px-8">
             <div className="lg:hidden">
               <span className="dark:hidden">
@@ -128,7 +133,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 <Logo dark textClassName="text-lg" markClassName="h-8 w-8" />
               </span>
             </div>
-            <div className="hidden max-w-md flex-1 items-center gap-2.5 rounded-full border border-azure-900/10 bg-white px-4 py-2 md:flex dark:border-white/10 dark:bg-white/5">
+            <div className="hidden max-w-md flex-1 items-center gap-2.5 rounded-full border border-white/70 bg-white/50 px-4 py-2 backdrop-blur-xl md:flex dark:border-white/10 dark:bg-white/5">
               <svg viewBox="0 0 24 24" className="h-4 w-4 text-onyx/35 dark:text-white/35" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" />
               </svg>
@@ -181,7 +186,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </nav>
         </header>
 
-        <main className="flex-1 px-5 py-8 sm:px-8">{children}</main>
+        <main className="relative z-10 flex-1 px-5 py-8 sm:px-8">{children}</main>
       </div>
     </div>
   );

@@ -46,7 +46,7 @@ export default function BuildingsPage() {
                 <path d="M22 3H2l8 9.5V19l4 2v-8.5L22 3z" />
               </svg>
             </button>
-            <button className="rounded-full bg-soft-500 px-6 py-3 text-sm font-semibold text-azure-950 transition hover:bg-soft-400">
+            <button className="rounded-full bg-onyx px-6 py-3 text-sm font-semibold text-white transition hover:bg-azure-900 dark:bg-soft-500 dark:text-azure-950 dark:hover:bg-soft-400">
               Add building
             </button>
           </div>

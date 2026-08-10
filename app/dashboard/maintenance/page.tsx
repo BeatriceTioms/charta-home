@@ -11,7 +11,7 @@ import {
 } from "@/components/dashboard/ui";
 
 const selectCls =
-  "rounded-2xl border border-azure-900/10 bg-white px-4 py-2.5 text-sm font-semibold text-azure-950 outline-none transition hover:bg-azure-900/5 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10 dark:[&>option]:bg-onyx";
+  "rounded-2xl border border-white/70 bg-white/60 px-4 py-2.5 backdrop-blur-xl text-sm font-semibold text-azure-950 outline-none transition hover:bg-azure-900/5 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10 dark:[&>option]:bg-onyx";
 
 export default function MaintenancePage() {
   const [month, setMonth] = useState("all");
@@ -45,7 +45,7 @@ export default function MaintenancePage() {
         title="Maintenance"
         subtitle="Every request your tenants report, tracked from first message to confirmed fix."
         action={
-          <button className="rounded-full bg-soft-500 px-6 py-3 text-sm font-semibold text-azure-950 transition hover:bg-soft-400">
+          <button className="rounded-full bg-onyx px-6 py-3 text-sm font-semibold text-white transition hover:bg-azure-900 dark:bg-soft-500 dark:text-azure-950 dark:hover:bg-soft-400">
             New ticket
           </button>
         }
@@ -59,7 +59,7 @@ export default function MaintenancePage() {
       </div>
 
       {/* table card */}
-      <div className="mt-6 rounded-3xl border border-azure-900/8 bg-white shadow-sm shadow-azure-900/5 dark:border-white/8 dark:bg-white/[0.04] dark:shadow-none">
+      <div className="mt-6 rounded-3xl border border-white/70 bg-white/55 shadow-lg shadow-azure-900/5 backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.05] dark:shadow-none">
         <div className="flex flex-wrap items-center justify-between gap-4 p-6">
           <p className="text-lg font-bold text-azure-950 dark:text-white">
             Tickets{" "}
@@ -93,7 +93,7 @@ export default function MaintenancePage() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[960px] text-left text-sm">
             <thead>
-              <tr className="border-y border-azure-900/8 bg-soft-50 text-xs text-onyx/45 dark:border-white/8 dark:bg-white/[0.03] dark:text-white/40">
+              <tr className="border-y border-white/60 bg-white/40 text-xs text-onyx/45 dark:border-white/8 dark:bg-white/[0.03] dark:text-white/40">
                 <th className="px-6 py-3.5 font-semibold">Ticket</th>
                 <th className="py-3.5 font-semibold">Tenant</th>
                 <th className="py-3.5 font-semibold">Location</th>
