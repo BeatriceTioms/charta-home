@@ -172,7 +172,7 @@ function FollowUpRow({
       </div>
       <button
         aria-label={`Call ${name}`}
-        className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-soft-500 text-azure-950 transition hover:bg-soft-400"
+        className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-onyx text-white transition hover:bg-azure-900 dark:bg-white dark:text-onyx dark:hover:bg-soft-400"
       >
         <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6A19.8 19.8 0 012.1 4.2 2 2 0 014.1 2h3a2 2 0 012 1.7c.1 1 .4 2 .7 2.9a2 2 0 01-.5 2.1L8 10a16 16 0 006 6l1.3-1.3a2 2 0 012.1-.5c.9.3 1.9.6 2.9.7a2 2 0 011.7 2z" />
