@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Logo, LogoMark } from "@/components/Logo";
 import { ThemeToggle } from "./ThemeToggle";
+import { BuildingSwitcher } from "./BuildingSwitcher";
+import { BuildingProvider } from "@/lib/building-context";
 
 const ICONS = {
   dashboard: (
@@ -43,7 +45,7 @@ const GROUPS = [
   },
   {
     label: "Portfolio",
-    items: [{ label: "Buildings", href: "/dashboard/buildings", icon: ICONS.buildings }],
+    items: [{ label: "Apartments", href: "/dashboard/apartments", icon: ICONS.buildings }],
   },
   {
     label: "Operations",
@@ -70,6 +72,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
+    <BuildingProvider>
     <div className="relative flex min-h-screen bg-gradient-to-br from-soft-100 via-white to-soft-200 text-azure-950 dark:from-onyx dark:via-onyx dark:to-azure-950 dark:text-white">
       {/* ambient color for the glass to blur */}
       <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0">
@@ -220,35 +223,20 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 <Logo dark textClassName="text-lg" markClassName="h-8 w-8" />
               </span>
             </div>
-            <div className="hidden max-w-md flex-1 items-center gap-2.5 rounded-full border border-white/70 bg-white/50 px-4 py-2 backdrop-blur-xl md:flex dark:border-white/10 dark:bg-white/5">
-              <svg viewBox="0 0 24 24" className="h-4 w-4 text-onyx/35 dark:text-white/35" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" />
-              </svg>
-              <input
-                placeholder="Search buildings, tenants, tickets…"
-                className="w-full bg-transparent text-sm text-azure-950 outline-none placeholder:text-onyx/30 dark:text-white dark:placeholder:text-white/30"
-              />
+            <div className="flex min-w-0 flex-1 items-center">
+              <div className="hidden max-w-md flex-1 items-center gap-2.5 rounded-full border border-white/70 bg-white/50 px-4 py-2 backdrop-blur-xl md:flex dark:border-white/10 dark:bg-white/5">
+                <svg viewBox="0 0 24 24" className="h-4 w-4 text-onyx/35 dark:text-white/35" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" />
+                </svg>
+                <input
+                  placeholder="Search tenants, tickets…"
+                  className="w-full bg-transparent text-sm text-azure-950 outline-none placeholder:text-onyx/30 dark:text-white dark:placeholder:text-white/30"
+                />
+              </div>
             </div>
             <div className="flex items-center gap-3">
               <ThemeToggle />
-              <button
-                aria-label="Notifications"
-                className="relative grid h-10 w-10 place-items-center rounded-full border border-azure-900/10 text-azure-800 transition hover:bg-azure-900/5 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/5"
-              >
-                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0" />
-                </svg>
-                <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-azure-600 dark:bg-soft-500" />
-              </button>
-              <div className="flex items-center gap-2.5">
-                <span className="grid h-10 w-10 place-items-center rounded-full bg-azure-800 text-sm font-bold text-soft-500 dark:bg-soft-500 dark:text-azure-950">
-                  AS
-                </span>
-                <div className="hidden sm:block">
-                  <p className="text-sm font-semibold leading-tight text-azure-950 dark:text-white">Amina Sow</p>
-                  <p className="text-xs leading-tight text-onyx/45 dark:text-white/40">Horizon Realty</p>
-                </div>
-              </div>
+              <BuildingSwitcher align="right" />
             </div>
           </div>
 
@@ -276,5 +264,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <main className="relative z-10 flex-1 px-5 py-8 sm:px-8">{children}</main>
       </div>
     </div>
+    </BuildingProvider>
   );
 }

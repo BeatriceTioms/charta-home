@@ -13,6 +13,16 @@ const nextConfig: NextConfig = {
         destination: "/pricing#faq",
         permanent: true,
       },
+      {
+        source: "/dashboard/buildings",
+        destination: "/dashboard/apartments",
+        permanent: false,
+      },
+      {
+        source: "/dashboard/buildings/:path*",
+        destination: "/dashboard/apartments",
+        permanent: false,
+      },
     ];
   },
 };

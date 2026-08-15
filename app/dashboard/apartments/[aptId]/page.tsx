@@ -1,7 +1,10 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { activity, buildings, fmt, getBuilding, tickets } from "@/lib/data";
+import { notFound, useParams } from "next/navigation";
+import { activity, fmt, tickets } from "@/lib/data";
+import { useBuilding } from "@/lib/building-context";
 import {
   Card,
   CardTitle,
@@ -9,12 +12,6 @@ import {
   StatCard,
   TicketChip,
 } from "@/components/dashboard/ui";
-
-export function generateStaticParams() {
-  return buildings.flatMap((b) =>
-    b.apartments.map((a) => ({ id: b.id, aptId: a.id }))
-  );
-}
 
 const WEEK = [
   { day: 5, label: "Wed" },
@@ -26,15 +23,11 @@ const WEEK = [
   { day: 11, label: "Tue" },
 ];
 
-export default async function ApartmentPage({
-  params,
-}: {
-  params: Promise<{ id: string; aptId: string }>;
-}) {
-  const { id, aptId } = await params;
-  const building = getBuilding(id);
-  const apartment = building?.apartments.find((a) => a.id === aptId);
-  if (!building || !apartment) notFound();
+export default function ApartmentPage() {
+  const { building } = useBuilding();
+  const params = useParams<{ aptId: string }>();
+  const apartment = building.apartments.find((a) => a.id === params.aptId);
+  if (!apartment) notFound();
 
   const aptTickets = tickets.filter(
     (t) => t.buildingId === building.id && t.apartment === apartment.label
@@ -48,8 +41,8 @@ export default async function ApartmentPage({
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Link
-            href={`/dashboard/buildings/${building.id}`}
-            aria-label={`Back to ${building.name}`}
+            href="/dashboard/apartments"
+            aria-label="Back to apartments"
             className="grid h-11 w-11 place-items-center rounded-full border border-azure-900/10 dark:border-white/10 text-azure-950 dark:text-white transition hover:bg-azure-900/10 dark:hover:bg-white/10"
           >
             <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">

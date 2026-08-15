@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { allApartments, buildings, collections, fmt, type RentStatus } from "@/lib/data";
+import { collections, fmt, type RentStatus } from "@/lib/data";
+import { useBuilding } from "@/lib/building-context";
 import { PageTitle, RentChip } from "@/components/dashboard/ui";
 import { ReceiptModal, type ReceiptData } from "@/components/dashboard/ReceiptModal";
 
@@ -13,14 +14,18 @@ const selectCls =
 type Tab = "all" | RentStatus;
 
 export default function RentPage() {
+  const { building } = useBuilding();
   const [tab, setTab] = useState<Tab>("all");
   const [search, setSearch] = useState("");
-  const [buildingId, setBuildingId] = useState("all");
   const [reminded, setReminded] = useState<string[]>([]);
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
 
-  const leased = allApartments().filter((a) => a.tenant);
+  const leased = building.apartments.filter((a) => a.tenant);
   const august = collections[collections.length - 1];
+  const due = leased.reduce((s, a) => s + a.rent, 0);
+  const collected = leased
+    .filter((a) => a.rentStatus === "paid")
+    .reduce((s, a) => s + a.rent, 0);
 
   const counts = {
     all: leased.length,
@@ -34,10 +39,9 @@ export default function RentPage() {
       leased.filter(
         (a) =>
           (tab === "all" || a.rentStatus === tab) &&
-          (buildingId === "all" || a.building.id === buildingId) &&
           a.tenant!.name.toLowerCase().includes(search.toLowerCase())
       ),
-    [leased, tab, buildingId, search]
+    [leased, tab, search]
   );
 
   const tabs: { key: Tab; label: string }[] = [
@@ -51,7 +55,7 @@ export default function RentPage() {
     <>
       <PageTitle
         title="Rent collection"
-        subtitle={`August 2026 · ${fmt(august.collected)} collected of ${fmt(august.due)} due.`}
+        subtitle={`${building.name} · August 2026 · ${fmt(collected)} collected of ${fmt(due)} due.`}
         action={
           <div className="flex items-center gap-3">
             <button className="flex items-center gap-2 rounded-full border border-azure-900/15 px-5 py-3 text-sm font-semibold text-azure-950 transition hover:bg-azure-900/5 dark:border-white/15 dark:text-white dark:hover:bg-white/10">
@@ -118,21 +122,9 @@ export default function RentPage() {
                 className="w-40 bg-transparent text-sm text-azure-950 outline-none placeholder:text-onyx/35 dark:text-white dark:placeholder:text-white/35"
               />
             </div>
-            <select
-              value={buildingId}
-              onChange={(e) => setBuildingId(e.target.value)}
-              className={selectCls}
-              aria-label="Filter by building"
-            >
-              <option value="all">All buildings</option>
-              {buildings.map((b) => (
-                <option key={b.id} value={b.id}>{b.name}</option>
-              ))}
-            </select>
             <button
               onClick={() => {
                 setTab("all");
-                setBuildingId("all");
                 setSearch("");
               }}
               className="flex items-center gap-2 rounded-2xl border border-white/70 bg-white/60 px-4 py-2.5 backdrop-blur-xl text-sm font-semibold text-azure-950 transition hover:bg-azure-900/5 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
@@ -151,8 +143,8 @@ export default function RentPage() {
           <table className="w-full min-w-[880px] text-left text-sm">
             <thead>
               <tr className="border-y border-white/60 bg-white/40 text-xs text-onyx/45 dark:border-white/8 dark:bg-white/[0.03] dark:text-white/40">
-                <th className="px-6 py-3.5 font-semibold">Property</th>
-                <th className="py-3.5 font-semibold">Apartment</th>
+                <th className="px-6 py-3.5 font-semibold">Apartment</th>
+                <th className="py-3.5 font-semibold">Reference</th>
                 <th className="py-3.5 font-semibold">Cycle</th>
                 <th className="py-3.5 font-semibold">Status</th>
                 <th className="py-3.5 font-semibold">Tenant name</th>
@@ -169,7 +161,7 @@ export default function RentPage() {
                 </tr>
               )}
               {rows.map((a) => {
-                const key = `${a.building.id}-${a.id}`;
+                const key = `${building.id}-${a.id}`;
                 const wasReminded = reminded.includes(key);
                 return (
                   <tr
@@ -179,23 +171,23 @@ export default function RentPage() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3.5">
                         <Image
-                          src={a.building.photo}
-                          alt={a.building.name}
+                          src={building.interior}
+                          alt={a.label}
                           width={96}
                           height={96}
                           className="h-12 w-12 shrink-0 rounded-xl object-cover"
                         />
                         <div className="min-w-0">
                           <p className="whitespace-nowrap font-bold text-azure-950 dark:text-white">
-                            {a.building.name}
+                            {a.label}
                           </p>
                           <p className="whitespace-nowrap text-xs text-onyx/45 dark:text-white/45">
-                            {a.building.address}, {a.building.city}
+                            {a.rooms} {a.rooms === 1 ? "room" : "rooms"} · {a.sqm} m²
                           </p>
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 pr-4 font-semibold text-azure-950 dark:text-white">{a.label}</td>
+                    <td className="py-4 pr-4 font-semibold text-azure-950 dark:text-white">{a.id.toUpperCase()}</td>
                     <td className="py-4 pr-4 capitalize text-onyx/60 dark:text-white/60">{a.cycle}</td>
                     <td className="py-4 pr-4">
                       <RentChip status={a.rentStatus} />
@@ -214,7 +206,7 @@ export default function RentPage() {
                     <td className="py-4 pr-6">
                       <div className="flex items-center gap-2">
                         <Link
-                          href={`/dashboard/buildings/${a.building.id}/${a.id}`}
+                          href={`/dashboard/apartments/${a.id}`}
                           className="rounded-xl bg-onyx px-5 py-2 text-sm font-semibold text-white transition hover:bg-azure-900 dark:bg-white dark:text-onyx dark:hover:bg-soft-400"
                         >
                           View
@@ -225,12 +217,12 @@ export default function RentPage() {
                               setReceipt({
                                 tenant: a.tenant!.name,
                                 apartment: a.label,
-                                building: a.building.name,
-                                address: `${a.building.address}, ${a.building.city}`,
+                                building: building.name,
+                                address: `${building.address}, ${building.city}`,
                                 amount: a.rent,
                                 period: "August 2026",
                                 paidOn: "2 August 2026",
-                                reference: `RCP-2026-08-${a.building.id.slice(0, 3).toUpperCase()}-${a.id.toUpperCase()}`,
+                                reference: `RCP-2026-08-${building.id.slice(0, 3).toUpperCase()}-${a.id.toUpperCase()}`,
                               })
                             }
                             className="rounded-xl border border-azure-900/15 px-4 py-2 text-sm font-semibold text-azure-950 transition hover:bg-azure-900/5 dark:border-white/15 dark:text-white dark:hover:bg-white/10"

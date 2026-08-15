@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { fmt, getBuilding, tickets, type TicketStatus } from "@/lib/data";
+import { fmt, tickets, type TicketStatus } from "@/lib/data";
+import { useBuilding } from "@/lib/building-context";
 import {
   PageTitle,
   StatCard,
@@ -14,22 +15,24 @@ const selectCls =
   "rounded-2xl border border-white/70 bg-white/60 px-4 py-2.5 backdrop-blur-xl text-sm font-semibold text-azure-950 outline-none transition hover:bg-azure-900/5 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10 dark:[&>option]:bg-onyx";
 
 export default function MaintenancePage() {
+  const { building } = useBuilding();
   const [month, setMonth] = useState("all");
   const [year, setYear] = useState("all");
   const [status, setStatus] = useState("all");
 
-  const months = [...new Set(tickets.map((t) => t.month))];
-  const years = [...new Set(tickets.map((t) => t.year))].sort((a, b) => b - a);
+  const buildingTickets = tickets.filter((t) => t.buildingId === building.id);
+  const months = [...new Set(buildingTickets.map((t) => t.month))];
+  const years = [...new Set(buildingTickets.map((t) => t.year))].sort((a, b) => b - a);
 
   const filtered = useMemo(
     () =>
-      tickets.filter(
+      buildingTickets.filter(
         (t) =>
           (month === "all" || t.month === month) &&
           (year === "all" || t.year === Number(year)) &&
           (status === "all" || t.status === status)
       ),
-    [month, year, status]
+    [buildingTickets, month, year, status]
   );
 
   const open = filtered.filter((t) => t.status !== "resolved");
@@ -43,7 +46,7 @@ export default function MaintenancePage() {
     <>
       <PageTitle
         title="Maintenance"
-        subtitle="Every request your tenants report, tracked from first message to confirmed fix."
+        subtitle={`${building.name} · every request your tenants report, tracked to confirmed fix.`}
         action={
           <button className="rounded-full bg-onyx px-6 py-3 text-sm font-semibold text-white transition hover:bg-azure-900 dark:bg-soft-500 dark:text-azure-950 dark:hover:bg-soft-400">
             New ticket
@@ -96,7 +99,7 @@ export default function MaintenancePage() {
               <tr className="border-y border-white/60 bg-white/40 text-xs text-onyx/45 dark:border-white/8 dark:bg-white/[0.03] dark:text-white/40">
                 <th className="px-6 py-3.5 font-semibold">Ticket</th>
                 <th className="py-3.5 font-semibold">Tenant</th>
-                <th className="py-3.5 font-semibold">Location</th>
+                <th className="py-3.5 font-semibold">Apartment</th>
                 <th className="py-3.5 font-semibold">Technician</th>
                 <th className="py-3.5 font-semibold">Status</th>
                 <th className="py-3.5 font-semibold">Cost</th>
@@ -113,7 +116,6 @@ export default function MaintenancePage() {
                 </tr>
               )}
               {filtered.map((t) => {
-                const b = getBuilding(t.buildingId)!;
                 return (
                   <tr
                     key={t.id}
@@ -138,14 +140,8 @@ export default function MaintenancePage() {
                         <span className="text-onyx/40 dark:text-white/40">Building</span>
                       )}
                     </td>
-                    <td className="py-4 pr-4">
-                      <Link
-                        href={`/dashboard/buildings/${b.id}`}
-                        className="whitespace-nowrap font-semibold text-azure-950 transition hover:text-azure-600 dark:text-white dark:hover:text-soft-500"
-                      >
-                        {b.name}
-                      </Link>
-                      <p className="text-xs text-onyx/45 dark:text-white/45">{t.apartment}</p>
+                    <td className="whitespace-nowrap py-4 pr-4 font-semibold text-azure-950 dark:text-white">
+                      {t.apartment}
                     </td>
                     <td className="whitespace-nowrap py-4 pr-4 text-onyx/70 dark:text-white/70">
                       {t.assignee ?? (
