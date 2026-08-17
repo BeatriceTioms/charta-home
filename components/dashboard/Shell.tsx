@@ -1,12 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { Logo, LogoMark } from "@/components/Logo";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ThemeToggle } from "./ThemeToggle";
 import { BuildingSwitcher } from "./BuildingSwitcher";
+import { Toasts } from "./Toasts";
 import { BuildingProvider } from "@/lib/building-context";
+import { StoreProvider } from "@/lib/store";
+import { useI18n } from "@/lib/i18n/context";
 
 const ICONS = {
   dashboard: (
@@ -38,41 +42,51 @@ const ICONS = {
   ),
 };
 
-const GROUPS = [
-  {
-    label: "Main menu",
-    items: [{ label: "Dashboard", href: "/dashboard", icon: ICONS.dashboard }],
-  },
-  {
-    label: "Portfolio",
-    items: [{ label: "Apartments", href: "/dashboard/apartments", icon: ICONS.buildings }],
-  },
-  {
-    label: "Operations",
-    items: [
-      { label: "Rent collection", href: "/dashboard/rent", icon: ICONS.rent },
-      { label: "Maintenance", href: "/dashboard/maintenance", icon: ICONS.maintenance },
-    ],
-  },
-  {
-    label: "System",
-    items: [{ label: "Settings", href: "/dashboard/settings", icon: ICONS.settings }],
-  },
-];
-
-const FLAT_NAV = GROUPS.flatMap((g) => g.items);
-
-function isActive(pathname: string, href: string) {
-  if (href === "/dashboard") return pathname === "/dashboard";
-  return pathname.startsWith(href);
-}
-
-export function Shell({ children }: { children: React.ReactNode }) {
+function DashboardChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { t, path, locale } = useI18n();
   const [collapsed, setCollapsed] = useState(false);
 
+  const groups = [
+    {
+      label: t.dash.groups.main,
+      items: [{ label: t.dash.nav.dashboard, href: "/dashboard", icon: ICONS.dashboard }],
+    },
+    {
+      label: t.dash.groups.portfolio,
+      items: [{ label: t.dash.nav.apartments, href: "/dashboard/apartments", icon: ICONS.buildings }],
+    },
+    {
+      label: t.dash.groups.operations,
+      items: [
+        { label: t.dash.nav.rent, href: "/dashboard/rent", icon: ICONS.rent },
+        { label: t.dash.nav.maintenance, href: "/dashboard/maintenance", icon: ICONS.maintenance },
+      ],
+    },
+    {
+      label: t.dash.groups.system,
+      items: [{ label: t.dash.nav.settings, href: "/dashboard/settings", icon: ICONS.settings }],
+    },
+  ];
+  const flatNav = groups.flatMap((g) => g.items);
+
+  const isActive = (href: string) => {
+    const base = pathname.replace(new RegExp(`^/${locale}`), "") || "/";
+    if (href === "/dashboard") return base === "/dashboard";
+    return base.startsWith(href);
+  };
+
+  const logout = () => {
+    try {
+      localStorage.removeItem("charta-session");
+    } catch {
+      /* ignore */
+    }
+    router.push(path("/login"));
+  };
+
   return (
-    <BuildingProvider>
     <div className="relative flex min-h-screen bg-gradient-to-br from-soft-100 via-white to-soft-200 text-azure-950 dark:from-onyx dark:via-onyx dark:to-azure-950 dark:text-white">
       {/* ambient color for the glass to blur */}
       <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0">
@@ -88,24 +102,25 @@ export function Shell({ children }: { children: React.ReactNode }) {
           collapsed ? "w-[5.5rem]" : "w-64"
         }`}
       >
-        {/* brand + collapse toggle */}
         <div className={`flex items-center gap-2 px-5 pb-2 pt-6 ${collapsed ? "justify-center px-3" : "justify-between"}`}>
           {collapsed ? (
-            <LogoMark className="h-9 w-9" />
+            <Link href={path("/dashboard")} aria-label="Charta Home">
+              <LogoMark className="h-9 w-9" />
+            </Link>
           ) : (
             <>
               <span className="dark:hidden">
-                <Logo textClassName="text-xl" markClassName="h-9 w-9" />
+                <Logo href={path("/dashboard")} textClassName="text-xl" markClassName="h-9 w-9" />
               </span>
               <span className="hidden dark:block">
-                <Logo dark textClassName="text-xl" markClassName="h-9 w-9" />
+                <Logo dark href={path("/dashboard")} textClassName="text-xl" markClassName="h-9 w-9" />
               </span>
             </>
           )}
           {!collapsed && (
             <button
               onClick={() => setCollapsed(true)}
-              aria-label="Collapse menu"
+              aria-label={t.dash.shell.collapse}
               className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-onyx/40 transition hover:bg-azure-900/5 hover:text-azure-950 dark:text-white/40 dark:hover:bg-white/10 dark:hover:text-white"
             >
               <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -118,7 +133,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         {collapsed && (
           <button
             onClick={() => setCollapsed(false)}
-            aria-label="Expand menu"
+            aria-label={t.dash.shell.expand}
             className="mx-auto mt-1 grid h-8 w-8 place-items-center rounded-lg text-onyx/40 transition hover:bg-azure-900/5 hover:text-azure-950 dark:text-white/40 dark:hover:bg-white/10 dark:hover:text-white"
           >
             <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -127,9 +142,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </button>
         )}
 
-        {/* grouped nav */}
         <nav className="flex-1 overflow-y-auto px-3 pb-2">
-          {GROUPS.map((group) => (
+          {groups.map((group) => (
             <div key={group.label}>
               {collapsed ? (
                 <div className="my-3 h-px bg-azure-900/8 dark:bg-white/10" />
@@ -140,11 +154,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
               )}
               <div className="space-y-1">
                 {group.items.map((item) => {
-                  const active = isActive(pathname, item.href);
+                  const active = isActive(item.href);
                   return (
                     <Link
                       key={item.href}
-                      href={item.href}
+                      href={path(item.href)}
                       title={collapsed ? item.label : undefined}
                       className={`flex items-center gap-3 rounded-2xl text-[15px] font-medium transition ${
                         collapsed ? "justify-center px-3 py-3" : "px-4 py-3"
@@ -164,46 +178,55 @@ export function Shell({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
 
-        {/* trial notice */}
         {!collapsed && (
-          <div className="mx-3 rounded-2xl border border-white/70 bg-white/45 p-4 backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
-            <p className="text-sm font-semibold text-azure-800 dark:text-soft-500">Growth plan</p>
+          <div className="relative m-4 rounded-2xl border border-white/70 bg-white/45 p-4 backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
+            <p className="text-sm font-semibold text-azure-800 dark:text-soft-500">
+              {t.dash.shell.growthPlan}
+            </p>
             <p className="mt-1 text-xs leading-relaxed text-onyx/55 dark:text-white/50">
-              Trial ends in 21 days. Your data stays yours.
+              {t.dash.shell.trialEnds}
             </p>
             <Link
-              href="/dashboard/settings"
+              href={path("/dashboard/settings")}
               className="mt-3 block rounded-full bg-onyx py-2 text-center text-xs font-bold text-white transition hover:bg-azure-900 dark:bg-soft-500 dark:text-azure-950 dark:hover:bg-soft-400"
             >
-              Manage plan
+              {t.dash.shell.managePlan}
             </Link>
           </div>
         )}
 
-        {/* profile card */}
-        <Link
-          href="/dashboard/settings"
-          className={`m-3 flex items-center rounded-2xl border border-white/70 bg-white/60 backdrop-blur-xl transition hover:bg-white/80 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 ${
-            collapsed ? "justify-center p-2" : "gap-3 p-3"
-          }`}
-        >
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-azure-800 text-sm font-bold text-soft-500">
-            AS
-          </span>
-          {!collapsed && (
-            <>
+        <div className={`m-3 flex items-center gap-2 ${collapsed ? "flex-col" : ""}`}>
+          <Link
+            href={path("/dashboard/settings")}
+            className={`flex flex-1 items-center rounded-2xl border border-white/70 bg-white/60 backdrop-blur-xl transition hover:bg-white/80 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 ${
+              collapsed ? "justify-center p-2" : "gap-3 p-3"
+            }`}
+          >
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-azure-800 text-sm font-bold text-soft-500">
+              AS
+            </span>
+            {!collapsed && (
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-bold text-azure-950 dark:text-white">
                   Amina Sow
                 </span>
-                <span className="block text-xs text-onyx/45 dark:text-white/40">Admin</span>
+                <span className="block text-xs text-onyx/45 dark:text-white/40">
+                  {t.dash.shell.admin}
+                </span>
               </span>
-              <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-onyx/30 dark:text-white/30" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 18l6-6-6-6" />
-              </svg>
-            </>
-          )}
-        </Link>
+            )}
+          </Link>
+          <button
+            onClick={logout}
+            aria-label={t.dash.shell.logout}
+            title={t.dash.shell.logout}
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-onyx/40 transition hover:bg-azure-900/5 hover:text-azure-950 dark:text-white/40 dark:hover:bg-white/10 dark:hover:text-white"
+          >
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
+            </svg>
+          </button>
+        </div>
       </aside>
 
       {/* main column */}
@@ -212,15 +235,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
           collapsed ? "lg:pl-[7.5rem]" : "lg:pl-[18rem]"
         }`}
       >
-        {/* topbar */}
         <header className="sticky top-0 z-30 border-b border-white/60 bg-white/40 backdrop-blur-2xl dark:border-white/5 dark:bg-white/[0.03]">
           <div className="flex h-16 items-center justify-between gap-4 px-5 sm:px-8">
             <div className="lg:hidden">
               <span className="dark:hidden">
-                <Logo textClassName="text-lg" markClassName="h-8 w-8" />
+                <Logo href={path("/dashboard")} textClassName="text-lg" markClassName="h-8 w-8" />
               </span>
               <span className="hidden dark:block">
-                <Logo dark textClassName="text-lg" markClassName="h-8 w-8" />
+                <Logo dark href={path("/dashboard")} textClassName="text-lg" markClassName="h-8 w-8" />
               </span>
             </div>
             <div className="flex min-w-0 flex-1 items-center">
@@ -229,12 +251,13 @@ export function Shell({ children }: { children: React.ReactNode }) {
                   <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" />
                 </svg>
                 <input
-                  placeholder="Search tenants, tickets…"
+                  placeholder={t.dash.shell.search}
                   className="w-full bg-transparent text-sm text-azure-950 outline-none placeholder:text-onyx/30 dark:text-white dark:placeholder:text-white/30"
                 />
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <LanguageSwitcher tone="dashboard" />
               <ThemeToggle />
               <BuildingSwitcher align="right" />
             </div>
@@ -242,12 +265,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
           {/* mobile nav */}
           <nav className="flex gap-1 overflow-x-auto px-3 pb-2 lg:hidden">
-            {FLAT_NAV.map((item) => {
-              const active = isActive(pathname, item.href);
+            {flatNav.map((item) => {
+              const active = isActive(item.href);
               return (
                 <Link
                   key={item.href}
-                  href={item.href}
+                  href={path(item.href)}
                   className={`whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium ${
                     active
                       ? "bg-onyx text-white dark:bg-soft-500 dark:text-azure-950"
@@ -263,7 +286,18 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
         <main className="relative z-10 flex-1 px-5 py-8 sm:px-8">{children}</main>
       </div>
+
+      <Toasts />
     </div>
-    </BuildingProvider>
+  );
+}
+
+export function Shell({ children }: { children: React.ReactNode }) {
+  return (
+    <StoreProvider>
+      <BuildingProvider>
+        <DashboardChrome>{children}</DashboardChrome>
+      </BuildingProvider>
+    </StoreProvider>
   );
 }

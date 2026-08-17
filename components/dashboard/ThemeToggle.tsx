@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useI18n } from "@/lib/i18n/context";
 
 export function ThemeToggle() {
+  const { t } = useI18n();
   const [dark, setDark] = useState(true);
 
   useEffect(() => {
@@ -19,7 +21,7 @@ export function ThemeToggle() {
   return (
     <button
       onClick={toggle}
-      aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+      aria-label={dark ? t.dash.shell.lightMode : t.dash.shell.darkMode}
       className="grid h-10 w-10 place-items-center rounded-full border border-azure-900/10 text-azure-800 transition hover:bg-azure-900/5 dark:border-white/10 dark:text-soft-500 dark:hover:bg-white/5"
     >
       {dark ? (

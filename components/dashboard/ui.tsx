@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import type { RentStatus, TicketStatus } from "@/lib/data";
+import { useI18n } from "@/lib/i18n/context";
 
 export function Card({
   children,
@@ -104,13 +107,14 @@ export function StatCard({
 /* Status chips: soft blue for settled, quiet outline for pending, onyx for alerts */
 
 export function RentChip({ status }: { status: RentStatus }) {
+  const { t } = useI18n();
   const styles: Record<RentStatus, [string, string]> = {
-    paid: ["Paid", "bg-soft-500 text-azure-950"],
+    paid: [t.dash.status.paid, "bg-soft-500 text-azure-950"],
     pending: [
-      "Pending",
+      t.dash.status.pending,
       "border border-azure-900/15 bg-azure-900/5 text-onyx/60 dark:border-white/15 dark:bg-white/5 dark:text-white/75",
     ],
-    overdue: ["Overdue", "bg-onyx text-white dark:bg-white dark:text-onyx"],
+    overdue: [t.dash.status.overdue, "bg-onyx text-white dark:bg-white dark:text-onyx"],
   };
   const [label, cls] = styles[status];
   return (
@@ -121,15 +125,16 @@ export function RentChip({ status }: { status: RentStatus }) {
 }
 
 export function TicketChip({ status }: { status: TicketStatus }) {
+  const { t } = useI18n();
   const styles: Record<TicketStatus, [string, string]> = {
-    new: ["New", "bg-onyx text-white dark:bg-white dark:text-onyx"],
+    new: [t.dash.status.new, "bg-onyx text-white dark:bg-white dark:text-onyx"],
     assigned: [
-      "Assigned",
+      t.dash.status.assigned,
       "border border-azure-900/15 bg-azure-900/5 text-onyx/60 dark:border-white/15 dark:bg-white/5 dark:text-white/75",
     ],
-    "in-progress": ["In progress", "bg-soft-500 text-azure-950"],
+    "in-progress": [t.dash.status.inProgress, "bg-soft-500 text-azure-950"],
     resolved: [
-      "Resolved",
+      t.dash.status.resolved,
       "border border-azure-900/10 bg-azure-900/5 text-onyx/45 dark:border-white/10 dark:bg-white/5 dark:text-white/45",
     ],
   };
@@ -142,7 +147,8 @@ export function TicketChip({ status }: { status: TicketStatus }) {
 }
 
 export function ViaBadge({ via }: { via: "whatsapp" | "phone" | "email" }) {
-  const label = via === "whatsapp" ? "WhatsApp" : via === "phone" ? "Phone" : "Email";
+  const { t } = useI18n();
+  const label = t.dash.maintenance.via[via];
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full border border-azure-900/15 px-2.5 py-1 text-[11px] font-semibold text-onyx/55 dark:border-white/15 dark:text-white/55">
       <span className="h-1.5 w-1.5 rounded-full bg-azure-600 dark:bg-soft-500" />

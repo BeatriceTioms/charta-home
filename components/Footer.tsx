@@ -1,42 +1,45 @@
+"use client";
+
 import Link from "next/link";
 import { Logo } from "./Logo";
-
-const columns = [
-  {
-    title: "Product",
-    links: [
-      { label: "Features", href: "/features" },
-      { label: "Pricing", href: "/pricing" },
-      { label: "FAQ", href: "/pricing#faq" },
-    ],
-  },
-  {
-    title: "Company",
-    links: [
-      { label: "About", href: "#" },
-      { label: "Contact", href: "/contact" },
-      { label: "Careers", href: "#" },
-    ],
-  },
-  {
-    title: "Legal",
-    links: [
-      { label: "Privacy policy", href: "#" },
-      { label: "Terms of service", href: "#" },
-    ],
-  },
-];
+import { useI18n } from "@/lib/i18n/context";
 
 export function Footer() {
+  const { t, path } = useI18n();
+
+  const columns = [
+    {
+      title: t.footer.product,
+      links: [
+        { label: t.nav.features, href: path("/features") },
+        { label: t.nav.pricing, href: path("/pricing") },
+        { label: t.footer.faq, href: path("/pricing#faq") },
+      ],
+    },
+    {
+      title: t.footer.company,
+      links: [
+        { label: t.footer.about, href: path("/features") },
+        { label: t.nav.contact, href: path("/contact") },
+        { label: t.footer.careers, href: path("/contact") },
+      ],
+    },
+    {
+      title: t.footer.legal,
+      links: [
+        { label: t.footer.privacy, href: path("/contact") },
+        { label: t.footer.terms, href: path("/contact") },
+      ],
+    },
+  ];
+
   return (
     <footer className="bg-azure-950 text-white">
       <div className="mx-auto grid max-w-7xl gap-12 px-5 py-16 sm:px-8 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
         <div>
-          <Logo dark />
+          <Logo dark href={path("/")} />
           <p className="mt-4 max-w-xs text-sm leading-relaxed text-white/60">
-            The property management platform built for real estate agencies.
-            ROI insights, smart rent collection, and maintenance handled over
-            WhatsApp.
+            {t.footer.tagline}
           </p>
         </div>
         {columns.map((col) => (
@@ -61,7 +64,9 @@ export function Footer() {
       </div>
       <div className="border-t border-white/10">
         <div className="mx-auto flex max-w-7xl justify-center px-5 py-6 text-sm text-white/50 sm:px-8">
-          <span>© {new Date().getFullYear()} Charta Home. All rights reserved.</span>
+          <span>
+            © {new Date().getFullYear()} Charta Home. {t.footer.rights}
+          </span>
         </div>
       </div>
     </footer>

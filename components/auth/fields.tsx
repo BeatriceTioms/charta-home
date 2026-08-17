@@ -1,6 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useI18n } from "@/lib/i18n/context";
+
+export const authInputCls =
+  "w-full rounded-2xl border border-azure-800/15 bg-white px-4 py-3 text-[15px] text-onyx outline-none transition placeholder:text-onyx/30 focus:border-azure-600 focus:ring-4 focus:ring-azure-600/10";
 
 export function TextField({
   label,
@@ -8,14 +12,16 @@ export function TextField({
   name,
   placeholder,
   autoComplete,
-  required = true,
+  error,
+  defaultValue,
 }: {
   label: string;
   type?: string;
   name: string;
   placeholder?: string;
   autoComplete?: string;
-  required?: boolean;
+  error?: string;
+  defaultValue?: string;
 }) {
   return (
     <label className="block">
@@ -25,25 +31,30 @@ export function TextField({
         name={name}
         placeholder={placeholder}
         autoComplete={autoComplete}
-        required={required}
-        className="w-full rounded-2xl border border-azure-800/15 bg-white px-4 py-3 text-[15px] text-onyx outline-none transition placeholder:text-onyx/30 focus:border-azure-600 focus:ring-4 focus:ring-azure-600/10"
+        defaultValue={defaultValue}
+        className={authInputCls}
       />
+      {error && <span className="mt-1 block text-xs font-medium text-red-600">{error}</span>}
     </label>
   );
 }
 
 export function PasswordField({
-  label = "Password",
+  label,
   name = "password",
   autoComplete = "current-password",
   hint,
+  error,
 }: {
-  label?: string;
+  label: string;
   name?: string;
   autoComplete?: string;
   hint?: string;
+  error?: string;
 }) {
+  const { t } = useI18n();
   const [visible, setVisible] = useState(false);
+
   return (
     <label className="block">
       <span className="mb-1.5 block text-sm font-semibold text-azure-800">{label}</span>
@@ -52,16 +63,14 @@ export function PasswordField({
           type={visible ? "text" : "password"}
           name={name}
           autoComplete={autoComplete}
-          required
-          minLength={8}
           placeholder="••••••••"
-          className="w-full rounded-2xl border border-azure-800/15 bg-white px-4 py-3 pr-12 text-[15px] text-onyx outline-none transition placeholder:text-onyx/30 focus:border-azure-600 focus:ring-4 focus:ring-azure-600/10"
+          className={`${authInputCls} pr-12`}
         />
         <button
           type="button"
           onClick={() => setVisible(!visible)}
           className="absolute right-3.5 top-1/2 -translate-y-1/2 text-onyx/40 transition hover:text-azure-800"
-          aria-label={visible ? "Hide password" : "Show password"}
+          aria-label={visible ? t.auth.hidePassword : t.auth.showPassword}
         >
           {visible ? (
             <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -75,16 +84,27 @@ export function PasswordField({
           )}
         </button>
       </div>
-      {hint && <span className="mt-1.5 block text-xs text-onyx/45">{hint}</span>}
+      {error ? (
+        <span className="mt-1 block text-xs font-medium text-red-600">{error}</span>
+      ) : (
+        hint && <span className="mt-1.5 block text-xs text-onyx/45">{hint}</span>
+      )}
     </label>
   );
 }
 
-export function SubmitButton({ children }: { children: React.ReactNode }) {
+export function SubmitButton({
+  children,
+  loading,
+}: {
+  children: React.ReactNode;
+  loading?: boolean;
+}) {
   return (
     <button
       type="submit"
-      className="w-full rounded-full bg-azure-800 py-3.5 text-[15px] font-semibold text-white shadow-lg shadow-azure-800/20 transition hover:bg-azure-900"
+      disabled={loading}
+      className="w-full rounded-full bg-azure-800 py-3.5 text-[15px] font-semibold text-white shadow-lg shadow-azure-800/20 transition hover:bg-azure-900 disabled:opacity-60"
     >
       {children}
     </button>

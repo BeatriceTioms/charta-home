@@ -2,11 +2,13 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { buildings, fmt } from "@/lib/data";
+import { fmt } from "@/lib/data";
 import { useBuilding } from "@/lib/building-context";
+import { useI18n } from "@/lib/i18n/context";
 
 export function BuildingSwitcher({ align = "left" }: { align?: "left" | "right" }) {
-  const { building, setBuildingId } = useBuilding();
+  const { building, setBuildingId, buildings } = useBuilding();
+  const { t, s: ts } = useI18n();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -44,7 +46,7 @@ export function BuildingSwitcher({ align = "left" }: { align?: "left" | "right" 
             {building.name}
           </span>
           <span className="block text-[11px] leading-tight text-onyx/45 dark:text-white/40">
-            {building.city} · {building.apartments.length} apartments
+            {ts("cities", building.city)} · {building.apartments.length} {t.dash.shell.apartmentsCount}
           </span>
         </span>
         <svg
@@ -62,7 +64,7 @@ export function BuildingSwitcher({ align = "left" }: { align?: "left" | "right" 
           className={`absolute ${align === "right" ? "right-0" : "left-0"} z-50 mt-2 w-80 overflow-hidden rounded-3xl border border-white/70 bg-white/80 p-2 shadow-2xl shadow-azure-900/15 backdrop-blur-2xl dark:border-white/10 dark:bg-onyx/85`}
         >
           <p className="px-3 pb-1.5 pt-2 text-[11px] font-semibold uppercase tracking-wider text-onyx/40 dark:text-white/35">
-            Switch building
+            {t.dash.shell.switchBuilding}
           </p>
           {buildings.map((b) => {
             const active = b.id === building.id;
@@ -94,7 +96,7 @@ export function BuildingSwitcher({ align = "left" }: { align?: "left" | "right" 
                     {b.name}
                   </span>
                   <span className={`block truncate text-xs ${active ? "opacity-70" : "text-onyx/45 dark:text-white/40"}`}>
-                    {occ}/{b.apartments.length} occupied · {fmt(b.incomeYtd)} YTD
+                    {occ}/{b.apartments.length} {t.dash.shell.occupiedShort} · {fmt(b.incomeYtd)}
                   </span>
                 </span>
                 {active && (
