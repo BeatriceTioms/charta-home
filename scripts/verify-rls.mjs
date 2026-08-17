@@ -230,6 +230,36 @@ check("deleting a photo renumbers the gallery without gaps",
 const photosVisibleToB = await asUser(userB.id, `select count(*)::int as n from apartment_photos`);
 check("photos are invisible to another agency", photosVisibleToB[0].n === 0);
 
+/* ------------------------------------------------- reminder idempotency --
+ * The reminder cron runs once a day and fires a rule as soon as its offset has
+ * been reached, so it will retry the same charge on later days. The unique
+ * constraint is the only thing stopping a tenant being messaged twice.
+ */
+const [charge] = await asUser(userA.id, `
+  select rc.id from rent_charges rc
+  join leases l on l.id = rc.lease_id
+  where rc.agency_id = '${a1.id}' limit 1`);
+const [rule] = await asUser(userA.id, `
+  select id, channel from reminder_rules where agency_id = '${a1.id}' limit 1`);
+
+const claim = () => asUser(userA.id, `
+  insert into reminder_events (agency_id, rent_charge_id, rule_id, channel, status)
+  values ('${a1.id}', '${charge.id}', '${rule.id}', '${rule.channel}', 'queued')`);
+
+await claim();
+let secondClaimRejected = false;
+try {
+  await claim();
+} catch {
+  secondClaimRejected = true;
+}
+check("the same reminder cannot be sent twice for a charge", secondClaimRejected);
+
+const [sent] = await asUser(userA.id, `
+  select count(*)::int as n from reminder_events
+  where rent_charge_id = '${charge.id}' and rule_id = '${rule.id}'`);
+check("exactly one reminder event survives the retry", sent.n === 1, `${sent.n} rows`);
+
 await db.close();
 
 const failed = results.filter((r) => !r.pass);

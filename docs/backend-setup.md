@@ -27,7 +27,7 @@ lib/supabase/
   auth-actions.ts             sign in, sign up, reset, sign out
 app/api/
   cron/rent-charges           nightly charge generation
-  cron/reminders              hourly reminder dispatch
+  cron/reminders              daily reminder dispatch
   webhooks/whatsapp           inbound messages become tickets
 scripts/                      schema verification without Docker
 ```
@@ -90,7 +90,22 @@ registers the cron jobs:
 | Job | Path | Schedule |
 | --- | --- | --- |
 | Generate rent charges | `/api/cron/rent-charges` | nightly at 02:00 |
-| Send due reminders | `/api/cron/reminders` | hourly |
+| Send due reminders | `/api/cron/reminders` | daily at 07:00 |
+
+Both are daily because Vercel's Hobby plan refuses anything more frequent: a
+per hour expression fails at deploy time with *Hobby accounts are limited to
+daily cron jobs*. Hobby also drifts the trigger by up to 59 minutes, which is
+why the reminder job normalises the date to midnight UTC before counting days.
+
+A day is the natural granularity anyway, since reminder rules are written in
+whole days from the due date. The cost of one attempt per day is that a failed
+run would drop that day's reminders, so a rule fires once its offset has been
+reached rather than only on the exact day; the unique constraint on
+`(rent_charge_id, rule_id)` keeps the retry from double sending, and
+`npm run db:test` proves it.
+
+On Pro you can move reminders to `0 * * * *` for tighter timing. Nothing in the
+code needs to change.
 
 Both require `Authorization: Bearer $CRON_SECRET`.
 

@@ -12,6 +12,14 @@ export const dynamic = "force-dynamic";
  *
  * The reminder_events row is written before dispatch and is unique on
  * (rent_charge_id, rule_id), so a retry cannot double send.
+ *
+ * Runs once a day. Vercel's Hobby plan allows no more than that, and a day is
+ * the right granularity anyway since reminder rules are expressed in whole
+ * days from the due date. Because of that single daily chance, a rule fires as
+ * soon as its offset has been *reached* rather than only on the exact day, so
+ * a run that fails or is skipped catches up the next day instead of dropping
+ * the reminder for good. The unique constraint is what keeps that safe: the
+ * first run to reach the offset claims the send, every later one collides.
  */
 export async function GET(request: Request) {
   const secret = request.headers.get("authorization");
@@ -38,7 +46,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: chargesError.message }, { status: 500 });
   }
 
+  // Normalised to midnight UTC so the day count is a whole number whatever
+  // time the schedule actually fires; Hobby cron drifts up to 59 minutes.
   const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
   const queued: string[] = [];
 
   for (const charge of charges ?? []) {
@@ -49,7 +60,8 @@ export async function GET(request: Request) {
 
     for (const rule of rules ?? []) {
       if (rule.agency_id !== charge.agency_id) continue;
-      if (rule.offset_days !== daysFromDue) continue;
+      // Reached, not matched exactly, so a missed day still goes out.
+      if (daysFromDue < rule.offset_days) continue;
 
       // Claim the send first. A duplicate key means another run already did it.
       const { error: claimError } = await supabase.from("reminder_events").insert({

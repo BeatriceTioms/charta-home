@@ -131,7 +131,7 @@ task 3.
 
 | # | Item | Note |
 | --- | --- | --- |
-| 11 | Cron secret in Vercel | `vercel.json` already schedules rent charges nightly at 02:00 and reminders hourly. Confirm both fire after the first deploy. |
+| 11 | Cron secret in Vercel | `vercel.json` schedules rent charges at 02:00 and reminders at 07:00, both daily, which is the most a Hobby plan allows. Confirm both fire after the first deploy. |
 | 12 | Backups | Enable point in time recovery on Supabase. Tenant payment records are not something to lose. |
 | 13 | Monitoring | Error tracking and a log drain. Today a failed cron is silent. |
 | 14 | Webhook rate limiting | The endpoint is signature checked but unthrottled. |
