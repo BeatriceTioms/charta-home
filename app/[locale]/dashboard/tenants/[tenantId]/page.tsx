@@ -41,6 +41,8 @@ export default function TenantPage() {
 
   const tenant = apartment.tenant;
   const label = ts("apartments", apartment.label);
+  // The unit's own first photo, falling back to the building interior.
+  const cover = apartment.photos?.[0]?.src ?? building.interior;
   const remindKey = `${building.id}-${apartment.id}`;
   const wasReminded = remindedKeys.includes(remindKey);
 
@@ -252,10 +254,11 @@ export default function TenantPage() {
           </CardTitle>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] text-left text-sm">
+          <table className="w-full min-w-[880px] text-left text-sm">
             <thead>
               <tr className="border-y border-white/60 bg-white/40 text-xs text-onyx/45 dark:border-white/8 dark:bg-white/[0.03] dark:text-white/40">
-                <th className="px-6 py-3.5 pr-4 font-semibold">{tn.period}</th>
+                <th className="px-6 py-3.5 pr-4 font-semibold">{t.dash.rent.apartment}</th>
+                <th className="py-3.5 pr-4 font-semibold">{tn.period}</th>
                 <th className="py-3.5 pr-4 font-semibold">{tn.amount}</th>
                 <th className="py-3.5 pr-4 font-semibold">{tn.paidOn}</th>
                 <th className="py-3.5 pr-4 font-semibold">{t.dash.rent.status}</th>
@@ -265,7 +268,7 @@ export default function TenantPage() {
             <tbody>
               {payments.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-6 py-10 text-center text-onyx/45 dark:text-white/45">
+                  <td colSpan={6} className="px-6 py-10 text-center text-onyx/45 dark:text-white/45">
                     {tn.noPayments}
                   </td>
                 </tr>
@@ -274,7 +277,27 @@ export default function TenantPage() {
                 const [pm, py] = p.month.split(" ");
                 return (
                   <tr key={p.month} className="border-b border-azure-900/5 last:border-0 dark:border-white/5">
-                    <td className="whitespace-nowrap px-6 py-4 pr-4 font-bold text-azure-950 dark:text-white">
+                    <td className="px-6 py-4 pr-4">
+                      <div className="flex items-center gap-3.5">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={cover}
+                          alt={label}
+                          className="h-12 w-12 shrink-0 rounded-xl object-cover"
+                        />
+                        <div className="min-w-0">
+                          <p className="whitespace-nowrap font-bold text-azure-950 dark:text-white">
+                            {label}
+                          </p>
+                          <p className="whitespace-nowrap text-xs text-onyx/45 dark:text-white/45">
+                            {apartment.rooms}{" "}
+                            {apartment.rooms === 1 ? t.dash.common.room : t.dash.common.rooms} ·{" "}
+                            {apartment.sqm} m²
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="whitespace-nowrap py-4 pr-4 font-bold text-azure-950 dark:text-white">
                       {ts("months", pm)} {py}
                     </td>
                     <td className="whitespace-nowrap py-4 pr-4 font-bold text-azure-950 dark:text-white">
