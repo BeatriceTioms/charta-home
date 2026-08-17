@@ -63,5 +63,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next|api|photos|.*\\.).*)"],
+  // Metadata routes such as /apple-icon carry no extension, so they need
+  // naming here or the locale redirect swallows them.
+  matcher: ["/((?!_next|api|photos|icon|apple-icon|manifest|opengraph-image|.*\\.).*)"],
 };
