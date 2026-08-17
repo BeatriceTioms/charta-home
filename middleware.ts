@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { defaultLocale, locales } from "./lib/i18n";
+import { refreshSession } from "./lib/supabase/middleware";
 
 const PUBLIC_FILE = /\.(png|jpg|jpeg|svg|ico|webp|txt|xml|json|webmanifest)$/;
 
@@ -12,7 +13,7 @@ function preferredLocale(request: NextRequest) {
   return header.toLowerCase().startsWith("en") ? "en" : defaultLocale;
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (
@@ -24,15 +25,41 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Send anything without a locale prefix to the right language first.
   const hasLocale = locales.some(
     (l) => pathname === `/${l}` || pathname.startsWith(`/${l}/`)
   );
-  if (hasLocale) return NextResponse.next();
+  if (!hasLocale) {
+    const url = request.nextUrl.clone();
+    url.pathname = `/${preferredLocale(request)}${pathname === "/" ? "" : pathname}`;
+    return NextResponse.redirect(url);
+  }
 
-  const locale = preferredLocale(request);
-  const url = request.nextUrl.clone();
-  url.pathname = `/${locale}${pathname === "/" ? "" : pathname}`;
-  return NextResponse.redirect(url);
+  // Keep the Supabase session fresh, and guard the dashboard.
+  const response = NextResponse.next({ request });
+  const { user, configured } = await refreshSession(request, response);
+
+  const locale = pathname.split("/")[1];
+  const isDashboard = pathname.startsWith(`/${locale}/dashboard`);
+  const isAuthPage = ["/login", "/signup", "/forgot-password", "/reset-password"].some(
+    (p) => pathname === `/${locale}${p}`
+  );
+
+  if (configured && isDashboard && !user) {
+    const url = request.nextUrl.clone();
+    url.pathname = `/${locale}/login`;
+    url.searchParams.set("next", pathname);
+    return NextResponse.redirect(url);
+  }
+
+  if (configured && isAuthPage && user && pathname !== `/${locale}/reset-password`) {
+    const url = request.nextUrl.clone();
+    url.pathname = `/${locale}/dashboard`;
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+
+  return response;
 }
 
 export const config = {

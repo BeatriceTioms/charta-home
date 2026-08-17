@@ -5,19 +5,30 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "db:verify": "node scripts/verify-schema.mjs",
+    "db:test": "node scripts/verify-rls.mjs",
+    "db:seed:verify": "node scripts/verify-seed.mjs",
+    "db:check": "npm run db:verify && npm run db:test && npm run db:seed:verify",
+    "db:start": "supabase start",
+    "db:reset": "supabase db reset",
+    "db:types": "supabase gen types typescript --local > lib/supabase/types.generated.ts"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.4",
+    "@supabase/supabase-js": "^2.112.3",
     "next": "^15.4.5",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.5",
     "@tailwindcss/postcss": "^4.1.11",
     "@types/node": "^24.1.0",
     "@types/react": "^19.1.9",
     "@types/react-dom": "^19.1.7",
     "postcss": "^8.5.6",
+    "supabase": "^2.114.0",
     "tailwindcss": "^4.1.11",
     "typescript": "^5.8.3"
   }

@@ -1,0 +1,325 @@
+/**
+ * Hand written to match supabase/migrations. Once you have a project running,
+ * regenerate with:
+ *   npx supabase gen types typescript --project-id <ref> > lib/supabase/types.ts
+ */
+
+export type MemberRole = "owner" | "manager" | "accountant" | "caretaker";
+export type LeaseCycle = "monthly" | "yearly";
+export type LeaseStatus = "upcoming" | "active" | "ended";
+export type ChargeStatus = "open" | "paid" | "void";
+export type ChargeState = "paid" | "pending" | "overdue" | "void";
+export type PaymentMethod =
+  | "cash" | "orange_money" | "mtn_momo" | "bank_transfer" | "card" | "other";
+export type TicketStatus = "new" | "assigned" | "in_progress" | "resolved" | "cancelled";
+export type TicketPriority = "normal" | "high" | "urgent";
+export type ReportChannel = "whatsapp" | "sms" | "phone" | "email" | "in_person";
+export type EventKind = "viewing" | "work" | "inspection" | "other";
+export type PlanTier = "starter" | "growth" | "agency";
+export type SubscriptionStatus = "trialing" | "active" | "past_due" | "cancelled";
+
+export type Agency = {
+  id: string;
+  name: string;
+  country: string;
+  city: string;
+  currency: string;
+  locale: "fr" | "en";
+  whatsapp_number: string | null;
+  logo_path: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Membership = {
+  user_id: string;
+  agency_id: string;
+  role: MemberRole;
+  full_name: string | null;
+  created_at: string;
+};
+
+export type BuildingRow = {
+  id: string;
+  agency_id: string;
+  name: string;
+  address: string;
+  city: string;
+  acquisition_value: number | null;
+  market_value: number | null;
+  photo_path: string | null;
+  interior_path: string | null;
+  amenities: string[];
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ApartmentRow = {
+  id: string;
+  agency_id: string;
+  building_id: string;
+  label: string;
+  floor: string | null;
+  rooms: number;
+  bathrooms: number;
+  sqm: number | null;
+  base_rent: number;
+  photo_path: string | null;
+};
+
+export type ApartmentState = {
+  apartment_id: string;
+  agency_id: string;
+  building_id: string;
+  label: string;
+  rooms: number;
+  bathrooms: number;
+  sqm: number | null;
+  base_rent: number;
+  lease_id: string | null;
+  cycle: LeaseCycle | null;
+  rent_amount: number | null;
+  resident_id: string | null;
+  resident_name: string | null;
+  resident_phone: string | null;
+  lease_started_on: string | null;
+  is_occupied: boolean;
+  rent_state: ChargeState;
+};
+
+export type BuildingPerformance = {
+  building_id: string;
+  agency_id: string;
+  name: string;
+  apartment_count: number;
+  occupied_count: number;
+  total_sqm: number;
+  income_ytd: number;
+  expenses_ytd: number;
+  net_yield_pct: number | null;
+};
+
+export type ChargeStatusRow = {
+  rent_charge_id: string;
+  agency_id: string;
+  lease_id: string;
+  period_start: string;
+  period_end: string;
+  due_on: string;
+  amount: number;
+  paid_amount: number;
+  balance: number;
+  state: ChargeState;
+};
+
+export type TicketRow = {
+  id: string;
+  agency_id: string;
+  building_id: string;
+  apartment_id: string | null;
+  resident_id: string | null;
+  technician_id: string | null;
+  title: string;
+  description: string | null;
+  status: TicketStatus;
+  priority: TicketPriority;
+  reported_via: ReportChannel;
+  cost: number | null;
+  opened_at: string;
+  resolved_at: string | null;
+};
+
+export type EventRow = {
+  id: string;
+  agency_id: string;
+  building_id: string;
+  apartment_id: string | null;
+  kind: EventKind;
+  title: string;
+  detail: string | null;
+  starts_at: string;
+  assignee: string | null;
+};
+
+export type ResidentRow = {
+  id: string;
+  agency_id: string;
+  full_name: string;
+  phone_e164: string | null;
+  email: string | null;
+  notes: string | null;
+};
+
+export type LeaseRow = {
+  id: string;
+  agency_id: string;
+  apartment_id: string;
+  resident_id: string;
+  cycle: LeaseCycle;
+  rent_amount: number;
+  deposit: number;
+  due_day: number;
+  starts_on: string;
+  ends_on: string | null;
+  status: LeaseStatus;
+};
+
+export type TechnicianRow = {
+  id: string;
+  agency_id: string;
+  full_name: string;
+  trade: string | null;
+  phone_e164: string | null;
+  is_external: boolean;
+};
+
+export type ReminderRuleRow = {
+  id: string;
+  agency_id: string;
+  offset_days: number;
+  channel: ReportChannel;
+  template_name: string | null;
+  escalation_step: number;
+  is_active: boolean;
+};
+
+export type ReminderEventRow = {
+  id: string;
+  agency_id: string;
+  rent_charge_id: string;
+  rule_id: string | null;
+  channel: ReportChannel;
+  sent_at: string;
+  provider_message_id: string | null;
+  status: string;
+};
+
+export type TicketMessageRow = {
+  id: string;
+  agency_id: string;
+  ticket_id: string;
+  direction: "inbound" | "outbound";
+  body: string | null;
+  media_path: string | null;
+  provider_message_id: string | null;
+  created_at: string;
+};
+
+export type WaConversationRow = {
+  id: string;
+  agency_id: string;
+  phone_e164: string;
+  resident_id: string | null;
+  last_inbound_at: string | null;
+};
+
+export type ExpenseRow = {
+  id: string;
+  agency_id: string;
+  building_id: string;
+  apartment_id: string | null;
+  ticket_id: string | null;
+  category: string;
+  amount: number;
+  incurred_on: string;
+  description: string | null;
+  receipt_path: string | null;
+};
+
+export type SubscriptionRow = {
+  agency_id: string;
+  plan: PlanTier;
+  status: SubscriptionStatus;
+  trial_ends_at: string;
+  current_period_end: string | null;
+};
+
+export type Database = {
+  public: {
+    Tables: {
+      agencies: { Row: Agency; Insert: Partial<Agency>; Update: Partial<Agency>; Relationships: [] };
+      memberships: { Row: Membership; Insert: Partial<Membership>; Update: Partial<Membership>; Relationships: [] };
+      buildings: { Row: BuildingRow; Insert: Partial<BuildingRow>; Update: Partial<BuildingRow>; Relationships: [] };
+      apartments: { Row: ApartmentRow; Insert: Partial<ApartmentRow>; Update: Partial<ApartmentRow>; Relationships: [] };
+      tickets: { Row: TicketRow; Insert: Partial<TicketRow>; Update: Partial<TicketRow>; Relationships: [] };
+      residents: { Row: ResidentRow; Insert: Partial<ResidentRow>; Update: Partial<ResidentRow>; Relationships: [] };
+      leases: { Row: LeaseRow; Insert: Partial<LeaseRow>; Update: Partial<LeaseRow>; Relationships: [] };
+      technicians: { Row: TechnicianRow; Insert: Partial<TechnicianRow>; Update: Partial<TechnicianRow>; Relationships: [] };
+      reminder_rules: { Row: ReminderRuleRow; Insert: Partial<ReminderRuleRow>; Update: Partial<ReminderRuleRow>; Relationships: [] };
+      reminder_events: { Row: ReminderEventRow; Insert: Partial<ReminderEventRow>; Update: Partial<ReminderEventRow>; Relationships: [] };
+      ticket_messages: { Row: TicketMessageRow; Insert: Partial<TicketMessageRow>; Update: Partial<TicketMessageRow>; Relationships: [] };
+      wa_conversations: { Row: WaConversationRow; Insert: Partial<WaConversationRow>; Update: Partial<WaConversationRow>; Relationships: [] };
+      expenses: { Row: ExpenseRow; Insert: Partial<ExpenseRow>; Update: Partial<ExpenseRow>; Relationships: [] };
+      events: { Row: EventRow; Insert: Partial<EventRow>; Update: Partial<EventRow>; Relationships: [] };
+      subscriptions: {
+        Row: SubscriptionRow;
+        Insert: Partial<SubscriptionRow>;
+        Update: Partial<SubscriptionRow>;
+       Relationships: [];
+      };
+    };
+    Views: {
+      v_apartment_state: { Row: ApartmentState; Relationships: [] };
+      v_building_performance: { Row: BuildingPerformance; Relationships: [] };
+      v_charge_status: { Row: ChargeStatusRow; Relationships: [] };
+    };
+    Functions: {
+      create_agency_for_current_user: {
+        Args: {
+          agency_name: string;
+          agency_country?: string;
+          agency_city?: string;
+          agency_currency?: string;
+          agency_locale?: string;
+          owner_name?: string | null;
+        };
+        Returns: string;
+      };
+      create_lease: {
+        Args: {
+          target_apartment: string;
+          resident_name: string;
+          resident_phone: string;
+          rent: number;
+          cycle_in?: LeaseCycle;
+          starts_on_in?: string;
+          deposit_in?: number;
+        };
+        Returns: string;
+      };
+      record_payment: {
+        Args: {
+          target_lease: string;
+          payment_amount: number;
+          payment_method_in?: PaymentMethod;
+          paid_on_in?: string;
+          reference_in?: string | null;
+        };
+        Returns: string;
+      };
+      resolve_ticket: {
+        Args: { target_ticket: string; final_cost?: number };
+        Returns: void;
+      };
+      ensure_rent_charge: {
+        Args: { target_lease: string; period: string };
+        Returns: string;
+      };
+    };
+    Enums: {
+      member_role: MemberRole;
+      lease_cycle: LeaseCycle;
+      lease_status: LeaseStatus;
+      charge_status: ChargeStatus;
+      payment_method: PaymentMethod;
+      ticket_status: TicketStatus;
+      ticket_priority: TicketPriority;
+      report_channel: ReportChannel;
+      event_kind: EventKind;
+      plan_tier: PlanTier;
+      subscription_status: SubscriptionStatus;
+    };
+    CompositeTypes: Record<string, never>;
+  };
+};
