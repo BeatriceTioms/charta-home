@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { fmt, type Technician } from "@/lib/data";
 import { useStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n/context";
-import { Card, CardTitle, PageTitle, StatCard } from "@/components/dashboard/ui";
+import { Card, CardTitle, StatCard } from "@/components/dashboard/ui";
 import { Field, Modal, ModalActions, fieldCls } from "@/components/dashboard/Modal";
 
 type Stats = {
@@ -14,10 +14,9 @@ type Stats = {
   jobsResolved: number;
   totalPaid: number;
   avgDays: number | null;
-  lastJob: string | null;
 };
 
-function TechnicianForm({
+export function TechnicianForm({
   technician,
   onClose,
 }: {
@@ -43,7 +42,9 @@ function TechnicianForm({
       trade: String(data.get("trade") ?? "").trim(),
       phone: String(data.get("phone") ?? "").trim(),
       isExternal: data.get("type") === "external",
-      since: technician?.since ?? new Date().toLocaleDateString("fr-FR", { month: "short", year: "numeric" }),
+      since:
+        technician?.since ??
+        new Date().toLocaleDateString("fr-FR", { month: "short", year: "numeric" }),
     };
 
     if (technician) {
@@ -105,12 +106,21 @@ function TechnicianForm({
   );
 }
 
-export default function TechniciansPage() {
+/**
+ * Technician directory with the performance numbers behind each name. Lives
+ * inside the maintenance page as a tab, next to the ticket list.
+ */
+export function TechniciansPanel({
+  adding,
+  onCloseAdd,
+}: {
+  adding: boolean;
+  onCloseAdd: () => void;
+}) {
   const { t, f, s: ts } = useI18n();
   const { technicians, tickets, deleteTechnician, notify } = useStore();
   const tr = t.dash.technicians;
 
-  const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Technician | null>(null);
   const [removing, setRemoving] = useState<Technician | null>(null);
 
@@ -133,7 +143,6 @@ export default function TechniciansPage() {
                 (resolved.reduce((sum, x) => sum + x.daysOpen, 0) / resolved.length).toFixed(1)
               )
             : null,
-          lastJob: resolved.at(-1)?.openedOn ?? null,
         };
       }),
     [technicians, tickets]
@@ -144,19 +153,6 @@ export default function TechniciansPage() {
 
   return (
     <>
-      <PageTitle
-        title={tr.title}
-        subtitle={f(tr.subtitle, { agency: "Horizon Realty" })}
-        action={
-          <button
-            onClick={() => setAdding(true)}
-            className="rounded-full bg-onyx px-6 py-3 text-sm font-semibold text-white transition hover:bg-azure-900 dark:bg-soft-500 dark:text-azure-950 dark:hover:bg-soft-400"
-          >
-            {tr.add}
-          </button>
-        }
-      />
-
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <StatCard emphasis label={tr.activeCount} value={String(technicians.length)} hint={tr.title} />
         <StatCard label={tr.totalSpent} value={fmt(totalSpent)} hint={t.dash.maintenance.repairs} />
@@ -205,7 +201,7 @@ export default function TechniciansPage() {
                       </div>
                     </td>
                     <td className="whitespace-nowrap py-4 pr-4 text-onyx/70 dark:text-white/70">
-                      {tech.phone || "—"}
+                      {tech.phone || t.dash.common.none}
                     </td>
                     <td className="py-4 pr-4 font-bold text-azure-950 dark:text-white">{jobsTotal}</td>
                     <td className="py-4 pr-4">
@@ -250,7 +246,7 @@ export default function TechniciansPage() {
         )}
       </Card>
 
-      {adding && <TechnicianForm onClose={() => setAdding(false)} />}
+      {adding && <TechnicianForm onClose={onCloseAdd} />}
       {editing && <TechnicianForm technician={editing} onClose={() => setEditing(null)} />}
 
       {removing && (

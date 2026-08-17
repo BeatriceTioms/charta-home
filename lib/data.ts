@@ -295,4 +295,11 @@ export const technicians: Technician[] = [
 /** Photos each apartment starts with, keyed by building then apartment. */
 export const seedPhotos: Record<string, string[]> = {
   default: ["/photos/interior-2.jpg", "/photos/interior-3.jpg", "/photos/interior-4.jpg"],
+  /** One cover per unit, rotated so no two neighbouring apartments look alike. */
+  covers: [
+    "/photos/interior-2.jpg",
+    "/photos/interior-3.jpg",
+    "/photos/interior-4.jpg",
+    "/photos/interior-1.jpg",
+  ],
 };

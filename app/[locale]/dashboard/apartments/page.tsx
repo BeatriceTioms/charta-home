@@ -9,6 +9,7 @@ import { useStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n/context";
 import { Card, CardTitle, PageTitle, ProgressBar, RentChip } from "@/components/dashboard/ui";
 import { Field, Modal, ModalActions, fieldCls } from "@/components/dashboard/Modal";
+import { MultiPhotoPicker } from "@/components/dashboard/PhotoPicker";
 
 const UNIT_PHOTOS = [
   "/photos/interior-2.jpg",
@@ -25,6 +26,7 @@ function AddApartmentModal({ onClose }: { onClose: () => void }) {
   const { addApartment, notify } = useStore();
   const m = t.dash.apartments.addModal;
   const [error, setError] = useState<string>();
+  const [photos, setPhotos] = useState<string[]>([]);
 
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -41,6 +43,7 @@ function AddApartmentModal({ onClose }: { onClose: () => void }) {
       sqm: Number(data.get("sqm") ?? 60),
       rent: Number(data.get("rent") ?? 800),
       cycle: (data.get("cycle") as "monthly" | "yearly") ?? "monthly",
+      photos,
     });
     notify(`${label} · ${m.submit}`);
     onClose();
@@ -74,6 +77,16 @@ function AddApartmentModal({ onClose }: { onClose: () => void }) {
             </select>
           </Field>
         </div>
+        <Field plain label={m.photos} hint={m.photosHint}>
+          <MultiPhotoPicker
+            value={photos}
+            onChange={setPhotos}
+            uploadLabel={t.dash.gallery.addModal.upload}
+            emptyLabel={m.photosEmpty}
+            removeLabel={m.photosRemove}
+            coverLabel={m.photosCover}
+          />
+        </Field>
         <ModalActions onCancel={onClose} submitLabel={m.submit} />
       </form>
     </Modal>
@@ -238,11 +251,12 @@ export default function ApartmentsPage() {
                 className="group/unit block rounded-2xl border border-white/70 bg-white/40 p-3 backdrop-blur-xl transition hover:bg-white/70 dark:border-white/10 dark:bg-white/[0.04] dark:hover:bg-white/[0.08]"
               >
                 <div className="relative h-36 overflow-hidden rounded-xl">
-                  <Image
-                    src={UNIT_PHOTOS[i % UNIT_PHOTOS.length]}
+                  {/* The first photo of the unit is its cover, stock image otherwise. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={a.photos?.[0]?.src ?? UNIT_PHOTOS[i % UNIT_PHOTOS.length]}
                     alt={a.label}
-                    fill
-                    className="object-cover transition duration-500 group-hover/unit:scale-105"
+                    className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover/unit:scale-105"
                   />
                   <span
                     className={`absolute left-3 top-3 rounded-full px-3 py-1 text-[11px] font-bold backdrop-blur-sm ${

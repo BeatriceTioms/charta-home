@@ -20,6 +20,54 @@ export function Card({
   );
 }
 
+/** Underline tab strip shared by the rent and maintenance pages. */
+export function Tabs<K extends string>({
+  tabs,
+  active,
+  onChange,
+}: {
+  tabs: { key: K; label: string; count?: number }[];
+  active: K;
+  onChange: (key: K) => void;
+}) {
+  return (
+    <div
+      role="tablist"
+      className="mb-6 flex gap-7 overflow-x-auto border-b border-azure-900/10 dark:border-white/10"
+    >
+      {tabs.map((x) => {
+        const on = active === x.key;
+        return (
+          <button
+            key={x.key}
+            role="tab"
+            aria-selected={on}
+            onClick={() => onChange(x.key)}
+            className={`-mb-px flex shrink-0 items-center gap-2 border-b-2 pb-3 text-[15px] font-semibold transition ${
+              on
+                ? "border-azure-800 text-azure-950 dark:border-soft-500 dark:text-white"
+                : "border-transparent text-onyx/45 hover:text-azure-950 dark:text-white/45 dark:hover:text-white"
+            }`}
+          >
+            {x.label}
+            {x.count !== undefined && (
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                  on
+                    ? "bg-soft-500 text-azure-950"
+                    : "bg-azure-900/8 text-onyx/50 dark:bg-white/10 dark:text-white/50"
+                }`}
+              >
+                {x.count}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function CardTitle({
   children,
   action,

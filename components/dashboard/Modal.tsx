@@ -76,19 +76,28 @@ export function Field({
   label,
   children,
   error,
+  hint,
+  plain,
 }: {
   label: string;
   children: React.ReactNode;
   error?: string;
+  hint?: string;
+  /** Renders a div rather than a label, for fields built from buttons. */
+  plain?: boolean;
 }) {
+  const Wrapper = plain ? "div" : "label";
   return (
-    <label className="block">
+    <Wrapper className="block">
       <span className="mb-1.5 block text-sm font-semibold text-azure-800 dark:text-soft-500">
         {label}
       </span>
+      {hint && (
+        <span className="mb-2.5 block text-xs text-onyx/50 dark:text-white/45">{hint}</span>
+      )}
       {children}
       {error && <span className="mt-1 block text-xs font-medium text-red-600">{error}</span>}
-    </label>
+    </Wrapper>
   );
 }
 

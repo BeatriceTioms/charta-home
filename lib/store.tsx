@@ -41,6 +41,7 @@ type StoreValue = {
       sqm: number;
       rent: number;
       cycle: "monthly" | "yearly";
+      photos?: string[];
     }
   ) => void;
   addLease: (
@@ -95,15 +96,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [buildings, setBuildings] = useState<Building[]>(() =>
     seedBuildings.map((b) => ({
       ...b,
-      apartments: b.apartments.map((a, i) => ({
-        ...a,
-        photos:
-          a.photos ??
-          seedPhotos.default.map((src, n) => ({
-            id: `${b.id}-${a.id}-p${n}`,
-            src: n === 0 ? [b.interior, ...seedPhotos.default][i % 2 === 0 ? 0 : 1] ?? src : src,
-          })),
-      })),
+      apartments: b.apartments.map((a, i) => {
+        // Each unit opens on its own cover, then shares the rest of the set.
+        const cover = seedPhotos.covers[i % seedPhotos.covers.length];
+        const rest = seedPhotos.default.filter((src) => src !== cover);
+        return {
+          ...a,
+          photos:
+            a.photos ??
+            [cover, ...rest].map((src, n) => ({ id: `${b.id}-${a.id}-p${n}`, src })),
+        };
+      }),
     }))
   );
   const [tickets, setTickets] = useState<Ticket[]>(() => seedTickets.map((t) => ({ ...t })));
@@ -157,6 +160,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           rentStatus: "pending",
           netYield: 0,
           payments: [],
+          // The first photo doubles as the cover shown in the apartment grid.
+          photos: (input.photos ?? []).map((src, n) => ({ id: `${id}-p${n}`, src })),
         };
         return { ...b, apartments: [...b.apartments, apartment] };
       })

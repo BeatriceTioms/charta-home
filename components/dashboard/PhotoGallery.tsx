@@ -1,24 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n/context";
 import type { ApartmentPhoto } from "@/lib/data";
-import { Card, CardTitle } from "./ui";
+import { Card } from "./ui";
 import { Field, Modal, ModalActions, fieldCls } from "./Modal";
-
-/** Photos bundled with the app, offered as a picker alongside file upload. */
-const LIBRARY = [
-  "/photos/interior-1.jpg",
-  "/photos/interior-2.jpg",
-  "/photos/interior-3.jpg",
-  "/photos/interior-4.jpg",
-  "/photos/building-1.jpg",
-  "/photos/building-2.jpg",
-  "/photos/building-3.jpg",
-  "/photos/city.jpg",
-];
+import { PHOTO_LIBRARY, UploadButton, readFiles } from "./PhotoPicker";
 
 function PhotoForm({
   mode,
@@ -35,18 +24,8 @@ function PhotoForm({
   const g = t.dash.gallery;
   const m = mode === "add" ? g.addModal : g.editModal;
 
-  const [src, setSrc] = useState(photo?.src ?? LIBRARY[0]);
+  const [src, setSrc] = useState(photo?.src ?? PHOTO_LIBRARY[0]);
   const [caption, setCaption] = useState(photo?.caption ?? "");
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  const pickFile = (file: File | undefined) => {
-    if (!file) return;
-    // Read as a data URL so the new image shows immediately. With Supabase
-    // Storage wired up this becomes an upload that returns a storage path.
-    const reader = new FileReader();
-    reader.onload = () => setSrc(String(reader.result));
-    reader.readAsDataURL(file);
-  };
 
   return (
     <Modal title={m.title} subtitle={m.subtitle} onClose={onClose}>
@@ -64,7 +43,7 @@ function PhotoForm({
 
         <Field label={g.addModal.source}>
           <div className="flex flex-wrap gap-2">
-            {LIBRARY.map((option) => (
+            {PHOTO_LIBRARY.map((option) => (
               <button
                 key={option}
                 type="button"
@@ -81,25 +60,10 @@ function PhotoForm({
           </div>
         </Field>
 
-        <div>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => pickFile(e.target.files?.[0])}
-          />
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-azure-900/20 py-3 text-sm font-semibold text-azure-800 transition hover:bg-azure-900/5 dark:border-white/20 dark:text-soft-500 dark:hover:bg-white/5"
-          >
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 21V9M8 13l4-4 4 4M4 3h16" />
-            </svg>
-            {g.addModal.upload}
-          </button>
-        </div>
+        <UploadButton
+          label={g.addModal.upload}
+          onFiles={(files) => readFiles(files, setSrc)}
+        />
 
         <Field label={g.caption}>
           <input

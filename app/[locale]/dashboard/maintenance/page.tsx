@@ -5,8 +5,9 @@ import { fmt, type Ticket, type TicketStatus } from "@/lib/data";
 import { useBuilding } from "@/lib/building-context";
 import { useStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n/context";
-import { PageTitle, StatCard, TicketChip, ViaBadge } from "@/components/dashboard/ui";
+import { PageTitle, StatCard, Tabs, TicketChip, ViaBadge } from "@/components/dashboard/ui";
 import { Field, Modal, ModalActions, fieldCls } from "@/components/dashboard/Modal";
+import { TechniciansPanel } from "@/components/dashboard/TechniciansPanel";
 
 const selectCls =
   "rounded-2xl border border-white/70 bg-white/60 px-4 py-2.5 text-sm font-semibold text-azure-950 backdrop-blur-xl outline-none transition hover:bg-azure-900/5 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10 dark:[&>option]:bg-onyx";
@@ -299,11 +300,15 @@ function ResolveModal({ ticket, onClose }: { ticket: Ticket; onClose: () => void
   );
 }
 
+type View = "tickets" | "technicians";
+
 export default function MaintenancePage() {
   const { building } = useBuilding();
-  const { tickets } = useStore();
+  const { tickets, technicians } = useStore();
   const { t, f, s: ts } = useI18n();
 
+  const [view, setView] = useState<View>("tickets");
+  const [addingTech, setAddingTech] = useState(false);
   const [month, setMonth] = useState("all");
   const [year, setYear] = useState("all");
   const [status, setStatus] = useState("all");
@@ -341,139 +346,165 @@ export default function MaintenancePage() {
         title={t.dash.maintenance.title}
         subtitle={f(t.dash.maintenance.subtitle, { building: building.name })}
         action={
-          <button
-            onClick={() => setCreating(true)}
-            className="rounded-full bg-onyx px-6 py-3 text-sm font-semibold text-white transition hover:bg-azure-900 dark:bg-soft-500 dark:text-azure-950 dark:hover:bg-soft-400"
-          >
-            {t.dash.maintenance.newTicket}
-          </button>
+          view === "tickets" ? (
+            <button
+              onClick={() => setCreating(true)}
+              className="rounded-full bg-onyx px-6 py-3 text-sm font-semibold text-white transition hover:bg-azure-900 dark:bg-soft-500 dark:text-azure-950 dark:hover:bg-soft-400"
+            >
+              {t.dash.maintenance.newTicket}
+            </button>
+          ) : (
+            <button
+              onClick={() => setAddingTech(true)}
+              className="rounded-full bg-onyx px-6 py-3 text-sm font-semibold text-white transition hover:bg-azure-900 dark:bg-soft-500 dark:text-azure-950 dark:hover:bg-soft-400"
+            >
+              {t.dash.technicians.add}
+            </button>
+          )
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard emphasis label={t.dash.maintenance.openTickets} value={String(open.length)} hint={t.dash.maintenance.inPeriod} />
-        <StatCard label={t.dash.maintenance.resolved} value={String(resolved.length)} hint={t.dash.maintenance.inPeriod} />
-        <StatCard label={t.dash.maintenance.moneySpent} value={fmt(spent)} hint={t.dash.maintenance.repairs} />
-        <StatCard
-          label={t.dash.maintenance.averageDelay}
-          value={`${avgDelay} ${t.dash.common.days}`}
-          hint={t.dash.maintenance.reportToFix}
-        />
-      </div>
+      <Tabs
+        active={view}
+        onChange={setView}
+        tabs={[
+          { key: "tickets", label: t.dash.maintenance.tabs.tickets, count: buildingTickets.length },
+          {
+            key: "technicians",
+            label: t.dash.maintenance.tabs.technicians,
+            count: technicians.length,
+          },
+        ]}
+      />
 
-      <div className="mt-6 rounded-3xl border border-white/70 bg-white/55 shadow-lg shadow-azure-900/5 backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.05] dark:shadow-none">
-        <div className="flex flex-wrap items-center justify-between gap-4 p-6">
-          <p className="text-lg font-bold text-azure-950 dark:text-white">
-            {t.dash.maintenance.tickets}{" "}
-            <span className="ml-1 text-sm font-medium text-onyx/40 dark:text-white/40">
-              {t.dash.common.total} {filtered.length}
-            </span>
-          </p>
-          <div className="flex flex-wrap items-center gap-3">
-            <select value={month} onChange={(e) => setMonth(e.target.value)} className={selectCls} aria-label={t.dash.common.allMonths}>
-              <option value="all">{t.dash.common.allMonths}</option>
-              {months.map((mm) => (
-                <option key={mm} value={mm}>{ts("months", mm)}</option>
-              ))}
-            </select>
-            <select value={year} onChange={(e) => setYear(e.target.value)} className={selectCls} aria-label={t.dash.common.allYears}>
-              <option value="all">{t.dash.common.allYears}</option>
-              {years.map((y) => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
-            <select value={status} onChange={(e) => setStatus(e.target.value)} className={selectCls} aria-label={t.dash.common.allStatuses}>
-              <option value="all">{t.dash.common.allStatuses}</option>
-              <option value="new">{t.dash.status.new}</option>
-              <option value="assigned">{t.dash.status.assigned}</option>
-              <option value="in-progress">{t.dash.status.inProgress}</option>
-              <option value="resolved">{t.dash.status.resolved}</option>
-            </select>
-          </div>
+      {view === "technicians" ? (
+        <TechniciansPanel adding={addingTech} onCloseAdd={() => setAddingTech(false)} />
+      ) : (
+        <>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard emphasis label={t.dash.maintenance.openTickets} value={String(open.length)} hint={t.dash.maintenance.inPeriod} />
+          <StatCard label={t.dash.maintenance.resolved} value={String(resolved.length)} hint={t.dash.maintenance.inPeriod} />
+          <StatCard label={t.dash.maintenance.moneySpent} value={fmt(spent)} hint={t.dash.maintenance.repairs} />
+          <StatCard
+            label={t.dash.maintenance.averageDelay}
+            value={`${avgDelay} ${t.dash.common.days}`}
+            hint={t.dash.maintenance.reportToFix}
+          />
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[1000px] text-left text-sm">
-            <thead>
-              <tr className="border-y border-white/60 bg-white/40 text-xs text-onyx/45 dark:border-white/8 dark:bg-white/[0.03] dark:text-white/40">
-                <th className="px-6 py-3.5 font-semibold">{t.dash.maintenance.ticket}</th>
-                <th className="py-3.5 font-semibold">{t.dash.maintenance.tenant}</th>
-                <th className="py-3.5 font-semibold">{t.dash.maintenance.apartment}</th>
-                <th className="py-3.5 font-semibold">{t.dash.maintenance.technician}</th>
-                <th className="py-3.5 font-semibold">{t.dash.maintenance.status}</th>
-                <th className="py-3.5 font-semibold">{t.dash.maintenance.cost}</th>
-                <th className="py-3.5 font-semibold">{t.dash.maintenance.delay}</th>
-                <th className="py-3.5 pr-6 font-semibold">{t.dash.rent.action}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="px-6 py-10 text-center text-onyx/45 dark:text-white/45">
-                    {t.dash.maintenance.empty}
-                  </td>
+        <div className="mt-6 rounded-3xl border border-white/70 bg-white/55 shadow-lg shadow-azure-900/5 backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.05] dark:shadow-none">
+          <div className="flex flex-wrap items-center justify-between gap-4 p-6">
+            <p className="text-lg font-bold text-azure-950 dark:text-white">
+              {t.dash.maintenance.tickets}{" "}
+              <span className="ml-1 text-sm font-medium text-onyx/40 dark:text-white/40">
+                {t.dash.common.total} {filtered.length}
+              </span>
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <select value={month} onChange={(e) => setMonth(e.target.value)} className={selectCls} aria-label={t.dash.common.allMonths}>
+                <option value="all">{t.dash.common.allMonths}</option>
+                {months.map((mm) => (
+                  <option key={mm} value={mm}>{ts("months", mm)}</option>
+                ))}
+              </select>
+              <select value={year} onChange={(e) => setYear(e.target.value)} className={selectCls} aria-label={t.dash.common.allYears}>
+                <option value="all">{t.dash.common.allYears}</option>
+                {years.map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+              <select value={status} onChange={(e) => setStatus(e.target.value)} className={selectCls} aria-label={t.dash.common.allStatuses}>
+                <option value="all">{t.dash.common.allStatuses}</option>
+                <option value="new">{t.dash.status.new}</option>
+                <option value="assigned">{t.dash.status.assigned}</option>
+                <option value="in-progress">{t.dash.status.inProgress}</option>
+                <option value="resolved">{t.dash.status.resolved}</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1000px] text-left text-sm">
+              <thead>
+                <tr className="border-y border-white/60 bg-white/40 text-xs text-onyx/45 dark:border-white/8 dark:bg-white/[0.03] dark:text-white/40">
+                  <th className="px-6 py-3.5 font-semibold">{t.dash.maintenance.ticket}</th>
+                  <th className="py-3.5 pr-4 font-semibold">{t.dash.maintenance.tenant}</th>
+                  <th className="py-3.5 pr-4 font-semibold">{t.dash.maintenance.apartment}</th>
+                  <th className="py-3.5 pr-4 font-semibold">{t.dash.maintenance.technician}</th>
+                  <th className="py-3.5 pr-4 font-semibold">{t.dash.maintenance.status}</th>
+                  <th className="py-3.5 pr-4 font-semibold">{t.dash.maintenance.cost}</th>
+                  <th className="py-3.5 pr-4 font-semibold">{t.dash.maintenance.delay}</th>
+                  <th className="py-3.5 pr-6 font-semibold">{t.dash.rent.action}</th>
                 </tr>
-              )}
-              {filtered.map((x) => (
-                <tr key={x.id} className="border-b border-azure-900/5 last:border-0 dark:border-white/5">
-                  <td className="px-6 py-4">
-                    <p className="font-bold text-azure-950 dark:text-white">{ts("tickets", x.title)}</p>
-                    <div className="mt-1 flex items-center gap-2">
-                      <span className="text-xs text-onyx/40 dark:text-white/40">{x.id}</span>
-                      <ViaBadge via={x.reportedVia} />
-                    </div>
-                  </td>
-                  <td className="py-4 pr-4">
-                    {x.tenant ? (
-                      <div className="flex items-center gap-2.5">
-                        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-azure-800 text-[10px] font-bold text-soft-500">
-                          {x.tenant.split(" ").map((w) => w[0]).join("")}
-                        </span>
-                        <span className="whitespace-nowrap text-onyx/75 dark:text-white/75">{x.tenant}</span>
+              </thead>
+              <tbody>
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="px-6 py-10 text-center text-onyx/45 dark:text-white/45">
+                      {t.dash.maintenance.empty}
+                    </td>
+                  </tr>
+                )}
+                {filtered.map((x) => (
+                  <tr key={x.id} className="border-b border-azure-900/5 last:border-0 dark:border-white/5">
+                    <td className="px-6 py-4">
+                      <p className="font-bold text-azure-950 dark:text-white">{ts("tickets", x.title)}</p>
+                      <div className="mt-1 flex items-center gap-2">
+                        <span className="text-xs text-onyx/40 dark:text-white/40">{x.id}</span>
+                        <ViaBadge via={x.reportedVia} />
                       </div>
-                    ) : (
-                      <span className="text-onyx/40 dark:text-white/40">{t.dash.maintenance.building}</span>
-                    )}
-                  </td>
-                  <td className="whitespace-nowrap py-4 pr-4 font-semibold text-azure-950 dark:text-white">
-                    {ts("apartments", x.apartment)}
-                  </td>
-                  <td className="whitespace-nowrap py-4 pr-4 text-onyx/70 dark:text-white/70">
-                    {x.assignee ?? (
-                      <span className="text-onyx/35 dark:text-white/35">{t.dash.maintenance.unassigned}</span>
-                    )}
-                  </td>
-                  <td className="py-4 pr-4">
-                    <TicketChip status={x.status as TicketStatus} />
-                  </td>
-                  <td className="whitespace-nowrap py-4 pr-4 font-bold text-azure-950 dark:text-white">
-                    {x.cost !== undefined ? (
-                      fmt(x.cost)
-                    ) : (
-                      <span className="font-medium text-onyx/40 dark:text-white/40">
-                        {t.dash.common.pending}
-                      </span>
-                    )}
-                  </td>
-                  <td className="whitespace-nowrap py-4 pr-4 text-onyx/60 dark:text-white/60">
-                    {x.daysOpen} {x.daysOpen === 1 ? t.dash.common.day : t.dash.common.days}
-                  </td>
-                  <td className="py-4 pr-6">
-                    <div className="flex flex-wrap items-center gap-2">
-                      {x.status !== "resolved" && (
-                        <>
-                          <button
-                            onClick={() => setAssigning({ ticket: x, reassign: Boolean(x.assignee) })}
-                            className="whitespace-nowrap rounded-xl border border-azure-900/15 px-3.5 py-1.5 text-xs font-semibold text-azure-600 transition hover:bg-azure-900/5 dark:border-white/15 dark:text-soft-500 dark:hover:bg-white/10"
-                          >
-                            {x.assignee ? t.dash.maintenance.reassign : t.dash.maintenance.assign}
-                          </button>
-                          <button
-                            onClick={() => setResolving(x)}
-                            className="whitespace-nowrap rounded-xl bg-onyx px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-azure-900 dark:bg-white dark:text-onyx dark:hover:bg-soft-400"
-                          >
-                            {t.dash.maintenance.resolve}
-                          </button>
+                    </td>
+                    <td className="py-4 pr-4">
+                      {x.tenant ? (
+                        <div className="flex items-center gap-2.5">
+                          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-azure-800 text-[10px] font-bold text-soft-500">
+                            {x.tenant.split(" ").map((w) => w[0]).join("")}
+                          </span>
+                          <span className="whitespace-nowrap text-onyx/75 dark:text-white/75">{x.tenant}</span>
+                        </div>
+                      ) : (
+                        <span className="text-onyx/40 dark:text-white/40">{t.dash.maintenance.building}</span>
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap py-4 pr-4 font-semibold text-azure-950 dark:text-white">
+                      {ts("apartments", x.apartment)}
+                    </td>
+                    <td className="whitespace-nowrap py-4 pr-4 text-onyx/70 dark:text-white/70">
+                      {x.assignee ?? (
+                        <span className="text-onyx/35 dark:text-white/35">{t.dash.maintenance.unassigned}</span>
+                      )}
+                    </td>
+                    <td className="py-4 pr-4">
+                      <TicketChip status={x.status as TicketStatus} />
+                    </td>
+                    <td className="whitespace-nowrap py-4 pr-4 font-bold text-azure-950 dark:text-white">
+                      {x.cost !== undefined ? (
+                        fmt(x.cost)
+                      ) : (
+                        <span className="font-medium text-onyx/40 dark:text-white/40">
+                          {t.dash.common.pending}
+                        </span>
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap py-4 pr-4 text-onyx/60 dark:text-white/60">
+                      {x.daysOpen} {x.daysOpen === 1 ? t.dash.common.day : t.dash.common.days}
+                    </td>
+                    <td className="py-4 pr-6">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {x.status !== "resolved" && (
+                          <>
+                            <button
+                              onClick={() => setAssigning({ ticket: x, reassign: Boolean(x.assignee) })}
+                              className="whitespace-nowrap rounded-xl border border-azure-900/15 px-3.5 py-1.5 text-xs font-semibold text-azure-600 transition hover:bg-azure-900/5 dark:border-white/15 dark:text-soft-500 dark:hover:bg-white/10"
+                            >
+                              {x.assignee ? t.dash.maintenance.reassign : t.dash.maintenance.assign}
+                            </button>
+                            <button
+                              onClick={() => setResolving(x)}
+                              className="whitespace-nowrap rounded-xl bg-onyx px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-azure-900 dark:bg-white dark:text-onyx dark:hover:bg-soft-400"
+                            >
+                              {t.dash.maintenance.resolve}
+                            </button>
                         </>
                       )}
                       <button
@@ -504,6 +535,8 @@ export default function MaintenancePage() {
           </table>
         </div>
       </div>
+        </>
+      )}
 
       {creating && <NewTicketModal onClose={() => setCreating(false)} />}
       {assigning && (

@@ -7,11 +7,14 @@ import { fmt, type RentStatus } from "@/lib/data";
 import { useBuilding } from "@/lib/building-context";
 import { useStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n/context";
-import { PageTitle, RentChip } from "@/components/dashboard/ui";
+import { PageTitle, RentChip, StatCard, Tabs } from "@/components/dashboard/ui";
 import { ReceiptModal, type ReceiptData } from "@/components/dashboard/ReceiptModal";
 import { Field, Modal, ModalActions, fieldCls } from "@/components/dashboard/Modal";
 
-type Tab = "all" | RentStatus;
+type Tab = "all" | RentStatus | "tenants";
+
+const selectCls =
+  "rounded-2xl border border-white/70 bg-white/60 px-4 py-2.5 text-sm font-semibold text-azure-950 backdrop-blur-xl outline-none transition hover:bg-azure-900/5 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10 dark:[&>option]:bg-onyx";
 
 function RecordPaymentModal({ onClose }: { onClose: () => void }) {
   const { t, f, s: ts } = useI18n();
@@ -124,6 +127,202 @@ function RecordPaymentModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+/**
+ * Tenant directory for the building, narrowed by period and by apartment.
+ * The period drives the numbers: what each tenant was charged and what they
+ * actually settled between the chosen month and year.
+ */
+function TenantsPanel() {
+  const { building } = useBuilding();
+  const { t, f, s: ts, path } = useI18n();
+
+  const [month, setMonth] = useState("all");
+  const [year, setYear] = useState("all");
+  const [apartment, setApartment] = useState("all");
+
+  const leased = building.apartments.filter((a) => a.tenant);
+  const tn = t.dash.rent.tenants;
+
+  // Payment periods are stored as "Aug 2026", so both filters read off one field.
+  const periods = leased.flatMap((a) => a.payments.map((p) => p.month.split(" ")));
+  const months = [...new Set(periods.map(([m]) => m))];
+  const years = [...new Set(periods.map(([, y]) => y))].sort((a, b) => Number(b) - Number(a));
+
+  const rows = useMemo(
+    () =>
+      leased
+        .filter((a) => apartment === "all" || a.id === apartment)
+        .map((a) => {
+          const inPeriod = a.payments.filter((p) => {
+            const [pm, py] = p.month.split(" ");
+            return (month === "all" || pm === month) && (year === "all" || py === year);
+          });
+          const collected = inPeriod
+            .filter((p) => p.status === "paid")
+            .reduce((sum, p) => sum + p.amount, 0);
+          const charged = inPeriod.reduce((sum, p) => sum + p.amount, 0);
+          const status: RentStatus = inPeriod.some((p) => p.status === "overdue")
+            ? "overdue"
+            : inPeriod.some((p) => p.status === "pending")
+              ? "pending"
+              : inPeriod.length > 0
+                ? "paid"
+                : a.rentStatus;
+          return { apt: a, inPeriod, collected, outstanding: charged - collected, status };
+        })
+        // A tenant with nothing in the chosen period is not part of that period.
+        .filter((r) => (month === "all" && year === "all") || r.inPeriod.length > 0),
+    [leased, month, year, apartment]
+  );
+
+  const collected = rows.reduce((sum, r) => sum + r.collected, 0);
+  const outstanding = rows.reduce((sum, r) => sum + r.outstanding, 0);
+
+  return (
+    <>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <StatCard emphasis label={tn.count} value={String(rows.length)} hint={tn.inPeriod} />
+        <StatCard label={tn.collected} value={fmt(collected)} hint={tn.inPeriod} />
+        <StatCard label={tn.outstanding} value={fmt(outstanding)} hint={tn.inPeriod} />
+      </div>
+
+      <div className="mt-6 rounded-3xl border border-white/70 bg-white/55 shadow-lg shadow-azure-900/5 backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.05] dark:shadow-none">
+        <div className="flex flex-wrap items-center justify-between gap-4 p-6">
+          <p className="text-lg font-bold text-azure-950 dark:text-white">
+            {tn.title}{" "}
+            <span className="ml-1 text-sm font-medium text-onyx/40 dark:text-white/40">
+              {t.dash.common.total} {rows.length}
+            </span>
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <select
+              value={month}
+              onChange={(e) => setMonth(e.target.value)}
+              className={selectCls}
+              aria-label={t.dash.common.allMonths}
+            >
+              <option value="all">{t.dash.common.allMonths}</option>
+              {months.map((mm) => (
+                <option key={mm} value={mm}>{ts("months", mm)}</option>
+              ))}
+            </select>
+            <select
+              value={year}
+              onChange={(e) => setYear(e.target.value)}
+              className={selectCls}
+              aria-label={t.dash.common.allYears}
+            >
+              <option value="all">{t.dash.common.allYears}</option>
+              {years.map((y) => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+            <select
+              value={apartment}
+              onChange={(e) => setApartment(e.target.value)}
+              className={selectCls}
+              aria-label={tn.allApartments}
+            >
+              <option value="all">{tn.allApartments}</option>
+              {leased.map((a) => (
+                <option key={a.id} value={a.id}>{ts("apartments", a.label)}</option>
+              ))}
+            </select>
+            <button
+              onClick={() => {
+                setMonth("all");
+                setYear("all");
+                setApartment("all");
+              }}
+              className="flex items-center gap-2 rounded-2xl border border-white/70 bg-white/60 px-4 py-2.5 text-sm font-semibold text-azure-950 backdrop-blur-xl transition hover:bg-azure-900/5 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" />
+              </svg>
+              {t.dash.common.reset}
+            </button>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[980px] text-left text-sm">
+            <thead>
+              <tr className="border-y border-white/60 bg-white/40 text-xs text-onyx/45 dark:border-white/8 dark:bg-white/[0.03] dark:text-white/40">
+                <th className="px-6 py-3.5 font-semibold">{t.dash.rent.tenantName}</th>
+                <th className="py-3.5 font-semibold">{tn.phone}</th>
+                <th className="py-3.5 font-semibold">{t.dash.rent.apartment}</th>
+                <th className="py-3.5 font-semibold">{tn.since}</th>
+                <th className="py-3.5 font-semibold">{t.dash.rent.rent}</th>
+                <th className="py-3.5 font-semibold">{tn.collected}</th>
+                <th className="py-3.5 font-semibold">{tn.periodStatus}</th>
+                <th className="py-3.5 pr-6 font-semibold">{t.dash.rent.action}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="px-6 py-10 text-center text-onyx/45 dark:text-white/45">
+                    {tn.empty}
+                  </td>
+                </tr>
+              )}
+              {rows.map(({ apt, inPeriod, collected: paid, status }) => (
+                <tr key={apt.id} className="border-b border-azure-900/5 last:border-0 dark:border-white/5">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-azure-800 text-[11px] font-bold text-soft-500">
+                        {apt.tenant!.name.split(" ").map((w) => w[0]).join("")}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="whitespace-nowrap font-bold text-azure-950 dark:text-white">
+                          {apt.tenant!.name}
+                        </p>
+                        <p className="text-xs text-onyx/45 dark:text-white/45">
+                          {apt.cycle === "monthly" ? t.dash.rent.monthly : t.dash.rent.yearly} ·{" "}
+                          {f(inPeriod.length === 1 ? tn.paymentsCountOne : tn.paymentsCount, {
+                            count: inPeriod.length,
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="whitespace-nowrap py-4 pr-4 text-onyx/70 dark:text-white/70">
+                    {apt.tenant!.phone}
+                  </td>
+                  <td className="whitespace-nowrap py-4 pr-4 font-semibold text-azure-950 dark:text-white">
+                    {ts("apartments", apt.label)}
+                  </td>
+                  <td className="whitespace-nowrap py-4 pr-4 text-onyx/60 dark:text-white/60">
+                    {apt.tenant!.since}
+                  </td>
+                  <td className="whitespace-nowrap py-4 pr-4 font-bold text-azure-950 dark:text-white">
+                    {fmt(apt.rent)}
+                  </td>
+                  <td className="whitespace-nowrap py-4 pr-4 font-bold text-azure-950 dark:text-white">
+                    {fmt(paid)}
+                  </td>
+                  <td className="py-4 pr-4">
+                    <RentChip status={status} />
+                  </td>
+                  <td className="py-4 pr-6">
+                    <Link
+                      href={path(`/dashboard/apartments/${apt.id}`)}
+                      className="rounded-xl bg-onyx px-5 py-2 text-sm font-semibold text-white transition hover:bg-azure-900 dark:bg-white dark:text-onyx dark:hover:bg-soft-400"
+                    >
+                      {t.dash.common.view}
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function RentPage() {
   const { building } = useBuilding();
   const { markReminded, remindedKeys, notify } = useStore();
@@ -151,17 +350,18 @@ export default function RentPage() {
     () =>
       leased.filter(
         (a) =>
-          (tab === "all" || a.rentStatus === tab) &&
+          (tab === "all" || tab === "tenants" || a.rentStatus === tab) &&
           a.tenant!.name.toLowerCase().includes(search.toLowerCase())
       ),
     [leased, tab, search]
   );
 
-  const tabs: { key: Tab; label: string }[] = [
-    { key: "all", label: t.dash.rent.tabs.all },
-    { key: "paid", label: t.dash.rent.tabs.paid },
-    { key: "pending", label: t.dash.rent.tabs.pending },
-    { key: "overdue", label: t.dash.rent.tabs.overdue },
+  const tabs: { key: Tab; label: string; count: number }[] = [
+    { key: "all", label: t.dash.rent.tabs.all, count: counts.all },
+    { key: "paid", label: t.dash.rent.tabs.paid, count: counts.paid },
+    { key: "pending", label: t.dash.rent.tabs.pending, count: counts.pending },
+    { key: "overdue", label: t.dash.rent.tabs.overdue, count: counts.overdue },
+    { key: "tenants", label: t.dash.rent.tabs.tenants, count: leased.length },
   ];
 
   const exportCsv = () => {
@@ -225,34 +425,11 @@ export default function RentPage() {
         }
       />
 
-      <div className="mb-6 flex gap-7 overflow-x-auto border-b border-azure-900/10 dark:border-white/10">
-        {tabs.map((x) => {
-          const active = tab === x.key;
-          return (
-            <button
-              key={x.key}
-              onClick={() => setTab(x.key)}
-              className={`-mb-px flex shrink-0 items-center gap-2 border-b-2 pb-3 text-[15px] font-semibold transition ${
-                active
-                  ? "border-azure-800 text-azure-950 dark:border-soft-500 dark:text-white"
-                  : "border-transparent text-onyx/45 hover:text-azure-950 dark:text-white/45 dark:hover:text-white"
-              }`}
-            >
-              {x.label}
-              <span
-                className={`rounded-full px-2 py-0.5 text-xs font-bold ${
-                  active
-                    ? "bg-soft-500 text-azure-950"
-                    : "bg-azure-900/8 text-onyx/50 dark:bg-white/10 dark:text-white/50"
-                }`}
-              >
-                {counts[x.key]}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      <Tabs tabs={tabs} active={tab} onChange={setTab} />
 
+      {tab === "tenants" ? (
+        <TenantsPanel />
+      ) : (
       <div className="rounded-3xl border border-white/70 bg-white/55 shadow-lg shadow-azure-900/5 backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.05] dark:shadow-none">
         <div className="flex flex-wrap items-center justify-between gap-4 p-6">
           <p className="text-lg font-bold text-azure-950 dark:text-white">
@@ -407,6 +584,7 @@ export default function RentPage() {
           </table>
         </div>
       </div>
+      )}
 
       {receipt && <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />}
       {recording && <RecordPaymentModal onClose={() => setRecording(false)} />}
