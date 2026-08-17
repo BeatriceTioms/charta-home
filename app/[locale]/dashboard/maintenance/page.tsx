@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { fmt, type Ticket, type TicketStatus } from "@/lib/data";
+import { byOpenedDesc, fmt, type Ticket, type TicketStatus } from "@/lib/data";
 import { useBuilding } from "@/lib/building-context";
 import { useStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n/context";
@@ -324,12 +324,14 @@ export default function MaintenancePage() {
 
   const filtered = useMemo(
     () =>
-      buildingTickets.filter(
-        (x) =>
-          (month === "all" || x.month === month) &&
-          (year === "all" || x.year === Number(year)) &&
-          (status === "all" || x.status === status)
-      ),
+      buildingTickets
+        .filter(
+          (x) =>
+            (month === "all" || x.month === month) &&
+            (year === "all" || x.year === Number(year)) &&
+            (status === "all" || x.status === status)
+        )
+        .sort(byOpenedDesc),
     [buildingTickets, month, year, status]
   );
 

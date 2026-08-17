@@ -137,6 +137,9 @@ described in the architecture notes; add it when you hire your first caretaker.
 
 ## What is not done yet
 
+The full gap list, with what has been verified and in what order to tackle the
+rest, lives in [go-live-checklist.md](./go-live-checklist.md). In short:
+
 - The dashboard pages still read from `lib/store.tsx` (the session store).
   `lib/supabase/queries.ts` and `lib/supabase/actions.ts` are the drop in
   replacements, one page at a time.

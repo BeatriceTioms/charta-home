@@ -1,11 +1,13 @@
 import { createClient } from "./server";
 import type {
+  ApartmentPhotoRow,
   ApartmentState,
   BuildingPerformance,
   BuildingRow,
   ChargeStatusRow,
   EventRow,
   SubscriptionRow,
+  TechnicianPerformance,
   TicketRow,
 } from "./types";
 
@@ -100,4 +102,44 @@ export async function getSubscription(): Promise<SubscriptionRow | null> {
   const supabase = await createClient();
   const { data } = await supabase.from("subscriptions").select("*").maybeSingle();
   return data ?? null;
+}
+
+/** Powers the technicians tab: jobs done, money paid, average delay. */
+export async function getTechnicianPerformance(): Promise<TechnicianPerformance[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("v_technician_performance")
+    .select("*")
+    .order("full_name");
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getApartmentPhotos(apartmentId: string): Promise<ApartmentPhotoRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("apartment_photos")
+    .select("*")
+    .eq("apartment_id", apartmentId)
+    .order("position");
+  if (error) throw error;
+  return data ?? [];
+}
+
+/**
+ * The photo bucket is private, so the browser needs a short lived signed URL
+ * rather than a public one. An hour is long enough for a dashboard session.
+ */
+export async function signPhotoUrls(paths: string[]): Promise<Record<string, string>> {
+  if (paths.length === 0) return {};
+  const supabase = await createClient();
+  const { data, error } = await supabase.storage
+    .from("apartment-photos")
+    .createSignedUrls(paths, 60 * 60);
+  if (error) throw error;
+  const pairs: [string, string][] = [];
+  for (const entry of data ?? []) {
+    if (entry.path && entry.signedUrl) pairs.push([entry.path, entry.signedUrl]);
+  }
+  return Object.fromEntries(pairs);
 }

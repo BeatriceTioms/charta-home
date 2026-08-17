@@ -252,6 +252,57 @@ export const collections = [
 
 export const fmt = (n: number) => `$${n.toLocaleString("en-US")}`;
 
+/**
+ * The agency issuing receipts. Demo values today, read from the agencies row
+ * once a live Supabase project is connected.
+ */
+export const agency = {
+  name: "Horizon Realty",
+  address: "Immeuble Kakimbo, Quartier de la Corniche",
+  city: "Conakry",
+  country: "Guinée",
+  phone: "+224 620 00 00 00",
+  email: "contact@horizonrealty.gn",
+  registration: "RCCM/GC KAL/2024 B 01842",
+};
+
+const MONTH_KEYS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+/** Turns a "Aug 2026" rent period into a sortable number. */
+export const periodValue = (period: string) => {
+  const [m, y] = period.split(" ");
+  return Number(y) * 12 + MONTH_KEYS.indexOf(m);
+};
+
+/** Newest rent period first. */
+export const byPeriodDesc = (a: Payment, b: Payment) =>
+  periodValue(b.month) - periodValue(a.month);
+
+/**
+ * Payment dates are stored as "2 Jul" with the year living on the period, so
+ * they need stitching back together before any Date can read them.
+ */
+export const isoPaidOn = (paidOn: string | null, period: string) => {
+  if (!paidOn) return "";
+  const [day, mon] = paidOn.split(" ");
+  const index = MONTH_KEYS.indexOf(mon);
+  if (index < 0) return "";
+  const year = period.split(" ")[1];
+  return `${year}-${String(index + 1).padStart(2, "0")}-${day.padStart(2, "0")}`;
+};
+
+/** Turns a ticket's "28 Jul" plus its year into a sortable number. */
+export const ticketValue = (t: Ticket) => {
+  const [day, mon] = t.openedOn.split(" ");
+  return t.year * 10000 + (MONTH_KEYS.indexOf(mon) + 1) * 100 + Number(day);
+};
+
+/** Most recently opened ticket first. */
+export const byOpenedDesc = (a: Ticket, b: Ticket) => ticketValue(b) - ticketValue(a);
+
 export const getBuilding = (id: string) => buildings.find((b) => b.id === id);
 
 export const allApartments = () =>

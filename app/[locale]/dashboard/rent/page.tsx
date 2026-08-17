@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { fmt, type RentStatus } from "@/lib/data";
+import { byPeriodDesc, fmt, type RentStatus } from "@/lib/data";
 import { useBuilding } from "@/lib/building-context";
 import { useStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n/context";
@@ -164,6 +164,14 @@ export default function RentPage() {
     { key: "pending", label: t.dash.rent.tabs.pending, count: counts.pending },
     { key: "overdue", label: t.dash.rent.tabs.overdue, count: counts.overdue },
   ];
+
+  /** The most recent settled period for a lease, in the reader's language. */
+  const latestPaidPeriod = (a: (typeof leased)[number]) => {
+    const last = [...a.payments].filter((p) => p.status === "paid").sort(byPeriodDesc)[0];
+    if (!last) return "";
+    const [mm, yy] = last.month.split(" ");
+    return `${ts("months", mm)} ${yy}`;
+  };
 
   const exportCsv = () => {
     const header = [
@@ -342,11 +350,12 @@ export default function RentPage() {
                             onClick={() =>
                               setReceipt({
                                 tenant: a.tenant!.name,
+                                tenantPhone: a.tenant!.phone,
                                 apartment: ts("apartments", a.label),
                                 building: building.name,
                                 address: `${building.address}, ${ts("cities", building.city)}`,
                                 amount: a.rent,
-                                period: "Août 2026",
+                                period: latestPaidPeriod(a),
                                 paidOn: "2026-08-02",
                                 reference: `RCP-2026-08-${building.id.slice(0, 3).toUpperCase()}-${a.id.toUpperCase()}`,
                               })

@@ -174,6 +174,31 @@ export type TechnicianRow = {
   is_external: boolean;
 };
 
+export type ApartmentPhotoRow = {
+  id: string;
+  agency_id: string;
+  apartment_id: string;
+  storage_path: string;
+  caption: string | null;
+  position: number;
+  created_at: string;
+};
+
+export type TechnicianPerformance = {
+  technician_id: string;
+  agency_id: string;
+  full_name: string;
+  trade: string | null;
+  phone_e164: string | null;
+  is_external: boolean;
+  jobs_total: number;
+  jobs_resolved: number;
+  jobs_open: number;
+  total_paid: number;
+  avg_days_to_resolve: number | null;
+  last_job_at: string | null;
+};
+
 export type ReminderRuleRow = {
   id: string;
   agency_id: string;
@@ -246,6 +271,7 @@ export type Database = {
       residents: { Row: ResidentRow; Insert: Partial<ResidentRow>; Update: Partial<ResidentRow>; Relationships: [] };
       leases: { Row: LeaseRow; Insert: Partial<LeaseRow>; Update: Partial<LeaseRow>; Relationships: [] };
       technicians: { Row: TechnicianRow; Insert: Partial<TechnicianRow>; Update: Partial<TechnicianRow>; Relationships: [] };
+      apartment_photos: { Row: ApartmentPhotoRow; Insert: Partial<ApartmentPhotoRow>; Update: Partial<ApartmentPhotoRow>; Relationships: [] };
       reminder_rules: { Row: ReminderRuleRow; Insert: Partial<ReminderRuleRow>; Update: Partial<ReminderRuleRow>; Relationships: [] };
       reminder_events: { Row: ReminderEventRow; Insert: Partial<ReminderEventRow>; Update: Partial<ReminderEventRow>; Relationships: [] };
       ticket_messages: { Row: TicketMessageRow; Insert: Partial<TicketMessageRow>; Update: Partial<TicketMessageRow>; Relationships: [] };
@@ -263,6 +289,7 @@ export type Database = {
       v_apartment_state: { Row: ApartmentState; Relationships: [] };
       v_building_performance: { Row: BuildingPerformance; Relationships: [] };
       v_charge_status: { Row: ChargeStatusRow; Relationships: [] };
+      v_technician_performance: { Row: TechnicianPerformance; Relationships: [] };
     };
     Functions: {
       create_agency_for_current_user: {
@@ -300,6 +327,14 @@ export type Database = {
       };
       resolve_ticket: {
         Args: { target_ticket: string; final_cost?: number };
+        Returns: void;
+      };
+      assign_technician: {
+        Args: {
+          target_ticket: string;
+          target_technician: string;
+          estimated_cost?: number | null;
+        };
         Returns: void;
       };
       ensure_rent_charge: {

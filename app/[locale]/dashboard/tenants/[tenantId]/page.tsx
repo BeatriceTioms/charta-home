@@ -3,7 +3,14 @@
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import { fmt, type RentStatus, type TicketStatus } from "@/lib/data";
+import {
+  byOpenedDesc,
+  byPeriodDesc,
+  fmt,
+  isoPaidOn,
+  type RentStatus,
+  type TicketStatus,
+} from "@/lib/data";
 import { useBuilding } from "@/lib/building-context";
 import { useStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n/context";
@@ -44,26 +51,31 @@ export default function TenantPage() {
 
   const payments = useMemo(
     () =>
-      apartment.payments.filter((p) => {
-        const [pm, py] = p.month.split(" ");
-        return (
-          (month === "all" || pm === month) &&
-          (year === "all" || py === year) &&
-          (status === "all" || p.status === status)
-        );
-      }),
+      apartment.payments
+        .filter((p) => {
+          const [pm, py] = p.month.split(" ");
+          return (
+            (month === "all" || pm === month) &&
+            (year === "all" || py === year) &&
+            (status === "all" || p.status === status)
+          );
+        })
+        // Newest period first: the current month is what an agent looks for.
+        .sort(byPeriodDesc),
     [apartment.payments, month, year, status]
   );
 
   const myTickets = useMemo(
     () =>
-      tickets.filter(
-        (x) =>
-          x.buildingId === building.id &&
-          x.tenant === tenant.name &&
-          (month === "all" || x.month === month) &&
-          (year === "all" || String(x.year) === year)
-      ),
+      tickets
+        .filter(
+          (x) =>
+            x.buildingId === building.id &&
+            x.tenant === tenant.name &&
+            (month === "all" || x.month === month) &&
+            (year === "all" || String(x.year) === year)
+        )
+        .sort(byOpenedDesc),
     [tickets, building.id, tenant.name, month, year]
   );
 
@@ -77,15 +89,22 @@ export default function TenantPage() {
   const outstanding = payments.reduce((sum, p) => sum + p.amount, 0) - collected;
   const repairs = myTickets.reduce((sum, x) => sum + (x.cost ?? 0), 0);
 
-  const makeReceipt = (period: string, amount: number, paidOn: string | null): ReceiptData => ({
+  const makeReceipt = (
+    period: string,
+    amount: number,
+    paidOn: string | null,
+    /** Untranslated period, so the reference stays stable across languages. */
+    key: string
+  ): ReceiptData => ({
     tenant: tenant.name,
+    tenantPhone: tenant.phone,
     apartment: label,
     building: building.name,
     address: `${building.address}, ${ts("cities", building.city)}`,
     amount,
     period,
-    paidOn: paidOn ?? "",
-    reference: `RCP-${period.replace(" ", "-").toUpperCase()}-${apartment.id.toUpperCase()}`,
+    paidOn: isoPaidOn(paidOn, key),
+    reference: `RCP-${key.replace(" ", "-").toUpperCase()}-${apartment.id.toUpperCase()}`,
   });
 
   return (
@@ -270,7 +289,11 @@ export default function TenantPage() {
                     <td className="py-4 pr-6">
                       {p.status === "paid" ? (
                         <button
-                          onClick={() => setReceipt(makeReceipt(p.month, p.amount, p.paidOn))}
+                          onClick={() =>
+                            setReceipt(
+                              makeReceipt(`${ts("months", pm)} ${py}`, p.amount, p.paidOn, p.month)
+                            )
+                          }
                           className="rounded-xl border border-azure-900/15 px-4 py-2 text-sm font-semibold text-azure-950 transition hover:bg-azure-900/5 dark:border-white/15 dark:text-white dark:hover:bg-white/10"
                         >
                           {t.dash.rent.receipt}

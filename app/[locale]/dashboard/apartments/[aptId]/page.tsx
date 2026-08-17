@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
 import { useState } from "react";
-import { activity, fmt } from "@/lib/data";
+import { activity, byPeriodDesc, fmt } from "@/lib/data";
 import { useBuilding } from "@/lib/building-context";
 import { useStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n/context";
@@ -316,7 +316,7 @@ export default function ApartmentPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {[...apartment.payments].reverse().map((p, i) => (
+                    {[...apartment.payments].sort(byPeriodDesc).map((p, i) => (
                       <tr
                         key={`${p.month}-${i}`}
                         className="border-b border-azure-900/10 last:border-0 dark:border-white/10"
