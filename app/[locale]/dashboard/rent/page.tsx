@@ -19,8 +19,16 @@ function RecordPaymentModal({ onClose }: { onClose: () => void }) {
   const { recordPayment, notify } = useStore();
   const m = t.dash.rent.recordModal;
 
-  const owing = building.apartments.filter((a) => a.tenant && a.rentStatus !== "paid");
-  const [aptId, setAptId] = useState(owing[0]?.id ?? "");
+  // Any leased apartment can take a payment, not only the ones in arrears.
+  const leased = building.apartments.filter((a) => a.tenant);
+  const [query, setQuery] = useState("");
+  const [aptId, setAptId] = useState(
+    leased.find((a) => a.rentStatus !== "paid")?.id ?? leased[0]?.id ?? ""
+  );
+
+  const matches = leased.filter((a) =>
+    `${a.tenant!.name} ${a.label}`.toLowerCase().includes(query.trim().toLowerCase())
+  );
   const selected = building.apartments.find((a) => a.id === aptId);
 
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -40,20 +48,45 @@ function RecordPaymentModal({ onClose }: { onClose: () => void }) {
 
   return (
     <Modal title={m.title} subtitle={m.subtitle} onClose={onClose}>
-      {owing.length === 0 ? (
+      {leased.length === 0 ? (
         <p className="text-sm text-onyx/55 dark:text-white/55">{m.noLeases}</p>
       ) : (
         <form onSubmit={submit} className="space-y-4">
-          <Field label={m.lease}>
+          <Field label={m.searchTenant}>
+            <div className="flex items-center gap-2.5 rounded-2xl border border-azure-900/15 bg-white px-4 py-3 dark:border-white/15 dark:bg-white/5">
+              <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-onyx/35 dark:text-white/35" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" />
+              </svg>
+              <input
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  const first = leased.find((a) =>
+                    `${a.tenant!.name} ${a.label}`
+                      .toLowerCase()
+                      .includes(e.target.value.trim().toLowerCase())
+                  );
+                  if (first) setAptId(first.id);
+                }}
+                placeholder={m.searchTenant}
+                className="w-full bg-transparent text-[15px] text-onyx outline-none placeholder:text-onyx/30 dark:text-white dark:placeholder:text-white/30"
+              />
+            </div>
+          </Field>
+
+          <Field label={m.selectTenant}>
             <select
               name="lease"
               value={aptId}
               onChange={(e) => setAptId(e.target.value)}
-              className={fieldCls}
+              size={Math.min(5, Math.max(2, matches.length))}
+              className={`${fieldCls} py-2`}
             >
-              {owing.map((a) => (
+              {matches.length === 0 && <option disabled>{t.dash.common.noResults}</option>}
+              {matches.map((a) => (
                 <option key={a.id} value={a.id}>
-                  {ts("apartments", a.label)} · {a.tenant!.name} · {fmt(a.rent)}
+                  {a.tenant!.name} · {ts("apartments", a.label)} · {fmt(a.rent)}
+                  {a.rentStatus !== "paid" ? ` · ${t.dash.status[a.rentStatus]}` : ""}
                 </option>
               ))}
             </select>

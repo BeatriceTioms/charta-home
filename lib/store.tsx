@@ -11,10 +11,14 @@
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import {
   buildings as seedBuildings,
+  seedPhotos,
+  technicians as seedTechnicians,
   tickets as seedTickets,
   type Apartment,
+  type ApartmentPhoto,
   type Building,
   type RentStatus,
+  type Technician,
   type Ticket,
   type TicketStatus,
 } from "@/lib/data";
@@ -60,8 +64,25 @@ type StoreValue = {
     priority: "normal" | "high" | "urgent";
     tenant?: string;
   }) => void;
-  assignTicket: (ticketId: string, technician: string, cost?: number) => void;
+  updateTicket: (
+    ticketId: string,
+    patch: Partial<Pick<Ticket, "title" | "description" | "priority" | "apartment">>
+  ) => void;
+  deleteTicket: (ticketId: string) => void;
+  assignTicket: (ticketId: string, technicianId: string, cost?: number) => void;
   resolveTicket: (ticketId: string, cost: number) => void;
+
+  /* apartment photo gallery */
+  photosFor: (buildingId: string, apartmentId: string) => ApartmentPhoto[];
+  addPhoto: (buildingId: string, apartmentId: string, src: string, caption?: string) => void;
+  updatePhoto: (buildingId: string, apartmentId: string, photoId: string, patch: { src?: string; caption?: string }) => void;
+  deletePhoto: (buildingId: string, apartmentId: string, photoId: string) => void;
+
+  /* technicians */
+  technicians: Technician[];
+  addTechnician: (input: Omit<Technician, "id">) => void;
+  updateTechnician: (id: string, patch: Partial<Omit<Technician, "id">>) => void;
+  deleteTechnician: (id: string) => void;
 
   remindedKeys: string[];
 };
@@ -72,9 +93,23 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [buildings, setBuildings] = useState<Building[]>(() =>
-    seedBuildings.map((b) => ({ ...b, apartments: b.apartments.map((a) => ({ ...a })) }))
+    seedBuildings.map((b) => ({
+      ...b,
+      apartments: b.apartments.map((a, i) => ({
+        ...a,
+        photos:
+          a.photos ??
+          seedPhotos.default.map((src, n) => ({
+            id: `${b.id}-${a.id}-p${n}`,
+            src: n === 0 ? [b.interior, ...seedPhotos.default][i % 2 === 0 ? 0 : 1] ?? src : src,
+          })),
+      })),
+    }))
   );
   const [tickets, setTickets] = useState<Ticket[]>(() => seedTickets.map((t) => ({ ...t })));
+  const [technicians, setTechnicians] = useState<Technician[]>(() =>
+    seedTechnicians.map((t) => ({ ...t }))
+  );
   const [remindedKeys, setRemindedKeys] = useState<string[]>([]);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
@@ -200,11 +235,110 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const assignTicket = useCallback((ticketId: string, technician: string, cost?: number) => {
+  const updateTicket = useCallback<StoreValue["updateTicket"]>((ticketId, patch) => {
+    setTickets((list) => list.map((t) => (t.id === ticketId ? { ...t, ...patch } : t)));
+  }, []);
+
+  const deleteTicket = useCallback((ticketId: string) => {
+    setTickets((list) => list.filter((t) => t.id !== ticketId));
+  }, []);
+
+  const assignTicket = useCallback(
+    (ticketId: string, technicianId: string, cost?: number) => {
+      setTickets((list) =>
+        list.map((t) => {
+          if (t.id !== ticketId) return t;
+          const tech = technicians.find((x) => x.id === technicianId);
+          return {
+            ...t,
+            technicianId,
+            assignee: tech ? `${tech.name}` : t.assignee,
+            // Reassigning a resolved ticket keeps it resolved.
+            status: t.status === "resolved" ? t.status : ("assigned" as TicketStatus),
+            cost: cost ?? t.cost,
+          };
+        })
+      );
+    },
+    [technicians]
+  );
+
+  /* ---------------------------------------------------- photo gallery */
+
+  const photosFor = useCallback(
+    (buildingId: string, apartmentId: string) =>
+      buildings
+        .find((b) => b.id === buildingId)
+        ?.apartments.find((a) => a.id === apartmentId)?.photos ?? [],
+    [buildings]
+  );
+
+  const mutatePhotos = useCallback(
+    (
+      buildingId: string,
+      apartmentId: string,
+      fn: (photos: ApartmentPhoto[]) => ApartmentPhoto[]
+    ) =>
+      setBuildings((list) =>
+        list.map((b) =>
+          b.id !== buildingId
+            ? b
+            : {
+                ...b,
+                apartments: b.apartments.map((a) =>
+                  a.id === apartmentId ? { ...a, photos: fn(a.photos ?? []) } : a
+                ),
+              }
+        )
+      ),
+    []
+  );
+
+  const addPhoto = useCallback<StoreValue["addPhoto"]>(
+    (buildingId, apartmentId, src, caption) =>
+      mutatePhotos(buildingId, apartmentId, (photos) => [
+        ...photos,
+        { id: `p-${Date.now().toString(36)}`, src, caption },
+      ]),
+    [mutatePhotos]
+  );
+
+  const updatePhoto = useCallback<StoreValue["updatePhoto"]>(
+    (buildingId, apartmentId, photoId, patch) =>
+      mutatePhotos(buildingId, apartmentId, (photos) =>
+        photos.map((p) => (p.id === photoId ? { ...p, ...patch } : p))
+      ),
+    [mutatePhotos]
+  );
+
+  const deletePhoto = useCallback<StoreValue["deletePhoto"]>(
+    (buildingId, apartmentId, photoId) =>
+      mutatePhotos(buildingId, apartmentId, (photos) =>
+        photos.filter((p) => p.id !== photoId)
+      ),
+    [mutatePhotos]
+  );
+
+  /* ------------------------------------------------------ technicians */
+
+  const addTechnician = useCallback<StoreValue["addTechnician"]>((input) => {
+    setTechnicians((list) => [
+      ...list,
+      { ...input, id: `tech-${Date.now().toString(36)}` },
+    ]);
+  }, []);
+
+  const updateTechnician = useCallback<StoreValue["updateTechnician"]>((id, patch) => {
+    setTechnicians((list) => list.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+  }, []);
+
+  const deleteTechnician = useCallback((id: string) => {
+    setTechnicians((list) => list.filter((t) => t.id !== id));
+    // Unassign anything that pointed at them so no ticket is orphaned.
     setTickets((list) =>
       list.map((t) =>
-        t.id === ticketId
-          ? { ...t, assignee: technician, status: "assigned" as TicketStatus, cost: cost ?? t.cost }
+        t.technicianId === id
+          ? { ...t, technicianId: undefined, assignee: undefined }
           : t
       )
     );
@@ -230,13 +364,25 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       recordPayment,
       markReminded,
       addTicket,
+      updateTicket,
+      deleteTicket,
       assignTicket,
       resolveTicket,
+      photosFor,
+      addPhoto,
+      updatePhoto,
+      deletePhoto,
+      technicians,
+      addTechnician,
+      updateTechnician,
+      deleteTechnician,
       remindedKeys,
     }),
     [
       buildings, tickets, toasts, notify, dismissToast, addApartment, addLease,
-      recordPayment, markReminded, addTicket, assignTicket, resolveTicket, remindedKeys,
+      recordPayment, markReminded, addTicket, updateTicket, deleteTicket, assignTicket,
+      resolveTicket, photosFor, addPhoto, updatePhoto, deletePhoto, technicians,
+      addTechnician, updateTechnician, deleteTechnician, remindedKeys,
     ]
   );
 

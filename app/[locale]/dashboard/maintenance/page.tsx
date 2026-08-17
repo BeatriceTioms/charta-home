@@ -11,13 +11,6 @@ import { Field, Modal, ModalActions, fieldCls } from "@/components/dashboard/Mod
 const selectCls =
   "rounded-2xl border border-white/70 bg-white/60 px-4 py-2.5 text-sm font-semibold text-azure-950 backdrop-blur-xl outline-none transition hover:bg-azure-900/5 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10 dark:[&>option]:bg-onyx";
 
-const TECHNICIANS = [
-  { name: "B. Keita", trade: "plumber" },
-  { name: "S. Diop", trade: "locksmith" },
-  { name: "M. Fall", trade: "carpenter" },
-  { name: "A. Ndiaye", trade: "electrician" },
-];
-
 function NewTicketModal({ onClose }: { onClose: () => void }) {
   const { t, f, s: ts } = useI18n();
   const { building } = useBuilding();
@@ -95,42 +88,177 @@ function NewTicketModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-function AssignModal({ ticket, onClose }: { ticket: Ticket; onClose: () => void }) {
+/** Handles both first assignment and reassignment. */
+function AssignModal({
+  ticket,
+  reassign,
+  onClose,
+}: {
+  ticket: Ticket;
+  reassign: boolean;
+  onClose: () => void;
+}) {
   const { t, f, s: ts } = useI18n();
-  const { assignTicket, notify } = useStore();
-  const m = t.dash.maintenance.assignModal;
+  const { assignTicket, technicians, notify } = useStore();
+  const m = reassign ? t.dash.maintenance.reassignModal : t.dash.maintenance.assignModal;
+
+  const current = technicians.find(
+    (x) => x.id === ticket.technicianId || ticket.assignee?.startsWith(x.name)
+  );
+  const options = reassign ? technicians.filter((x) => x.id !== current?.id) : technicians;
+  const [techId, setTechId] = useState(options[0]?.id ?? "");
 
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const data = new FormData(e.currentTarget);
-    const name = String(data.get("technician") ?? TECHNICIANS[0].name);
-    const cost = Number(data.get("cost") ?? 0);
-    assignTicket(ticket.id, name, cost > 0 ? cost : undefined);
-    notify(f(m.assigned, { name }));
+    const tech = technicians.find((x) => x.id === techId);
+    if (!tech) return;
+    const cost = Number(new FormData(e.currentTarget).get("cost") ?? 0);
+    assignTicket(ticket.id, tech.id, cost > 0 ? cost : undefined);
+    notify(
+      reassign
+        ? f(t.dash.maintenance.reassignModal.reassigned, { name: tech.name })
+        : f(t.dash.maintenance.assignModal.assigned, { name: tech.name })
+    );
     onClose();
   };
 
   return (
     <Modal
       title={m.title}
-      subtitle={f(m.subtitle, { ticket: ts("tickets", ticket.title) })}
+      subtitle={
+        reassign
+          ? f(t.dash.maintenance.reassignModal.subtitle, {
+              ticket: ts("tickets", ticket.title),
+              current: current?.name ?? t.dash.maintenance.unassigned,
+            })
+          : f(t.dash.maintenance.assignModal.subtitle, { ticket: ts("tickets", ticket.title) })
+      }
       onClose={onClose}
     >
       <form onSubmit={submit} className="space-y-4">
-        <Field label={m.technician}>
-          <select name="technician" defaultValue={TECHNICIANS[0].name} className={fieldCls}>
-            {TECHNICIANS.map((tech) => (
-              <option key={tech.name} value={`${tech.name} (${ts("trades", tech.trade)})`}>
-                {tech.name} · {ts("trades", tech.trade)}
+        {reassign && current && (
+          <Field label={t.dash.maintenance.reassignModal.current}>
+            <div className="flex items-center gap-3 rounded-2xl border border-azure-900/10 bg-azure-900/5 px-4 py-3 dark:border-white/10 dark:bg-white/5">
+              <span className="grid h-9 w-9 place-items-center rounded-full bg-azure-800 text-[11px] font-bold text-soft-500">
+                {current.name.split(" ").map((w) => w[0]).join("").slice(0, 2)}
+              </span>
+              <span className="text-sm font-semibold text-azure-950 dark:text-white">
+                {current.name} · {ts("trades", current.trade) || current.trade}
+              </span>
+            </div>
+          </Field>
+        )}
+
+        <Field label={reassign ? t.dash.maintenance.reassignModal.newTech : t.dash.maintenance.assignModal.technician}>
+          <select
+            value={techId}
+            onChange={(e) => setTechId(e.target.value)}
+            className={fieldCls}
+          >
+            {options.length === 0 && <option disabled>{t.dash.technicians.empty}</option>}
+            {options.map((tech) => (
+              <option key={tech.id} value={tech.id}>
+                {tech.name} · {ts("trades", tech.trade) || tech.trade}
               </option>
             ))}
           </select>
         </Field>
-        <Field label={m.cost}>
-          <input name="cost" type="number" min={0} step={5} className={fieldCls} />
+
+        {!reassign && (
+          <Field label={t.dash.maintenance.assignModal.cost}>
+            <input name="cost" type="number" min={0} step={5} className={fieldCls} />
+          </Field>
+        )}
+
+        <ModalActions onCancel={onClose} submitLabel={m.submit} disabled={options.length === 0} />
+      </form>
+    </Modal>
+  );
+}
+
+function EditTicketModal({ ticket, onClose }: { ticket: Ticket; onClose: () => void }) {
+  const { t, f, s: ts } = useI18n();
+  const { building } = useBuilding();
+  const { updateTicket, notify } = useStore();
+  const m = t.dash.maintenance.editModal;
+
+  const submit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const data = new FormData(e.currentTarget);
+    const aptId = String(data.get("apartment") ?? "");
+    const apt = building.apartments.find((a) => a.id === aptId);
+    updateTicket(ticket.id, {
+      title: String(data.get("title") ?? ticket.title).trim() || ticket.title,
+      description: String(data.get("description") ?? ""),
+      priority: (data.get("priority") as "normal" | "high" | "urgent") ?? "normal",
+      apartment: apt ? apt.label : t.seed.commonArea,
+    });
+    notify(m.updated);
+    onClose();
+  };
+
+  const currentApt = building.apartments.find((a) => a.label === ticket.apartment);
+
+  return (
+    <Modal title={m.title} subtitle={f(m.subtitle, { ticket: ts("tickets", ticket.title) })} onClose={onClose}>
+      <form onSubmit={submit} className="space-y-4">
+        <Field label={t.dash.maintenance.newModal.titleField}>
+          <input name="title" defaultValue={ts("tickets", ticket.title)} className={fieldCls} />
+        </Field>
+        <Field label={t.dash.maintenance.newModal.apartment}>
+          <select name="apartment" defaultValue={currentApt?.id ?? ""} className={fieldCls}>
+            <option value="">{t.dash.maintenance.newModal.commonArea}</option>
+            {building.apartments.map((a) => (
+              <option key={a.id} value={a.id}>{ts("apartments", a.label)}</option>
+            ))}
+          </select>
+        </Field>
+        <Field label={t.dash.maintenance.newModal.description}>
+          <textarea
+            name="description"
+            rows={3}
+            defaultValue={ticket.description ?? ""}
+            className={`${fieldCls} resize-none`}
+          />
+        </Field>
+        <Field label={t.dash.maintenance.newModal.priority}>
+          <select name="priority" defaultValue={ticket.priority ?? "normal"} className={fieldCls}>
+            <option value="normal">{t.dash.maintenance.newModal.priorities.normal}</option>
+            <option value="high">{t.dash.maintenance.newModal.priorities.high}</option>
+            <option value="urgent">{t.dash.maintenance.newModal.priorities.urgent}</option>
+          </select>
         </Field>
         <ModalActions onCancel={onClose} submitLabel={m.submit} />
       </form>
+    </Modal>
+  );
+}
+
+function DeleteTicketModal({ ticket, onClose }: { ticket: Ticket; onClose: () => void }) {
+  const { t, f, s: ts } = useI18n();
+  const { deleteTicket, notify } = useStore();
+  const m = t.dash.maintenance.deleteConfirm;
+
+  return (
+    <Modal title={m.title} subtitle={f(m.subtitle, { ticket: ts("tickets", ticket.title) })} onClose={onClose}>
+      <div className="flex gap-3">
+        <button
+          onClick={() => {
+            deleteTicket(ticket.id);
+            notify(m.deleted);
+            onClose();
+          }}
+          className="flex-1 rounded-full bg-red-600 py-3 text-sm font-semibold text-white transition hover:bg-red-700"
+        >
+          {m.submit}
+        </button>
+        <button
+          onClick={onClose}
+          className="rounded-full border border-azure-900/15 px-6 py-3 text-sm font-semibold text-azure-800 transition hover:bg-azure-900/5 dark:border-white/15 dark:text-white dark:hover:bg-white/10"
+        >
+          {t.dash.common.cancel}
+        </button>
+      </div>
     </Modal>
   );
 }
@@ -180,8 +308,10 @@ export default function MaintenancePage() {
   const [year, setYear] = useState("all");
   const [status, setStatus] = useState("all");
   const [creating, setCreating] = useState(false);
-  const [assigning, setAssigning] = useState<Ticket | null>(null);
+  const [assigning, setAssigning] = useState<{ ticket: Ticket; reassign: boolean } | null>(null);
   const [resolving, setResolving] = useState<Ticket | null>(null);
+  const [editingTicket, setEditingTicket] = useState<Ticket | null>(null);
+  const [deleting, setDeleting] = useState<Ticket | null>(null);
 
   const buildingTickets = tickets.filter((x) => x.buildingId === building.id);
   const months = [...new Set(buildingTickets.map((x) => x.month))];
@@ -310,7 +440,7 @@ export default function MaintenancePage() {
                   </td>
                   <td className="whitespace-nowrap py-4 pr-4 text-onyx/70 dark:text-white/70">
                     {x.assignee ?? (
-                      <span className="text-onyx/35 dark:text-white/35">{t.dash.common.none}</span>
+                      <span className="text-onyx/35 dark:text-white/35">{t.dash.maintenance.unassigned}</span>
                     )}
                   </td>
                   <td className="py-4 pr-4">
@@ -329,28 +459,44 @@ export default function MaintenancePage() {
                     {x.daysOpen} {x.daysOpen === 1 ? t.dash.common.day : t.dash.common.days}
                   </td>
                   <td className="py-4 pr-6">
-                    {x.status === "resolved" ? (
-                      <span className="text-xs text-onyx/35 dark:text-white/35">
-                        {ts("months", x.month)} {x.year}
-                      </span>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        {!x.assignee && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      {x.status !== "resolved" && (
+                        <>
                           <button
-                            onClick={() => setAssigning(x)}
+                            onClick={() => setAssigning({ ticket: x, reassign: Boolean(x.assignee) })}
                             className="whitespace-nowrap rounded-xl border border-azure-900/15 px-3.5 py-1.5 text-xs font-semibold text-azure-600 transition hover:bg-azure-900/5 dark:border-white/15 dark:text-soft-500 dark:hover:bg-white/10"
                           >
-                            {t.dash.maintenance.assign}
+                            {x.assignee ? t.dash.maintenance.reassign : t.dash.maintenance.assign}
                           </button>
-                        )}
-                        <button
-                          onClick={() => setResolving(x)}
-                          className="whitespace-nowrap rounded-xl bg-onyx px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-azure-900 dark:bg-white dark:text-onyx dark:hover:bg-soft-400"
-                        >
-                          {t.dash.maintenance.resolve}
-                        </button>
-                      </div>
-                    )}
+                          <button
+                            onClick={() => setResolving(x)}
+                            className="whitespace-nowrap rounded-xl bg-onyx px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-azure-900 dark:bg-white dark:text-onyx dark:hover:bg-soft-400"
+                          >
+                            {t.dash.maintenance.resolve}
+                          </button>
+                        </>
+                      )}
+                      <button
+                        onClick={() => setEditingTicket(x)}
+                        aria-label={t.dash.maintenance.edit}
+                        title={t.dash.maintenance.edit}
+                        className="grid h-8 w-8 shrink-0 place-items-center rounded-xl border border-azure-900/15 text-onyx/60 transition hover:bg-azure-900/5 hover:text-azure-950 dark:border-white/15 dark:text-white/60 dark:hover:bg-white/10 dark:hover:text-white"
+                      >
+                        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => setDeleting(x)}
+                        aria-label={t.dash.maintenance.delete}
+                        title={t.dash.maintenance.delete}
+                        className="grid h-8 w-8 shrink-0 place-items-center rounded-xl border border-azure-900/15 text-red-600 transition hover:bg-red-50 dark:border-white/15 dark:hover:bg-red-500/10"
+                      >
+                        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6" />
+                        </svg>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -360,8 +506,16 @@ export default function MaintenancePage() {
       </div>
 
       {creating && <NewTicketModal onClose={() => setCreating(false)} />}
-      {assigning && <AssignModal ticket={assigning} onClose={() => setAssigning(null)} />}
+      {assigning && (
+        <AssignModal
+          ticket={assigning.ticket}
+          reassign={assigning.reassign}
+          onClose={() => setAssigning(null)}
+        />
+      )}
       {resolving && <ResolveModal ticket={resolving} onClose={() => setResolving(null)} />}
+      {editingTicket && <EditTicketModal ticket={editingTicket} onClose={() => setEditingTicket(null)} />}
+      {deleting && <DeleteTicketModal ticket={deleting} onClose={() => setDeleting(null)} />}
     </>
   );
 }

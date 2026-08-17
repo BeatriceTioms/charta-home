@@ -10,6 +10,7 @@ import { useStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n/context";
 import { Card, CardTitle, PageTitle, RentChip, StatCard, TicketChip } from "@/components/dashboard/ui";
 import { Field, Modal, ModalActions, fieldCls } from "@/components/dashboard/Modal";
+import { PhotoGallery } from "@/components/dashboard/PhotoGallery";
 
 const WEEK = [
   { day: 5, key: "wed" },
@@ -296,6 +297,8 @@ export default function ApartmentPage() {
               hint={t.dash.apartment.maintenance}
             />
           </div>
+
+          <PhotoGallery buildingId={building.id} apartmentId={apartment.id} />
 
           <Card>
             <CardTitle>{t.dash.apartment.paymentHistory}</CardTitle>

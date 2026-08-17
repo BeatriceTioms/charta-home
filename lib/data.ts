@@ -8,8 +8,20 @@ export type Payment = {
   status: RentStatus;
 };
 
+export type ApartmentPhoto = { id: string; src: string; caption?: string };
+
+export type Technician = {
+  id: string;
+  name: string;
+  trade: string;
+  phone: string;
+  isExternal: boolean;
+  since: string;
+};
+
 export type Apartment = {
   id: string;
+  photos?: ApartmentPhoto[];
   label: string;
   rooms: number;
   bathrooms: number;
@@ -38,6 +50,9 @@ export type Building = {
 
 export type Ticket = {
   id: string;
+  description?: string;
+  priority?: "normal" | "high" | "urgent";
+  technicianId?: string;
   title: string;
   buildingId: string;
   apartment: string;
@@ -268,3 +283,16 @@ export const activity: ActivityItem[] = [
   { buildingId: "andalouse", time: "10:30", title: "Garden care", detail: "Weekly landscaping visit", kind: "work", who: "MF" },
   { buildingId: "andalouse", time: "16:00", title: "Viewing", detail: "Court Suite · returning applicant", kind: "viewing", who: "AS" },
 ];
+
+
+export const technicians: Technician[] = [
+  { id: "tech-1", name: "B. Keita", trade: "plumber", phone: "+224 620 40 00 01", isExternal: true, since: "Jan 2024" },
+  { id: "tech-2", name: "S. Diop", trade: "locksmith", phone: "+224 620 40 00 02", isExternal: true, since: "Mar 2024" },
+  { id: "tech-3", name: "M. Fall", trade: "carpenter", phone: "+224 620 40 00 03", isExternal: false, since: "Sep 2023" },
+  { id: "tech-4", name: "A. Ndiaye", trade: "electrician", phone: "+224 620 40 00 04", isExternal: true, since: "Jun 2025" },
+];
+
+/** Photos each apartment starts with, keyed by building then apartment. */
+export const seedPhotos: Record<string, string[]> = {
+  default: ["/photos/interior-2.jpg", "/photos/interior-3.jpg", "/photos/interior-4.jpg"],
+};

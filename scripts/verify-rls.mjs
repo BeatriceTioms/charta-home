@@ -172,6 +172,64 @@ try {
 const [count] = await asUser(userA.id, `select count(*)::int as n from buildings where agency_id = '${a1.id}'`);
 check("plan limit stops the 6th building on Growth", limitHeld && count.n === 5, `${count.n} buildings, error raised=${limitHeld}`);
 
+// --- technicians, reassignment and performance
+const [techA] = await asUser(userA.id, `
+  insert into technicians (agency_id, full_name, trade, phone_e164)
+  values ('${a1.id}', 'B. Keita', 'plombier', '+224620400001') returning id`);
+const [techB] = await asUser(userA.id, `
+  insert into technicians (agency_id, full_name, trade, phone_e164)
+  values ('${a1.id}', 'S. Diop', 'serrurier', '+224620400002') returning id`);
+
+const [t2] = await asUser(userA.id, `
+  insert into tickets (agency_id, building_id, title, reported_via)
+  values ('${a1.id}', '${bA.id}', 'Serrure du portail bloquée', 'whatsapp') returning id`);
+
+await asUser(userA.id, `select public.assign_technician('${t2.id}', '${techA.id}', 40000)`);
+const [assigned] = await asUser(userA.id, `select technician_id, status, cost from tickets where id = '${t2.id}'`);
+check("assign_technician sets the technician and moves the ticket to assigned",
+  assigned.technician_id === techA.id && assigned.status === "assigned" && Number(assigned.cost) === 40000);
+
+await asUser(userA.id, `select public.assign_technician('${t2.id}', '${techB.id}')`);
+const [reassigned] = await asUser(userA.id, `select technician_id from tickets where id = '${t2.id}'`);
+const trail = await asUser(userA.id, `select body from ticket_messages where ticket_id = '${t2.id}' order by created_at`);
+check("a ticket can be reassigned, and the handover is recorded",
+  reassigned.technician_id === techB.id && trail.length === 2 && /Réassigné/.test(trail[1].body),
+  trail.map((r) => r.body).join(" then "));
+
+let crossAgencyTech = false;
+try {
+  const [otherTech] = await asUser(userB.id, `
+    insert into technicians (agency_id, full_name) values ('${a2.id}', 'Outsider') returning id`);
+  await asUser(userA.id, `select public.assign_technician('${t2.id}', '${otherTech.id}')`);
+} catch (err) {
+  crossAgencyTech = /not in this agency/.test(err.message);
+}
+check("a technician from another agency cannot be assigned", crossAgencyTech);
+
+await asUser(userA.id, `select public.resolve_ticket('${t2.id}', 60000)`);
+const [perfTech] = await asUser(userA.id, `
+  select full_name, jobs_total, jobs_resolved, total_paid
+  from v_technician_performance where technician_id = '${techB.id}'`);
+check("v_technician_performance counts jobs and money paid",
+  Number(perfTech.jobs_total) === 1 && Number(perfTech.jobs_resolved) === 1 && Number(perfTech.total_paid) === 60000,
+  `${perfTech.full_name}: ${perfTech.jobs_resolved} resolved, ${perfTech.total_paid} paid`);
+
+// --- apartment photo gallery keeps its order contiguous
+for (const [i, name] of ["a.jpg", "b.jpg", "c.jpg"].entries()) {
+  await asUser(userA.id, `
+    insert into apartment_photos (agency_id, apartment_id, storage_path, position)
+    values ('${a1.id}', '${apt.id}', '${a1.id}/${apt.id}/${name}', ${i})`);
+}
+await asUser(userA.id, `delete from apartment_photos where storage_path like '%a.jpg'`);
+const positions = await asUser(userA.id, `
+  select position from apartment_photos where apartment_id = '${apt.id}' order by position`);
+check("deleting a photo renumbers the gallery without gaps",
+  positions.map((r) => Number(r.position)).join(",") === "0,1",
+  `positions: ${positions.map((r) => r.position).join(",")}`);
+
+const photosVisibleToB = await asUser(userB.id, `select count(*)::int as n from apartment_photos`);
+check("photos are invisible to another agency", photosVisibleToB[0].n === 0);
+
 await db.close();
 
 const failed = results.filter((r) => !r.pass);
