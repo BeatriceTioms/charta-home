@@ -34,6 +34,11 @@ const ICONS = {
       <path d="M14.7 6.3a4.5 4.5 0 00-6 6L3 18l3 3 5.7-5.7a4.5 4.5 0 006-6L15 12l-3-3 2.7-2.7z" />
     </svg>
   ),
+  tenants: (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+    </svg>
+  ),
   settings: (
     <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="3" />
@@ -55,7 +60,10 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
     },
     {
       label: t.dash.groups.portfolio,
-      items: [{ label: t.dash.nav.apartments, href: "/dashboard/apartments", icon: ICONS.buildings }],
+      items: [
+        { label: t.dash.nav.apartments, href: "/dashboard/apartments", icon: ICONS.buildings },
+        { label: t.dash.nav.tenants, href: "/dashboard/tenants", icon: ICONS.tenants },
+      ],
     },
     {
       label: t.dash.groups.operations,
