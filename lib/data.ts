@@ -89,34 +89,34 @@ export const buildings: Building[] = [
     photo: "/photos/building-1.jpg",
     interior: "/photos/interior-2.jpg",
     amenities: ["Rooftop terrace", "Secure parking", "Concierge desk", "Fibre internet"],
-    incomeYtd: 128400,
-    expensesYtd: 21750,
+    incomeYtd: 128400000,
+    expensesYtd: 21750000,
     netYield: 9.2,
     apartments: [
       {
-        id: "a1", label: "Apt 1A", rooms: 3, bathrooms: 2, sqm: 92, rent: 1450, cycle: "monthly",
-        tenant: { name: "Mariam Diallo", phone: "+1 555 014 2231", since: "Mar 2024" },
-        rentStatus: "paid", netYield: 9.8, payments: history(1450),
+        id: "a1", label: "Apt 1A", rooms: 3, bathrooms: 2, sqm: 92, rent: 1450000, cycle: "monthly",
+        tenant: { name: "Mariam Diallo", phone: "+224 620 14 22 31", since: "Mar 2024" },
+        rentStatus: "paid", netYield: 9.8, payments: history(1450000),
       },
       {
-        id: "a2", label: "Apt 1B", rooms: 2, bathrooms: 1, sqm: 68, rent: 1100, cycle: "monthly",
-        tenant: { name: "Karim Osei", phone: "+1 555 014 8804", since: "Jan 2025" },
-        rentStatus: "paid", netYield: 9.1, payments: history(1100),
+        id: "a2", label: "Apt 1B", rooms: 2, bathrooms: 1, sqm: 68, rent: 1100000, cycle: "monthly",
+        tenant: { name: "Karim Osei", phone: "+224 620 14 88 04", since: "Jan 2025" },
+        rentStatus: "paid", netYield: 9.1, payments: history(1100000),
       },
       {
-        id: "a3", label: "Apt 2A", rooms: 3, bathrooms: 2, sqm: 95, rent: 1500, cycle: "yearly",
-        tenant: { name: "Sofia Benali", phone: "+1 555 019 3327", since: "Sep 2023" },
+        id: "a3", label: "Apt 2A", rooms: 3, bathrooms: 2, sqm: 95, rent: 1500000, cycle: "yearly",
+        tenant: { name: "Sofia Benali", phone: "+224 620 19 33 27", since: "Sep 2023" },
         rentStatus: "pending", netYield: 8.9,
-        payments: history(1500, ["paid", "paid", "paid", "paid", "paid", "pending"]),
+        payments: history(1500000, ["paid", "paid", "paid", "paid", "paid", "pending"]),
       },
       {
-        id: "a4", label: "Apt 2B", rooms: 1, bathrooms: 1, sqm: 44, rent: 780, cycle: "monthly",
-        tenant: { name: "Jonas Petit", phone: "+1 555 016 7719", since: "Jun 2025" },
+        id: "a4", label: "Apt 2B", rooms: 1, bathrooms: 1, sqm: 44, rent: 780000, cycle: "monthly",
+        tenant: { name: "Jonas Petit", phone: "+224 620 16 77 19", since: "Jun 2025" },
         rentStatus: "overdue", netYield: 8.2,
-        payments: history(780, ["paid", "paid", "paid", "overdue", "paid", "overdue"]),
+        payments: history(780000, ["paid", "paid", "paid", "overdue", "paid", "overdue"]),
       },
       {
-        id: "a5", label: "Apt 3A", rooms: 4, bathrooms: 3, sqm: 120, rent: 1950, cycle: "yearly",
+        id: "a5", label: "Apt 3A", rooms: 4, bathrooms: 3, sqm: 120, rent: 1950000, cycle: "yearly",
         rentStatus: "pending", netYield: 0, payments: [],
       },
     ],
@@ -129,28 +129,28 @@ export const buildings: Building[] = [
     photo: "/photos/building-4.jpg",
     interior: "/photos/interior-4.jpg",
     amenities: ["Sea view balconies", "Underground parking", "Backup generator"],
-    incomeYtd: 96200,
-    expensesYtd: 24900,
+    incomeYtd: 96200000,
+    expensesYtd: 24900000,
     netYield: 7.6,
     apartments: [
       {
-        id: "a1", label: "Apt 101", rooms: 2, bathrooms: 1, sqm: 70, rent: 1200, cycle: "monthly",
-        tenant: { name: "Awa Traoré", phone: "+1 555 021 5540", since: "Nov 2024" },
-        rentStatus: "paid", netYield: 7.9, payments: history(1200),
+        id: "a1", label: "Apt 101", rooms: 2, bathrooms: 1, sqm: 70, rent: 1200000, cycle: "monthly",
+        tenant: { name: "Awa Traoré", phone: "+224 620 21 55 40", since: "Nov 2024" },
+        rentStatus: "paid", netYield: 7.9, payments: history(1200000),
       },
       {
-        id: "a2", label: "Apt 102", rooms: 2, bathrooms: 1, sqm: 72, rent: 1250, cycle: "monthly",
-        tenant: { name: "Daniel Mensah", phone: "+1 555 023 8812", since: "Feb 2024" },
+        id: "a2", label: "Apt 102", rooms: 2, bathrooms: 1, sqm: 72, rent: 1250000, cycle: "monthly",
+        tenant: { name: "Daniel Mensah", phone: "+224 620 23 88 12", since: "Feb 2024" },
         rentStatus: "overdue", netYield: 7.1,
-        payments: history(1250, ["paid", "paid", "overdue", "paid", "paid", "overdue"]),
+        payments: history(1250000, ["paid", "paid", "overdue", "paid", "paid", "overdue"]),
       },
       {
-        id: "a3", label: "Apt 201", rooms: 3, bathrooms: 2, sqm: 88, rent: 1400, cycle: "yearly",
-        tenant: { name: "Leïla Haddad", phone: "+1 555 027 3390", since: "Aug 2022" },
-        rentStatus: "paid", netYield: 7.8, payments: history(1400),
+        id: "a3", label: "Apt 201", rooms: 3, bathrooms: 2, sqm: 88, rent: 1400000, cycle: "yearly",
+        tenant: { name: "Leïla Haddad", phone: "+224 620 27 33 90", since: "Aug 2022" },
+        rentStatus: "paid", netYield: 7.8, payments: history(1400000),
       },
       {
-        id: "a4", label: "Apt 202", rooms: 3, bathrooms: 2, sqm: 90, rent: 1420, cycle: "monthly",
+        id: "a4", label: "Apt 202", rooms: 3, bathrooms: 2, sqm: 90, rent: 1420000, cycle: "monthly",
         rentStatus: "pending", netYield: 0, payments: [],
       },
     ],
@@ -163,25 +163,25 @@ export const buildings: Building[] = [
     photo: "/photos/building-2.jpg",
     interior: "/photos/interior-3.jpg",
     amenities: ["Private garden", "Swimming pool", "Fully equipped gym", "Guest parking"],
-    incomeYtd: 74800,
-    expensesYtd: 9400,
+    incomeYtd: 74800000,
+    expensesYtd: 9400000,
     netYield: 11.8,
     apartments: [
       {
-        id: "a1", label: "Garden Suite", rooms: 4, bathrooms: 3, sqm: 140, rent: 2400, cycle: "yearly",
-        tenant: { name: "Nadia El Fassi", phone: "+1 555 031 6684", since: "Apr 2023" },
-        rentStatus: "paid", netYield: 12.4, payments: history(2400),
+        id: "a1", label: "Garden Suite", rooms: 4, bathrooms: 3, sqm: 140, rent: 2400000, cycle: "yearly",
+        tenant: { name: "Nadia El Fassi", phone: "+224 620 31 66 84", since: "Apr 2023" },
+        rentStatus: "paid", netYield: 12.4, payments: history(2400000),
       },
       {
-        id: "a2", label: "Terrace Suite", rooms: 3, bathrooms: 2, sqm: 110, rent: 2100, cycle: "monthly",
-        tenant: { name: "Omar Sy", phone: "+1 555 033 1108", since: "Oct 2024" },
-        rentStatus: "paid", netYield: 11.6, payments: history(2100),
+        id: "a2", label: "Terrace Suite", rooms: 3, bathrooms: 2, sqm: 110, rent: 2100000, cycle: "monthly",
+        tenant: { name: "Omar Sy", phone: "+224 620 33 11 08", since: "Oct 2024" },
+        rentStatus: "paid", netYield: 11.6, payments: history(2100000),
       },
       {
-        id: "a3", label: "Court Suite", rooms: 2, bathrooms: 1, sqm: 80, rent: 1600, cycle: "monthly",
-        tenant: { name: "Ines Barka", phone: "+1 555 037 9925", since: "Jul 2025" },
+        id: "a3", label: "Court Suite", rooms: 2, bathrooms: 1, sqm: 80, rent: 1600000, cycle: "monthly",
+        tenant: { name: "Ines Barka", phone: "+224 620 37 99 25", since: "Jul 2025" },
         rentStatus: "pending", netYield: 11.2,
-        payments: history(1600, ["paid", "paid", "paid", "paid", "paid", "pending"]),
+        payments: history(1600000, ["paid", "paid", "paid", "paid", "paid", "pending"]),
       },
     ],
   },
@@ -211,32 +211,32 @@ export const tickets: Ticket[] = [
   {
     id: "T-1039", title: "Balcony door seal worn", buildingId: "andalouse", apartment: "Terrace Suite",
     status: "resolved", reportedVia: "whatsapp", assignee: "M. Fall (carpenter)",
-    tenant: "Omar Sy", cost: 85, openedOn: "28 Jul", daysOpen: 6, month: "Jul", year: 2026,
+    tenant: "Omar Sy", cost: 85000, openedOn: "28 Jul", daysOpen: 6, month: "Jul", year: 2026,
   },
   {
     id: "T-1038", title: "Corridor light flickering", buildingId: "ocean", apartment: "Common area",
     status: "resolved", reportedVia: "phone", assignee: "A. Ndiaye (electrician)",
-    cost: 30, openedOn: "25 Jul", daysOpen: 2, month: "Jul", year: 2026,
+    cost: 30000, openedOn: "25 Jul", daysOpen: 2, month: "Jul", year: 2026,
   },
   {
     id: "T-1036", title: "Repaint stairwell", buildingId: "ocean", apartment: "Common area",
     status: "resolved", reportedVia: "phone", assignee: "M. Fall (carpenter)",
-    cost: 260, openedOn: "12 Jul", daysOpen: 5, month: "Jul", year: 2026,
+    cost: 260000, openedOn: "12 Jul", daysOpen: 5, month: "Jul", year: 2026,
   },
   {
     id: "T-1035", title: "Broken window latch", buildingId: "palmiers", apartment: "Apt 1A",
     status: "resolved", reportedVia: "whatsapp", assignee: "S. Diop (locksmith)",
-    tenant: "Mariam Diallo", cost: 45, openedOn: "18 Jun", daysOpen: 2, month: "Jun", year: 2026,
+    tenant: "Mariam Diallo", cost: 45000, openedOn: "18 Jun", daysOpen: 2, month: "Jun", year: 2026,
   },
   {
     id: "T-1030", title: "Boiler annual service", buildingId: "andalouse", apartment: "Garden Suite",
     status: "resolved", reportedVia: "email", assignee: "Coolair Services",
-    tenant: "Nadia El Fassi", cost: 180, openedOn: "9 Dec", daysOpen: 3, month: "Dec", year: 2025,
+    tenant: "Nadia El Fassi", cost: 180000, openedOn: "9 Dec", daysOpen: 3, month: "Dec", year: 2025,
   },
   {
     id: "T-1029", title: "Gate motor replacement", buildingId: "ocean", apartment: "Common area",
     status: "resolved", reportedVia: "phone", assignee: "S. Diop (locksmith)",
-    cost: 420, openedOn: "22 Nov", daysOpen: 6, month: "Nov", year: 2025,
+    cost: 420000, openedOn: "22 Nov", daysOpen: 6, month: "Nov", year: 2025,
   },
 ];
 
@@ -250,7 +250,12 @@ export const collections = [
   { month: "Aug", collected: 11020, due: 14950 },
 ];
 
-export const fmt = (n: number) => `$${n.toLocaleString("en-US")}`;
+/**
+ * Guinean francs. No subunit exists, so never any decimals, and the grouping
+ * follows French convention because that is the language of the market.
+ */
+export const fmt = (n: number) =>
+  `${Math.round(n).toLocaleString("fr-FR").replace(/\u202f/g, "\u00a0")}\u00a0GNF`;
 
 /**
  * The agency issuing receipts. Demo values today, read from the agencies row

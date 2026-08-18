@@ -101,7 +101,9 @@ export function PageTitle({
 }) {
   return (
     <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-      <div>
+      {/* The text takes the slack so a long subtitle wraps inside its own
+          column rather than pushing the action onto a line of its own. */}
+      <div className="min-w-0 flex-1 basis-80">
         <h1 className="font-serif text-3xl font-medium tracking-tight text-azure-950 sm:text-4xl dark:text-white">
           {title}
         </h1>
@@ -109,7 +111,7 @@ export function PageTitle({
           <p className="mt-1.5 text-[15px] text-onyx/50 dark:text-white/45">{subtitle}</p>
         )}
       </div>
-      {action}
+      {action && <div className="shrink-0">{action}</div>}
     </div>
   );
 }
