@@ -8,7 +8,13 @@ export type Payment = {
   status: RentStatus;
 };
 
-export type ApartmentPhoto = { id: string; src: string; caption?: string };
+export type ApartmentPhoto = {
+  id: string;
+  src: string;
+  caption?: string;
+  /** Storage object path, present once the photo lives in Supabase Storage. */
+  path?: string;
+};
 
 export type Technician = {
   id: string;
@@ -21,6 +27,8 @@ export type Technician = {
 
 export type Apartment = {
   id: string;
+  /** The active lease behind this unit, needed to record a payment live. */
+  leaseId?: string;
   photos?: ApartmentPhoto[];
   label: string;
   rooms: number;
@@ -49,7 +57,10 @@ export type Building = {
 };
 
 export type Ticket = {
+  /** Short display reference, T-1042 in the mock, T-5DDBC5 live. */
   id: string;
+  /** The row's real uuid, absent on mock data. Server writes address this. */
+  dbId?: string;
   description?: string;
   priority?: "normal" | "high" | "urgent";
   technicianId?: string;

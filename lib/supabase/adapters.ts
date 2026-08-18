@@ -48,6 +48,8 @@ const stockInterior = (i: number) =>
   ["/photos/interior-2.jpg", "/photos/interior-4.jpg", "/photos/interior-3.jpg"][i % 3];
 
 export type Portfolio = {
+  /** The signed in user's agency, which every insert must carry. */
+  agencyId: string;
   buildings: Building[];
   tickets: Ticket[];
   technicians: Technician[];
@@ -70,6 +72,7 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
     { data: allocations },
     { data: ticketRows },
     { data: technicianRows },
+    { data: photoRows },
   ] = await Promise.all([
     supabase.from("buildings").select("*").order("name"),
     supabase.from("v_building_performance").select("*"),
@@ -83,10 +86,33 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
       )
       .order("opened_at", { ascending: false }),
     supabase.from("technicians").select("*").order("full_name"),
+    supabase.from("apartment_photos").select("*").order("position"),
   ]);
 
   // Nothing to show means the account has no buildings yet, not a failure.
   if (!buildingRows) return null;
+
+  const agencyId = buildingRows[0]?.agency_id ?? (states ?? [])[0]?.agency_id ?? "";
+
+  // The photo bucket is private, so the browser needs signed URLs. One batch
+  // for the whole gallery; an hour outlives any dashboard visit.
+  const photosByApartment = new Map<string, { id: string; src: string; caption?: string; path: string }[]>();
+  if ((photoRows ?? []).length > 0) {
+    const paths = (photoRows ?? []).map((p) => p.storage_path);
+    const { data: signed } = await supabase.storage
+      .from("apartment-photos")
+      .createSignedUrls(paths, 60 * 60);
+    const urlByPath = new Map(
+      (signed ?? []).filter((x) => x.path && x.signedUrl).map((x) => [x.path as string, x.signedUrl])
+    );
+    for (const row of photoRows ?? []) {
+      const src = urlByPath.get(row.storage_path);
+      if (!src) continue;
+      const list = photosByApartment.get(row.apartment_id) ?? [];
+      list.push({ id: row.id, src, caption: row.caption ?? undefined, path: row.storage_path });
+      photosByApartment.set(row.apartment_id, list);
+    }
+  }
 
   // When a charge was settled, and on what day.
   const paidOnByCharge = new Map<string, string>();
@@ -129,6 +155,7 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
       netYield: Number(perf?.net_yield_pct ?? 0),
       apartments: units.map((u, n) => ({
         id: u.apartment_id,
+        leaseId: u.lease_id ?? undefined,
         label: u.label,
         rooms: u.rooms ?? 0,
         bathrooms: u.bathrooms ?? 0,
@@ -147,14 +174,16 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
         // Yield is measured per building, so a unit reports its building's.
         netYield: Number(perf?.net_yield_pct ?? 0),
         payments: u.lease_id ? paymentsByLease.get(u.lease_id) ?? [] : [],
-        // Real galleries arrive with Storage in phase 5. Until then each unit
-        // gets a distinct cover so the grid does not repeat one image.
-        photos: [
-          {
-            id: `${u.apartment_id}-cover`,
-            src: seedPhotos.covers[n % seedPhotos.covers.length],
-          },
-        ],
+        // The unit's own gallery when it has one, a distinct stock cover
+        // otherwise so the grid does not repeat a single image.
+        photos:
+          photosByApartment.get(u.apartment_id) ??
+          [
+            {
+              id: `${u.apartment_id}-cover`,
+              src: seedPhotos.covers[n % seedPhotos.covers.length],
+            },
+          ],
       })),
     } as Building;
   });
@@ -167,6 +196,7 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
     return {
       // A uuid is unreadable in a table, so show a short stable reference.
       id: `T-${x.id.slice(0, 6).toUpperCase()}`,
+      dbId: x.id,
       title: x.title,
       description: x.description ?? undefined,
       priority: (x.priority ?? "normal") as Ticket["priority"],
@@ -197,5 +227,5 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
     since: periodOf(String(tech.created_at).slice(0, 10)),
   }));
 
-  return { buildings, tickets, technicians };
+  return { agencyId, buildings, tickets, technicians };
 }

@@ -34,6 +34,7 @@ function NewTicketModal({ onClose }: { onClose: () => void }) {
       buildingId: building.id,
       title,
       apartment: apt ? apt.label : t.seed.commonArea,
+      apartmentId: aptId || null,
       description: String(data.get("description") ?? ""),
       reportedVia: (data.get("via") as "whatsapp" | "phone" | "email") ?? "whatsapp",
       priority: (data.get("priority") as "normal" | "high" | "urgent") ?? "normal",
@@ -193,6 +194,7 @@ function EditTicketModal({ ticket, onClose }: { ticket: Ticket; onClose: () => v
       description: String(data.get("description") ?? ""),
       priority: (data.get("priority") as "normal" | "high" | "urgent") ?? "normal",
       apartment: apt ? apt.label : t.seed.commonArea,
+      apartmentId: aptId || null,
     });
     notify(m.updated);
     onClose();

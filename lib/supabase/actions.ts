@@ -9,7 +9,7 @@ import type { LeaseCycle, PaymentMethod, ReportChannel, TicketPriority } from ".
  * the rule holds no matter who calls it.
  */
 
-type ActionResult = { ok: true } | { ok: false; error: string };
+type ActionResult = { ok: true; id?: string } | { ok: false; error: string };
 
 const revalidateDashboard = (locale: string) =>
   revalidatePath(`/${locale}/dashboard`, "layout");
@@ -27,18 +27,23 @@ export async function addApartment(
   }
 ): Promise<ActionResult> {
   const supabase = await createClient();
-  const { error } = await supabase.from("apartments").insert({
-    agency_id: input.agencyId,
-    building_id: input.buildingId,
-    label: input.label,
-    rooms: input.rooms,
-    bathrooms: input.bathrooms,
-    sqm: input.sqm,
-    base_rent: input.baseRent,
-  });
+  const { data, error } = await supabase
+    .from("apartments")
+    .insert({
+      agency_id: input.agencyId,
+      building_id: input.buildingId,
+      label: input.label,
+      rooms: input.rooms,
+      bathrooms: input.bathrooms,
+      sqm: input.sqm,
+      base_rent: input.baseRent,
+    })
+    .select("id")
+    .single();
   if (error) return { ok: false, error: error.message };
   revalidateDashboard(locale);
-  return { ok: true };
+  // The id comes back so photos chosen in the same form can attach to it.
+  return { ok: true, id: data.id };
 }
 
 export async function createLease(
@@ -262,38 +267,83 @@ export async function deleteTechnician(
 /**
  * Uploads to the private apartment-photos bucket and records the row. The
  * path convention is <agency_id>/<apartment_id>/<file>, which is what the
- * storage policies match on.
+ * storage policies match on. Takes FormData because the browser hands over a
+ * real file: fields agencyId, apartmentId, file, caption.
  */
 export async function addApartmentPhoto(
   locale: string,
-  input: {
-    agencyId: string;
-    apartmentId: string;
-    file: File;
-    caption?: string;
-  }
+  form: FormData
 ): Promise<ActionResult> {
+  const agencyId = String(form.get("agencyId") ?? "");
+  const apartmentId = String(form.get("apartmentId") ?? "");
+  const file = form.get("file");
+  const caption = String(form.get("caption") ?? "").trim();
+  if (!agencyId || !apartmentId || !(file instanceof File)) {
+    return { ok: false, error: "missing photo upload fields" };
+  }
+
   const supabase = await createClient();
-  const path = `${input.agencyId}/${input.apartmentId}/${crypto.randomUUID()}`;
+  const path = `${agencyId}/${apartmentId}/${crypto.randomUUID()}`;
 
   const { error: uploadError } = await supabase.storage
     .from("apartment-photos")
-    .upload(path, input.file, { contentType: input.file.type, upsert: false });
+    .upload(path, file, { contentType: file.type || "image/jpeg", upsert: false });
   if (uploadError) return { ok: false, error: uploadError.message };
 
   const { count } = await supabase
     .from("apartment_photos")
     .select("id", { count: "exact", head: true })
-    .eq("apartment_id", input.apartmentId);
+    .eq("apartment_id", apartmentId);
 
   const { error } = await supabase.from("apartment_photos").insert({
-    agency_id: input.agencyId,
-    apartment_id: input.apartmentId,
+    agency_id: agencyId,
+    apartment_id: apartmentId,
     storage_path: path,
-    caption: input.caption ?? null,
+    caption: caption || null,
     position: count ?? 0,
   });
   if (error) return { ok: false, error: error.message };
+  revalidateDashboard(locale);
+  return { ok: true };
+}
+
+/**
+ * Edits a photo in place: a new image replaces the stored object under a new
+ * path so the old URL cannot resurface, and the caption follows. Fields:
+ * photoId, agencyId, apartmentId, oldPath, caption, and optionally file.
+ */
+export async function replaceApartmentPhoto(
+  locale: string,
+  form: FormData
+): Promise<ActionResult> {
+  const photoId = String(form.get("photoId") ?? "");
+  const agencyId = String(form.get("agencyId") ?? "");
+  const apartmentId = String(form.get("apartmentId") ?? "");
+  const oldPath = String(form.get("oldPath") ?? "");
+  const caption = String(form.get("caption") ?? "").trim();
+  const file = form.get("file");
+  if (!photoId) return { ok: false, error: "missing photo id" };
+
+  const supabase = await createClient();
+  const patch: { caption: string | null; storage_path?: string } = {
+    caption: caption || null,
+  };
+
+  if (file instanceof File && file.size > 0) {
+    const path = `${agencyId}/${apartmentId}/${crypto.randomUUID()}`;
+    const { error: uploadError } = await supabase.storage
+      .from("apartment-photos")
+      .upload(path, file, { contentType: file.type || "image/jpeg", upsert: false });
+    if (uploadError) return { ok: false, error: uploadError.message };
+    patch.storage_path = path;
+  }
+
+  const { error } = await supabase.from("apartment_photos").update(patch).eq("id", photoId);
+  if (error) return { ok: false, error: error.message };
+
+  if (patch.storage_path && oldPath) {
+    await supabase.storage.from("apartment-photos").remove([oldPath]);
+  }
   revalidateDashboard(locale);
   return { ok: true };
 }

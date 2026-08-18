@@ -111,31 +111,39 @@ prove it through the interface too.
 
 ---
 
-## Phase 4 · Writes
+## Phase 4 · Writes · done
 
-One to two days. Every mutation the interface performs already has a matching
-server action in `lib/supabase/actions.ts`.
+Done at the same seam as the reads. Each mutation in `lib/store.tsx` applies to
+local state first, so the interface still answers instantly, then sends the
+same change to its server action. `router.refresh()` reloads the portfolio and
+the store adopts the new seed, which is how anything the database derives comes
+back rather than being guessed at.
 
-Replace the `lib/store.tsx` calls one at a time: `addApartment`, `createLease`,
-`recordPayment`, `createTicket`, `updateTicket`, `deleteTicket`, `assignTicket`,
-`resolveTicket`, `addTechnician`, `updateTechnician`, `deleteTechnician`.
+A failed write logs, shows a toast, and refreshes anyway, so the screen
+resyncs to truth instead of holding an optimistic lie.
 
-Keep the toasts. Add an error path: the actions return
-`{ ok: false, error }` and nothing reads it yet.
-
-**Gate:** a payment recorded in the interface moves the charge to paid in the
-database, and the receipt prints from the stored row rather than from state.
+**Gate met:** a payment recorded in the interface moved Apt 102 from `overdue`
+to `paid` in `v_apartment_state`, which is the database's own derivation, and
+the page subtitle followed to `3 850 000 GNF encaissés sur 3 850 000`.
+Assigning a technician wrote the handover into `ticket_messages`, and resolving
+one stored its final cost.
 
 ---
 
-## Phase 5 · Photos to Storage
+## Phase 5 · Photos to Storage · done
 
-`addApartmentPhoto` uploads to the private `apartment-photos` bucket and
-`signPhotoUrls` issues one hour signed URLs. The gallery and the add apartment
-form still hold images as data URLs in memory.
+The photo actions take FormData so the browser can hand over a real file, and
+the adapter signs every stored path for an hour when it loads the portfolio.
+Adding an apartment uploads the photos chosen in the same form, which is why
+`addApartment` now returns the new row's id.
 
-**Gate:** an uploaded photo survives a reload, and its URL is not readable by
-another agency.
+A unit with no photos still shows a stock cover. Editing one of those uploads a
+first real photo rather than trying to replace an object that was never stored.
+
+**Gate met:** an uploaded photo landed in the private bucket at
+`<agency>/<apartment>/<uuid>`, survived a reload through a signed URL, and an
+anonymous client was refused. Deleting removed the row and the object together,
+leaving nothing orphaned.
 
 ---
 
