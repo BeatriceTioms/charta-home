@@ -172,6 +172,38 @@ export type TechnicianRow = {
   trade: string | null;
   phone_e164: string | null;
   is_external: boolean;
+  created_at: string;
+};
+
+export type RentChargeRow = {
+  id: string;
+  agency_id: string;
+  lease_id: string;
+  period_start: string;
+  period_end: string;
+  due_on: string;
+  amount: number;
+  status: string;
+  created_at: string;
+};
+
+export type PaymentRow = {
+  id: string;
+  agency_id: string;
+  lease_id: string;
+  amount: number;
+  paid_on: string;
+  method: PaymentMethod;
+  reference: string | null;
+  recorded_by: string | null;
+  created_at: string;
+};
+
+export type PaymentAllocationRow = {
+  payment_id: string;
+  rent_charge_id: string;
+  agency_id: string;
+  amount: number;
 };
 
 export type ApartmentPhotoRow = {
@@ -267,7 +299,19 @@ export type Database = {
       memberships: { Row: Membership; Insert: Partial<Membership>; Update: Partial<Membership>; Relationships: [] };
       buildings: { Row: BuildingRow; Insert: Partial<BuildingRow>; Update: Partial<BuildingRow>; Relationships: [] };
       apartments: { Row: ApartmentRow; Insert: Partial<ApartmentRow>; Update: Partial<ApartmentRow>; Relationships: [] };
-      tickets: { Row: TicketRow; Insert: Partial<TicketRow>; Update: Partial<TicketRow>; Relationships: [] };
+      tickets: {
+        Row: TicketRow;
+        Insert: Partial<TicketRow>;
+        Update: Partial<TicketRow>;
+        // The dashboard reads a ticket with its unit, tenant and technician in
+        // one select, and PostgREST embeds need the relationship declared.
+        Relationships: [
+          { foreignKeyName: "tickets_apartment_id_fkey"; columns: ["apartment_id"]; isOneToOne: false; referencedRelation: "apartments"; referencedColumns: ["id"] },
+          { foreignKeyName: "tickets_resident_id_fkey"; columns: ["resident_id"]; isOneToOne: false; referencedRelation: "residents"; referencedColumns: ["id"] },
+          { foreignKeyName: "tickets_technician_id_fkey"; columns: ["technician_id"]; isOneToOne: false; referencedRelation: "technicians"; referencedColumns: ["id"] },
+          { foreignKeyName: "tickets_building_id_fkey"; columns: ["building_id"]; isOneToOne: false; referencedRelation: "buildings"; referencedColumns: ["id"] },
+        ];
+      };
       residents: { Row: ResidentRow; Insert: Partial<ResidentRow>; Update: Partial<ResidentRow>; Relationships: [] };
       leases: { Row: LeaseRow; Insert: Partial<LeaseRow>; Update: Partial<LeaseRow>; Relationships: [] };
       technicians: { Row: TechnicianRow; Insert: Partial<TechnicianRow>; Update: Partial<TechnicianRow>; Relationships: [] };
@@ -278,6 +322,17 @@ export type Database = {
       wa_conversations: { Row: WaConversationRow; Insert: Partial<WaConversationRow>; Update: Partial<WaConversationRow>; Relationships: [] };
       expenses: { Row: ExpenseRow; Insert: Partial<ExpenseRow>; Update: Partial<ExpenseRow>; Relationships: [] };
       events: { Row: EventRow; Insert: Partial<EventRow>; Update: Partial<EventRow>; Relationships: [] };
+      rent_charges: { Row: RentChargeRow; Insert: Partial<RentChargeRow>; Update: Partial<RentChargeRow>; Relationships: [] };
+      payments: { Row: PaymentRow; Insert: Partial<PaymentRow>; Update: Partial<PaymentRow>; Relationships: [] };
+      payment_allocations: {
+        Row: PaymentAllocationRow;
+        Insert: Partial<PaymentAllocationRow>;
+        Update: Partial<PaymentAllocationRow>;
+        Relationships: [
+          { foreignKeyName: "payment_allocations_payment_id_fkey"; columns: ["payment_id"]; isOneToOne: false; referencedRelation: "payments"; referencedColumns: ["id"] },
+          { foreignKeyName: "payment_allocations_rent_charge_id_fkey"; columns: ["rent_charge_id"]; isOneToOne: false; referencedRelation: "rent_charges"; referencedColumns: ["id"] },
+        ];
+      };
       subscriptions: {
         Row: SubscriptionRow;
         Insert: Partial<SubscriptionRow>;

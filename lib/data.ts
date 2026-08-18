@@ -282,6 +282,12 @@ export const periodValue = (period: string) => {
   return Number(y) * 12 + MONTH_KEYS.indexOf(m);
 };
 
+/**
+ * A short human reference for a row. Ids are uuids once the data is real, and
+ * a uuid printed in a table cell is unreadable, so show its leading block.
+ */
+export const shortRef = (id: string) => id.replace(/-/g, "").slice(0, 8).toUpperCase();
+
 /** Newest rent period first. */
 export const byPeriodDesc = (a: Payment, b: Payment) =>
   periodValue(b.month) - periodValue(a.month);

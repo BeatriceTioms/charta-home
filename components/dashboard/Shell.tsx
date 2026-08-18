@@ -9,7 +9,7 @@ import { ThemeToggle } from "./ThemeToggle";
 import { BuildingSwitcher } from "./BuildingSwitcher";
 import { Toasts } from "./Toasts";
 import { BuildingProvider } from "@/lib/building-context";
-import { StoreProvider } from "@/lib/store";
+import { StoreProvider, type StoreSeed } from "@/lib/store";
 import { useI18n } from "@/lib/i18n/context";
 import { signOut } from "@/lib/supabase/auth-actions";
 
@@ -301,9 +301,16 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function Shell({ children }: { children: React.ReactNode }) {
+export function Shell({
+  children,
+  seed,
+}: {
+  children: React.ReactNode;
+  /** Live portfolio from the server, or null to run on the mock. */
+  seed?: StoreSeed | null;
+}) {
   return (
-    <StoreProvider>
+    <StoreProvider seed={seed}>
       <BuildingProvider>
         <DashboardChrome>{children}</DashboardChrome>
       </BuildingProvider>

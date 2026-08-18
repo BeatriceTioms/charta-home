@@ -8,6 +8,7 @@ import {
   byPeriodDesc,
   fmt,
   isoPaidOn,
+  shortRef,
   type RentStatus,
   type TicketStatus,
 } from "@/lib/data";
@@ -106,7 +107,7 @@ export default function TenantPage() {
     amount,
     period,
     paidOn: isoPaidOn(paidOn, key),
-    reference: `RCP-${key.replace(" ", "-").toUpperCase()}-${apartment.id.toUpperCase()}`,
+    reference: `RCP-${key.replace(" ", "-").toUpperCase()}-${shortRef(apartment.id)}`,
   });
 
   return (

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { byPeriodDesc, fmt, type RentStatus } from "@/lib/data";
+import { byPeriodDesc, fmt, shortRef, type RentStatus } from "@/lib/data";
 import { useBuilding } from "@/lib/building-context";
 import { useStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n/context";
@@ -343,8 +343,8 @@ export default function RentPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 pr-4 font-semibold text-azure-950 dark:text-white">
-                      {a.id.toUpperCase()}
+                    <td className="whitespace-nowrap py-4 pr-4 font-semibold tabular-nums text-azure-950 dark:text-white">
+                      {shortRef(a.id)}
                     </td>
                     <td className="py-4 pr-4 text-onyx/60 dark:text-white/60">
                       {a.cycle === "monthly" ? t.dash.rent.monthly : t.dash.rent.yearly}
@@ -383,7 +383,7 @@ export default function RentPage() {
                                 amount: a.rent,
                                 period: latestPaidPeriod(a),
                                 paidOn: "2026-08-02",
-                                reference: `RCP-2026-08-${building.id.slice(0, 3).toUpperCase()}-${a.id.toUpperCase()}`,
+                                reference: `RCP-2026-08-${shortRef(a.id)}`,
                               })
                             }
                             className="rounded-xl border border-azure-900/15 px-4 py-2 text-sm font-semibold text-azure-950 transition hover:bg-azure-900/5 dark:border-white/15 dark:text-white dark:hover:bg-white/10"

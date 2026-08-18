@@ -1,0 +1,201 @@
+import type { Building, Payment, RentStatus, Technician, Ticket } from "@/lib/data";
+import { seedPhotos } from "@/lib/data";
+import { isSupabaseConfigured } from "./config";
+import { createClient } from "./server";
+
+/**
+ * Turns live rows into the shapes the dashboard already renders.
+ *
+ * The interface was built against `lib/data.ts`, and every page reads it
+ * through one provider. Mapping onto those same types here means the pages do
+ * not change at all, and the mock stays available as the control: when no
+ * project is configured this returns null and the provider seeds from the mock.
+ */
+
+const MONTHS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+/** "2026-08-01" becomes "Aug 2026", the period format the tables display. */
+const periodOf = (iso: string) =>
+  `${MONTHS[Number(iso.slice(5, 7)) - 1]} ${iso.slice(0, 4)}`;
+
+/** "2026-08-02" becomes "2 Aug". */
+const dayOf = (iso: string) =>
+  `${Number(iso.slice(8, 10))} ${MONTHS[Number(iso.slice(5, 7)) - 1]}`;
+
+/** E.164 is stored, but a Guinean number reads as +224 620 14 22 31. */
+const readablePhone = (e164: string | null) => {
+  if (!e164) return "";
+  const digits = e164.replace(/\D/g, "");
+  if (!digits.startsWith("224") || digits.length !== 12) return e164;
+  const local = digits.slice(3);
+  return `+224 ${local.slice(0, 3)} ${local.slice(3, 5)} ${local.slice(5, 7)} ${local.slice(7)}`;
+};
+
+const daysBetween = (from: string, to: string) =>
+  Math.max(0, Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000));
+
+/** Postgres spells it in_progress, the interface in-progress. */
+const ticketStatus = (raw: string): Ticket["status"] =>
+  raw === "in_progress" ? "in-progress" : (raw as Ticket["status"]);
+
+/** Buildings carry no image yet, so fall back to the bundled photography. */
+const stockPhoto = (i: number) =>
+  ["/photos/building-1.jpg", "/photos/building-4.jpg", "/photos/building-2.jpg"][i % 3];
+const stockInterior = (i: number) =>
+  ["/photos/interior-2.jpg", "/photos/interior-4.jpg", "/photos/interior-3.jpg"][i % 3];
+
+export type Portfolio = {
+  buildings: Building[];
+  tickets: Ticket[];
+  technicians: Technician[];
+};
+
+/**
+ * Reads the signed in agency's whole portfolio. Row level security decides
+ * what comes back, so none of these queries filters by agency.
+ */
+export async function loadPortfolio(): Promise<Portfolio | null> {
+  if (!isSupabaseConfigured()) return null;
+
+  const supabase = await createClient();
+
+  const [
+    { data: buildingRows },
+    { data: performance },
+    { data: states },
+    { data: charges },
+    { data: allocations },
+    { data: ticketRows },
+    { data: technicianRows },
+  ] = await Promise.all([
+    supabase.from("buildings").select("*").order("name"),
+    supabase.from("v_building_performance").select("*"),
+    supabase.from("v_apartment_state").select("*"),
+    supabase.from("v_charge_status").select("*").order("period_start"),
+    supabase.from("payment_allocations").select("rent_charge_id, payments(paid_on)"),
+    supabase
+      .from("tickets")
+      .select(
+        "id, title, description, status, priority, reported_via, cost, opened_at, resolved_at, building_id, technician_id, apartments(label), residents(full_name), technicians(full_name)"
+      )
+      .order("opened_at", { ascending: false }),
+    supabase.from("technicians").select("*").order("full_name"),
+  ]);
+
+  // Nothing to show means the account has no buildings yet, not a failure.
+  if (!buildingRows) return null;
+
+  // When a charge was settled, and on what day.
+  const paidOnByCharge = new Map<string, string>();
+  for (const row of allocations ?? []) {
+    const paidOn = (row as { payments: { paid_on: string } | null }).payments?.paid_on;
+    if (row.rent_charge_id && paidOn) paidOnByCharge.set(row.rent_charge_id, paidOn);
+  }
+
+  const paymentsByLease = new Map<string, Payment[]>();
+  for (const charge of charges ?? []) {
+    if (!charge.lease_id) continue;
+    const list = paymentsByLease.get(charge.lease_id) ?? [];
+    list.push({
+      month: periodOf(charge.period_start),
+      amount: Number(charge.amount),
+      paidOn: paidOnByCharge.get(charge.rent_charge_id)
+        ? dayOf(paidOnByCharge.get(charge.rent_charge_id)!)
+        : null,
+      status: charge.state as RentStatus,
+    });
+    paymentsByLease.set(charge.lease_id, list);
+  }
+
+  const perfByBuilding = new Map((performance ?? []).map((p) => [p.building_id, p]));
+
+  const buildings: Building[] = buildingRows.map((b, i) => {
+    const perf = perfByBuilding.get(b.id);
+    const units = (states ?? []).filter((s) => s.building_id === b.id);
+
+    return {
+      id: b.id,
+      name: b.name,
+      address: b.address,
+      city: b.city,
+      photo: b.photo_path ?? stockPhoto(i),
+      interior: b.interior_path ?? stockInterior(i),
+      amenities: b.amenities ?? [],
+      incomeYtd: Number(perf?.income_ytd ?? 0),
+      expensesYtd: Number(perf?.expenses_ytd ?? 0),
+      netYield: Number(perf?.net_yield_pct ?? 0),
+      apartments: units.map((u, n) => ({
+        id: u.apartment_id,
+        label: u.label,
+        rooms: u.rooms ?? 0,
+        bathrooms: u.bathrooms ?? 0,
+        sqm: u.sqm ?? 0,
+        rent: Number(u.rent_amount ?? u.base_rent ?? 0),
+        cycle: (u.cycle ?? "monthly") as "monthly" | "yearly",
+        tenant: u.is_occupied && u.resident_name
+          ? {
+              name: u.resident_name,
+              phone: readablePhone(u.resident_phone),
+              since: u.lease_started_on ? periodOf(u.lease_started_on) : "",
+            }
+          : undefined,
+        // A vacant unit has no rent state; the interface treats that as pending.
+        rentStatus: (u.rent_state ?? "pending") as RentStatus,
+        // Yield is measured per building, so a unit reports its building's.
+        netYield: Number(perf?.net_yield_pct ?? 0),
+        payments: u.lease_id ? paymentsByLease.get(u.lease_id) ?? [] : [],
+        // Real galleries arrive with Storage in phase 5. Until then each unit
+        // gets a distinct cover so the grid does not repeat one image.
+        photos: [
+          {
+            id: `${u.apartment_id}-cover`,
+            src: seedPhotos.covers[n % seedPhotos.covers.length],
+          },
+        ],
+      })),
+    } as Building;
+  });
+
+  const now = new Date().toISOString();
+
+  const tickets: Ticket[] = (ticketRows ?? []).map((x) => {
+    const opened = x.opened_at as string;
+    const closed = (x.resolved_at as string | null) ?? now;
+    return {
+      // A uuid is unreadable in a table, so show a short stable reference.
+      id: `T-${x.id.slice(0, 6).toUpperCase()}`,
+      title: x.title,
+      description: x.description ?? undefined,
+      priority: (x.priority ?? "normal") as Ticket["priority"],
+      technicianId: x.technician_id ?? undefined,
+      buildingId: x.building_id,
+      apartment:
+        (x as { apartments: { label: string } | null }).apartments?.label ?? "Common area",
+      status: ticketStatus(x.status),
+      reportedVia: x.reported_via as Ticket["reportedVia"],
+      assignee:
+        (x as { technicians: { full_name: string } | null }).technicians?.full_name ?? undefined,
+      tenant:
+        (x as { residents: { full_name: string } | null }).residents?.full_name ?? undefined,
+      cost: x.cost === null ? undefined : Number(x.cost),
+      openedOn: dayOf(opened),
+      daysOpen: daysBetween(opened, closed),
+      month: MONTHS[Number(opened.slice(5, 7)) - 1],
+      year: Number(opened.slice(0, 4)),
+    };
+  });
+
+  const technicians: Technician[] = (technicianRows ?? []).map((tech) => ({
+    id: tech.id,
+    name: tech.full_name,
+    trade: tech.trade ?? "",
+    phone: readablePhone(tech.phone_e164),
+    isExternal: tech.is_external,
+    since: periodOf(String(tech.created_at).slice(0, 10)),
+  }));
+
+  return { buildings, tickets, technicians };
+}

@@ -92,9 +92,22 @@ const StoreContext = createContext<StoreValue | null>(null);
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-export function StoreProvider({ children }: { children: React.ReactNode }) {
+/** Real rows when a project is configured, the mock portfolio otherwise. */
+export type StoreSeed = {
+  buildings: Building[];
+  tickets: Ticket[];
+  technicians: Technician[];
+};
+
+export function StoreProvider({
+  children,
+  seed,
+}: {
+  children: React.ReactNode;
+  seed?: StoreSeed | null;
+}) {
   const [buildings, setBuildings] = useState<Building[]>(() =>
-    seedBuildings.map((b) => ({
+    (seed?.buildings ?? seedBuildings).map((b) => ({
       ...b,
       apartments: b.apartments.map((a, i) => {
         // Each unit opens on its own cover, then shares the rest of the set.
@@ -109,9 +122,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       }),
     }))
   );
-  const [tickets, setTickets] = useState<Ticket[]>(() => seedTickets.map((t) => ({ ...t })));
+  const [tickets, setTickets] = useState<Ticket[]>(() =>
+    (seed?.tickets ?? seedTickets).map((t) => ({ ...t }))
+  );
   const [technicians, setTechnicians] = useState<Technician[]>(() =>
-    seedTechnicians.map((t) => ({ ...t }))
+    (seed?.technicians ?? seedTechnicians).map((t) => ({ ...t }))
   );
   const [remindedKeys, setRemindedKeys] = useState<string[]>([]);
   const [toasts, setToasts] = useState<Toast[]>([]);
