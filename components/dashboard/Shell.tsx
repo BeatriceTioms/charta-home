@@ -60,10 +60,7 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
     },
     {
       label: t.dash.groups.portfolio,
-      items: [
-        { label: t.dash.nav.apartments, href: "/dashboard/apartments", icon: ICONS.buildings },
-        { label: t.dash.nav.tenants, href: "/dashboard/tenants", icon: ICONS.tenants },
-      ],
+      items: [{ label: t.dash.nav.apartments, href: "/dashboard/apartments", icon: ICONS.buildings }],
     },
     {
       label: t.dash.groups.operations,

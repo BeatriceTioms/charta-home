@@ -8,10 +8,15 @@ import { useBuilding } from "@/lib/building-context";
 import { useStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n/context";
 import { PageTitle, RentChip, Tabs } from "@/components/dashboard/ui";
+import { TenantsPanel } from "@/components/dashboard/TenantsPanel";
 import { ReceiptModal, type ReceiptData } from "@/components/dashboard/ReceiptModal";
 import { Field, Modal, ModalActions, fieldCls } from "@/components/dashboard/Modal";
 
-type Tab = "all" | RentStatus;
+type Tab = "leases" | "tenants";
+type StatusFilter = "all" | RentStatus;
+
+const selectCls =
+  "rounded-2xl border border-white/70 bg-white/60 px-4 py-2.5 text-sm font-semibold text-azure-950 backdrop-blur-xl outline-none transition hover:bg-azure-900/5 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10 dark:[&>option]:bg-onyx";
 
 function RecordPaymentModal({ onClose }: { onClose: () => void }) {
   const { t, f, s: ts } = useI18n();
@@ -130,7 +135,8 @@ export default function RentPage() {
   const { markReminded, remindedKeys, notify } = useStore();
   const { t, f, s: ts, path } = useI18n();
 
-  const [tab, setTab] = useState<Tab>("all");
+  const [tab, setTab] = useState<Tab>("leases");
+  const [status, setStatus] = useState<StatusFilter>("all");
   const [search, setSearch] = useState("");
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
   const [recording, setRecording] = useState(false);
@@ -152,17 +158,22 @@ export default function RentPage() {
     () =>
       leased.filter(
         (a) =>
-          (tab === "all" || a.rentStatus === tab) &&
+          (status === "all" || a.rentStatus === status) &&
           a.tenant!.name.toLowerCase().includes(search.toLowerCase())
       ),
-    [leased, tab, search]
+    [leased, status, search]
   );
 
   const tabs: { key: Tab; label: string; count: number }[] = [
-    { key: "all", label: t.dash.rent.tabs.all, count: counts.all },
-    { key: "paid", label: t.dash.rent.tabs.paid, count: counts.paid },
-    { key: "pending", label: t.dash.rent.tabs.pending, count: counts.pending },
-    { key: "overdue", label: t.dash.rent.tabs.overdue, count: counts.overdue },
+    { key: "leases", label: t.dash.rent.tabs.leases, count: counts.all },
+    { key: "tenants", label: t.dash.rent.tabs.tenants, count: leased.length },
+  ];
+
+  const statuses: { key: StatusFilter; label: string; count: number }[] = [
+    { key: "all", label: t.dash.common.allStatuses, count: counts.all },
+    { key: "paid", label: t.dash.status.paid, count: counts.paid },
+    { key: "pending", label: t.dash.status.pending, count: counts.pending },
+    { key: "overdue", label: t.dash.status.overdue, count: counts.overdue },
   ];
 
   /** The most recent settled period for a lease, in the reader's language. */
@@ -236,6 +247,9 @@ export default function RentPage() {
 
       <Tabs tabs={tabs} active={tab} onChange={setTab} />
 
+      {tab === "tenants" ? (
+        <TenantsPanel />
+      ) : (
       <div className="rounded-3xl border border-white/70 bg-white/55 shadow-lg shadow-azure-900/5 backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.05] dark:shadow-none">
         <div className="flex flex-wrap items-center justify-between gap-4 p-6">
           <p className="text-lg font-bold text-azure-950 dark:text-white">
@@ -256,9 +270,21 @@ export default function RentPage() {
                 className="w-40 bg-transparent text-sm text-azure-950 outline-none placeholder:text-onyx/35 dark:text-white dark:placeholder:text-white/35"
               />
             </div>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value as StatusFilter)}
+              className={selectCls}
+              aria-label={t.dash.common.allStatuses}
+            >
+              {statuses.map((x) => (
+                <option key={x.key} value={x.key}>
+                  {x.label} ({x.count})
+                </option>
+              ))}
+            </select>
             <button
               onClick={() => {
-                setTab("all");
+                setStatus("all");
                 setSearch("");
               }}
               className="flex items-center gap-2 rounded-2xl border border-white/70 bg-white/60 px-4 py-2.5 text-sm font-semibold text-azure-950 backdrop-blur-xl transition hover:bg-azure-900/5 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
@@ -391,6 +417,7 @@ export default function RentPage() {
           </table>
         </div>
       </div>
+      )}
 
       {receipt && <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />}
       {recording && <RecordPaymentModal onClose={() => setRecording(false)} />}

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { fmt, type Technician } from "@/lib/data";
 import { useStore } from "@/lib/store";
@@ -117,7 +118,7 @@ export function TechniciansPanel({
   adding: boolean;
   onCloseAdd: () => void;
 }) {
-  const { t, f, s: ts } = useI18n();
+  const { t, f, s: ts, path } = useI18n();
   const { technicians, tickets, deleteTechnician, notify } = useStore();
   const tr = t.dash.technicians;
 
@@ -192,7 +193,12 @@ export function TechniciansPanel({
                           {tech.name.split(" ").map((w) => w[0]).join("").slice(0, 2)}
                         </span>
                         <div className="min-w-0">
-                          <p className="font-bold text-azure-950 dark:text-white">{tech.name}</p>
+                          <Link
+                            href={path(`/dashboard/technicians/${tech.id}`)}
+                            className="font-bold text-azure-950 transition hover:text-azure-600 dark:text-white dark:hover:text-soft-500"
+                          >
+                            {tech.name}
+                          </Link>
                           <p className="text-xs text-onyx/45 dark:text-white/45">
                             {ts("trades", tech.trade) || tech.trade} ·{" "}
                             {tech.isExternal ? tr.external : tr.internal}
@@ -224,6 +230,12 @@ export function TechniciansPanel({
                     </td>
                     <td className="py-4 pr-6">
                       <div className="flex items-center gap-2">
+                        <Link
+                          href={path(`/dashboard/technicians/${tech.id}`)}
+                          className="whitespace-nowrap rounded-xl bg-onyx px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-azure-900 dark:bg-white dark:text-onyx dark:hover:bg-soft-400"
+                        >
+                          {tr.openFile}
+                        </Link>
                         <button
                           onClick={() => setEditing(tech)}
                           className="rounded-xl border border-azure-900/15 px-3.5 py-1.5 text-xs font-semibold text-azure-950 transition hover:bg-azure-900/5 dark:border-white/15 dark:text-white dark:hover:bg-white/10"
