@@ -25,6 +25,9 @@ create table auth.users (
   aud text, role text, email text, encrypted_password text,
   email_confirmed_at timestamptz, created_at timestamptz, updated_at timestamptz,
   raw_app_meta_data jsonb, raw_user_meta_data jsonb,
+  confirmation_token text, recovery_token text, email_change text,
+  email_change_token_new text, email_change_token_current text,
+  phone_change text, phone_change_token text, reauthentication_token text,
   is_sso_user boolean not null default false
 );
 create unique index users_email_partial_key on auth.users (email) where is_sso_user = false;
@@ -87,8 +90,22 @@ const [again] = (await db.query(`select count(*)::int as n from agencies`)).rows
 const idempotent = again.n === 1;
 console.log(`  re-run: ${again.n} agency row${again.n === 1 ? "" : "s"} after seeding twice`);
 
+// GoTrue scans these into non nullable strings. A NULL in any of them makes
+// every sign in fail with "Database error querying schema", which no amount of
+// checking the portfolio would reveal.
+const [nulls] = (await db.query(`
+  select count(*)::int as n from auth.users
+  where email = 'amina@horizonrealty.gn'
+    and (confirmation_token is null or recovery_token is null
+      or email_change is null or email_change_token_new is null
+      or email_change_token_current is null or phone_change is null
+      or phone_change_token is null or reauthentication_token is null)`)).rows;
+const signable = nulls.n === 0;
+console.log(`  auth token columns: ${signable ? "all set" : "NULLs present, sign in would fail"}`);
+
 const ok =
   idempotent &&
+  signable &&
   counts.buildings === 3 &&
   counts.apartments === 12 &&
   counts.leases === 10 &&

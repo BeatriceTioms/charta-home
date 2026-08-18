@@ -14,6 +14,7 @@ declare
   b_andalouse uuid;
   apt uuid;
   lease uuid;
+  col text;
 begin
   -- Running this twice would build a second Horizon Realty beside the first,
   -- so stop early instead. Wipe the agency to reseed from scratch.
@@ -60,6 +61,25 @@ begin
     exception when others then
       raise notice 'auth.identities not seeded (%). Sign in may need a password reset.', sqlerrm;
     end;
+
+    -- GoTrue reads these columns into non nullable strings, so a row inserted
+    -- by hand with NULLs in them makes every sign in fail with "Database error
+    -- querying schema". Which of them exist varies by release, so ask.
+    for col in
+      select column_name
+      from information_schema.columns
+      where table_schema = 'auth'
+        and table_name = 'users'
+        and data_type in ('text', 'character varying')
+        and column_name in (
+          'confirmation_token', 'recovery_token', 'email_change',
+          'email_change_token_new', 'email_change_token_current',
+          'phone_change', 'phone_change_token', 'reauthentication_token'
+        )
+    loop
+      execute format('update auth.users set %I = %L where id = %L and %I is null',
+                     col, '', demo_user, col);
+    end loop;
   end if;
 
   insert into agencies (name, country, city, currency, locale, whatsapp_number)

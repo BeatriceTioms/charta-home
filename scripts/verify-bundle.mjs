@@ -26,6 +26,9 @@ create table auth.users (
   aud text, role text, email text, encrypted_password text,
   email_confirmed_at timestamptz, created_at timestamptz, updated_at timestamptz,
   raw_app_meta_data jsonb, raw_user_meta_data jsonb,
+  confirmation_token text, recovery_token text, email_change text,
+  email_change_token_new text, email_change_token_current text,
+  phone_change text, phone_change_token text, reauthentication_token text,
   is_sso_user boolean not null default false
 );
 create unique index users_email_partial_key on auth.users (email) where is_sso_user = false;
@@ -97,6 +100,20 @@ check("the demo user is created", user.n === 1);
 
 const [identity] = await q(`select count(*)::int as n from auth.identities`);
 check("the sign in identity is written", identity.n === 1, `${identity.n} identities`);
+
+// The repair file is what an already seeded project runs, so prove it on a row
+// broken the way those projects are broken.
+await db.exec(`update auth.users set confirmation_token = null, recovery_token = null,
+  email_change = null, email_change_token_new = null, email_change_token_current = null,
+  phone_change = null, phone_change_token = null, reauthentication_token = null`);
+await db.exec(await read("fix-demo-user.sql"));
+const [repaired] = await q(`
+  select count(*)::int as n from auth.users
+  where confirmation_token is null or recovery_token is null
+    or email_change is null or email_change_token_new is null
+    or email_change_token_current is null or phone_change is null
+    or phone_change_token is null or reauthentication_token is null`);
+check("fix-demo-user.sql repairs a broken row", repaired.n === 0, `${repaired.n} still null`);
 
 await db.close();
 
