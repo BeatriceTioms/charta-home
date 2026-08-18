@@ -15,24 +15,51 @@ declare
   apt uuid;
   lease uuid;
 begin
+  -- Running this twice would build a second Horizon Realty beside the first,
+  -- so stop early instead. Wipe the agency to reseed from scratch.
+  if exists (select 1 from agencies where name = 'Horizon Realty') then
+    raise notice 'Demo agency already present, nothing seeded.';
+    return;
+  end if;
+
   -- A confirmed demo user, created the way GoTrue would.
-  insert into auth.users (
-    instance_id, id, aud, role, email, encrypted_password,
-    email_confirmed_at, created_at, updated_at,
-    raw_app_meta_data, raw_user_meta_data
-  )
-  values (
-    '00000000-0000-0000-0000-000000000000', gen_random_uuid(), 'authenticated', 'authenticated',
-    'amina@horizonrealty.gn', crypt('chartahome2026', gen_salt('bf')),
-    now(), now(), now(),
-    '{"provider":"email","providers":["email"]}',
-    '{"full_name":"Amina Sow"}'
-  )
-  on conflict (email) do nothing
-  returning id into demo_user;
+  --
+  -- Look first rather than upserting: Supabase makes auth.users.email unique
+  -- through a PARTIAL index (where is_sso_user = false), and "on conflict
+  -- (email)" cannot match a partial index.
+  select id into demo_user from auth.users where email = 'amina@horizonrealty.gn';
 
   if demo_user is null then
-    select id into demo_user from auth.users where email = 'amina@horizonrealty.gn';
+    insert into auth.users (
+      instance_id, id, aud, role, email, encrypted_password,
+      email_confirmed_at, created_at, updated_at,
+      raw_app_meta_data, raw_user_meta_data
+    )
+    values (
+      '00000000-0000-0000-0000-000000000000', gen_random_uuid(), 'authenticated', 'authenticated',
+      'amina@horizonrealty.gn', crypt('chartahome2026', gen_salt('bf')),
+      now(), now(), now(),
+      '{"provider":"email","providers":["email"]}',
+      '{"full_name":"Amina Sow"}'
+    )
+    returning id into demo_user;
+
+    -- GoTrue looks for a matching identity on password sign in. Guarded because
+    -- the column names here have changed across releases, and a seed that
+    -- cannot write an identity should still leave a usable portfolio behind.
+    begin
+      insert into auth.identities (
+        provider_id, user_id, identity_data, provider,
+        last_sign_in_at, created_at, updated_at
+      )
+      values (
+        demo_user::text, demo_user,
+        jsonb_build_object('sub', demo_user::text, 'email', 'amina@horizonrealty.gn'),
+        'email', now(), now(), now()
+      );
+    exception when others then
+      raise notice 'auth.identities not seeded (%). Sign in may need a password reset.', sqlerrm;
+    end;
   end if;
 
   insert into agencies (name, country, city, currency, locale, whatsapp_number)

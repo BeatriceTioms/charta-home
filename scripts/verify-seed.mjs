@@ -16,11 +16,24 @@ do $$ begin
 end $$;
 create schema if not exists auth; create schema if not exists storage;
 create extension if not exists pgcrypto; create extension if not exists citext;
+-- Mirrors Supabase's own auth schema closely enough to catch the differences
+-- that matter. The email uniqueness is a PARTIAL index there, not a plain
+-- constraint, so "on conflict (email)" fails against a real project. Declaring
+-- it the easy way here hid exactly that bug.
 create table auth.users (
   instance_id uuid, id uuid primary key default gen_random_uuid(),
-  aud text, role text, email text unique, encrypted_password text,
+  aud text, role text, email text, encrypted_password text,
   email_confirmed_at timestamptz, created_at timestamptz, updated_at timestamptz,
-  raw_app_meta_data jsonb, raw_user_meta_data jsonb
+  raw_app_meta_data jsonb, raw_user_meta_data jsonb,
+  is_sso_user boolean not null default false
+);
+create unique index users_email_partial_key on auth.users (email) where is_sso_user = false;
+create table auth.identities (
+  provider_id text not null, user_id uuid not null references auth.users (id) on delete cascade,
+  identity_data jsonb not null, provider text not null,
+  last_sign_in_at timestamptz, created_at timestamptz, updated_at timestamptz,
+  id uuid primary key default gen_random_uuid(),
+  unique (provider_id, provider)
 );
 create or replace function auth.uid() returns uuid language sql stable as $$
   select nullif(current_setting('request.jwt.claim.sub', true),'')::uuid $$;
@@ -36,8 +49,10 @@ for (const f of (await readdir(dir)).filter((x) => x.endsWith(".sql")).sort()) {
   await db.exec(await readFile(path.join(dir, f), "utf8"));
 }
 
+const seed = await readFile(path.join(process.cwd(), "supabase", "seed.sql"), "utf8");
+
 try {
-  await db.exec(await readFile(path.join(process.cwd(), "supabase", "seed.sql"), "utf8"));
+  await db.exec(seed);
   console.log("  seed applied");
 } catch (err) {
   console.error("  SEED FAILED:", err.message);
@@ -65,7 +80,15 @@ for (const p of perf) {
   console.log(`  ${p.name}: ${p.occupied_count}/${p.apartment_count} occupied, income ${p.income_ytd}, yield ${p.net_yield_pct}%`);
 }
 
+// The seed is likely to be run more than once against a live project, so it
+// must be a no op the second time rather than a second Horizon Realty.
+await db.exec(seed);
+const [again] = (await db.query(`select count(*)::int as n from agencies`)).rows;
+const idempotent = again.n === 1;
+console.log(`  re-run: ${again.n} agency row${again.n === 1 ? "" : "s"} after seeding twice`);
+
 const ok =
+  idempotent &&
   counts.buildings === 3 &&
   counts.apartments === 12 &&
   counts.leases === 10 &&
