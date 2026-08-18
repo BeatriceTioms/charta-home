@@ -139,7 +139,7 @@ export function StatCard({
         {label}
       </p>
       <p
-        className={`mt-1.5 text-3xl font-extrabold tracking-tight ${
+        className={`mt-1.5 text-2xl font-extrabold tracking-tight tabular-nums xl:text-3xl ${
           emphasis ? "text-white dark:text-azure-950" : "text-azure-950 dark:text-white"
         }`}
       >

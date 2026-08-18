@@ -3,13 +3,21 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "./server";
+import { isSupabaseConfigured } from "./config";
 
-export type AuthResult = { error: string } | undefined;
+/**
+ * `demo` means no Supabase project is configured yet, so the caller should
+ * fall back to the unauthenticated demo it used before. Once the environment
+ * is set every path below becomes real.
+ */
+export type AuthResult = { error?: string; demo?: boolean } | undefined;
 
 export async function signIn(
   locale: string,
   formData: FormData
 ): Promise<AuthResult> {
+  if (!isSupabaseConfigured()) return { demo: true };
+
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({
     email: String(formData.get("email") ?? "").trim(),
@@ -26,6 +34,8 @@ export async function signUp(
   locale: string,
   formData: FormData
 ): Promise<AuthResult> {
+  if (!isSupabaseConfigured()) return { demo: true };
+
   const supabase = await createClient();
 
   const email = String(formData.get("email") ?? "").trim();
@@ -62,7 +72,12 @@ export async function signUp(
   redirect(`/${locale}/dashboard`);
 }
 
-export async function requestPasswordReset(locale: string, formData: FormData) {
+export async function requestPasswordReset(
+  locale: string,
+  formData: FormData
+): Promise<AuthResult> {
+  if (!isSupabaseConfigured()) return { demo: true };
+
   const supabase = await createClient();
   const email = String(formData.get("email") ?? "").trim();
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
@@ -73,7 +88,12 @@ export async function requestPasswordReset(locale: string, formData: FormData) {
   if (error) return { error: error.message };
 }
 
-export async function updatePassword(locale: string, formData: FormData) {
+export async function updatePassword(
+  locale: string,
+  formData: FormData
+): Promise<AuthResult> {
+  if (!isSupabaseConfigured()) return { demo: true };
+
   const supabase = await createClient();
   const { error } = await supabase.auth.updateUser({
     password: String(formData.get("password") ?? ""),
@@ -83,8 +103,10 @@ export async function updatePassword(locale: string, formData: FormData) {
 }
 
 export async function signOut(locale: string) {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
+  if (isSupabaseConfigured()) {
+    const supabase = await createClient();
+    await supabase.auth.signOut();
+  }
   revalidatePath("/", "layout");
   redirect(`/${locale}/login`);
 }

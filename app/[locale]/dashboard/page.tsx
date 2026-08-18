@@ -303,7 +303,9 @@ export default function DashboardPage() {
                 {t.dash.overview.thisMonth}
               </span>
             </div>
-            <div className="grid grid-cols-2 gap-6 lg:grid-cols-4">
+            {/* Two columns, not four: a GNF amount is far wider than the
+                dollar figure this row was first laid out for. */}
+            <div className="grid grid-cols-2 gap-x-6 gap-y-5">
               {[
                 [fmt(rentCollected), t.dash.overview.rentCollected, false],
                 [fmt(services), t.dash.overview.charges, false],
@@ -311,7 +313,7 @@ export default function DashboardPage() {
                 [fmt(debt), t.dash.overview.debt, true],
               ].map(([value, label, alert]) => (
                 <div key={label as string}>
-                  <p className="flex items-center gap-1.5 text-2xl font-extrabold tracking-tight text-azure-950 dark:text-white">
+                  <p className="flex items-center gap-1.5 text-xl font-extrabold tracking-tight tabular-nums text-azure-950 xl:text-2xl dark:text-white">
                     {alert && (
                       <span className="grid h-5 w-5 place-items-center rounded-full bg-onyx text-[11px] font-bold text-white dark:bg-white dark:text-onyx">
                         !

@@ -13,14 +13,17 @@ import {
 } from "@/components/auth/fields";
 import { COUNTRIES } from "@/lib/countries";
 import { useI18n } from "@/lib/i18n/context";
+import { signUp } from "@/lib/supabase/auth-actions";
+import { authErrorMessage } from "@/lib/auth-errors";
 
 export default function SignupPage() {
-  const { t, path } = useI18n();
+  const { t, path, locale } = useI18n();
   const router = useRouter();
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [failure, setFailure] = useState<string>();
   const [loading, setLoading] = useState(false);
 
-  const submit = (e: React.FormEvent<HTMLFormElement>) => {
+  const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const data = new FormData(e.currentTarget);
     const name = String(data.get("name") ?? "").trim();
@@ -36,15 +39,28 @@ export default function SignupPage() {
     if (!city) next.city = t.auth.signup.errorCity;
     if (password.length < 8) next.password = t.auth.login.errorPassword;
     setErrors(next);
+    setFailure(undefined);
     if (Object.keys(next).length > 0) return;
 
     setLoading(true);
-    try {
-      localStorage.setItem("charta-session", JSON.stringify({ email, agency, name }));
-    } catch {
-      /* ignore */
+    // On success the server action creates the agency and redirects.
+    const result = await signUp(locale, data);
+
+    if (result?.demo) {
+      // No Supabase project yet: keep the walkthrough usable.
+      try {
+        localStorage.setItem("charta-session", JSON.stringify({ email, agency, name }));
+      } catch {
+        /* ignore */
+      }
+      router.push(path("/dashboard"));
+      return;
     }
-    router.push(path("/dashboard"));
+
+    if (result?.error) {
+      setFailure(authErrorMessage(result.error, t));
+      setLoading(false);
+    }
   };
 
   return (
@@ -100,6 +116,14 @@ export default function SignupPage() {
           hint={t.auth.signup.passwordHint}
           error={errors.password}
         />
+        {failure && (
+          <p
+            role="alert"
+            className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700"
+          >
+            {failure}
+          </p>
+        )}
         <SubmitButton loading={loading}>
           {loading ? t.auth.signup.submitting : t.auth.signup.submit}
         </SubmitButton>

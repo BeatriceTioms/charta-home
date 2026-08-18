@@ -11,6 +11,7 @@ import { Toasts } from "./Toasts";
 import { BuildingProvider } from "@/lib/building-context";
 import { StoreProvider } from "@/lib/store";
 import { useI18n } from "@/lib/i18n/context";
+import { signOut } from "@/lib/supabase/auth-actions";
 
 const ICONS = {
   dashboard: (
@@ -82,12 +83,15 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
     return base.startsWith(href);
   };
 
-  const logout = () => {
+  const logout = async () => {
     try {
       localStorage.removeItem("charta-session");
     } catch {
       /* ignore */
     }
+    // Ends the Supabase session and redirects. Without a project configured it
+    // returns, and the push below takes over.
+    await signOut(locale);
     router.push(path("/login"));
   };
 
