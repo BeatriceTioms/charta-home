@@ -1,0 +1,231 @@
+# Charta Home · plan for going live
+
+Suggested sequence for connecting the interface to a real backend, clearing the
+mock data, and putting the product in front of an agency in Conakry.
+
+Companion to `backend-setup.md`, which explains how the backend is built, and
+`go-live-checklist.md`, which lists what is missing. This one is the order to
+do it in.
+
+---
+
+## The one piece of sequencing that matters
+
+**Clear the mock data last, not first.**
+
+`lib/data.ts` is what keeps the dashboard runnable while the migration is half
+done. Every page still reads it through `lib/store.tsx`. Delete it on day one
+and all eight pages break at once, with nothing to compare the new behaviour
+against. Migrate page by page, keep the mock as the control, and remove it when
+the last page no longer imports it.
+
+The second piece: **start the WhatsApp application on day one**. Meta business
+verification and template approval take days to weeks and none of it is code.
+It runs in parallel with everything below.
+
+---
+
+## Phase 0 · Project and environment
+
+Half a day. Nothing server side works until this is done.
+
+1. Create the Supabase project in the region closest to Guinea (eu-west-3 is
+   the usual answer).
+2. `supabase link` then `supabase db push` to apply the 7 migrations.
+3. Run `supabase/seed.sql` against the remote once, to have something real to
+   read while wiring pages. Plan to wipe it in phase 9.
+4. Set the six variables from `.env.example` in Vercel for Production, Preview
+   and Development, and in `.env.local` locally.
+5. Redeploy.
+
+**Gate:** `/api/cron/rent-charges` with the right bearer returns a JSON count
+instead of `fetch failed`, and an unauthenticated `/fr/dashboard` redirects to
+`/fr/login`.
+
+---
+
+## Phase 1 · Currency and locale truth
+
+One to two hours, and it changes every screen, so do it before any demo.
+
+- `fmt` in `lib/data.ts` becomes GNF: no decimals, thin space thousands, symbol
+  after the number, `fr-GN` formatting.
+- Demo phone numbers move from `+1 555` to `+224 6xx`.
+- Amounts in `lib/data.ts` scale to realistic Conakry rents, matching the
+  magnitudes already in `supabase/seed.sql`.
+
+**Gate:** no `$` anywhere in the dashboard, and the receipt totals read the way
+an agency in Conakry would write them.
+
+---
+
+## Phase 2 · Real sign in
+
+Half a day. Today `login/page.tsx` and `signup/page.tsx` validate the form and
+then call `router.push("/dashboard")`. Anyone reaching the URL is let in.
+
+- Point both forms at `lib/supabase/auth-actions.ts`, which already holds
+  `signIn`, `signUp`, `requestPasswordReset`, `updatePassword` and `signOut`.
+- Sign up calls `create_agency_for_current_user`, so a new account lands in its
+  own agency with an owner membership.
+- Wire the sidebar logout to `signOut`.
+- Surface auth errors in French.
+
+**Gate:** a wrong password is refused, a new account creates an agency, and the
+dashboard is unreachable while signed out.
+
+---
+
+## Phase 3 · Reads
+
+One to two days. The mechanical part. Order matters only in that each page
+teaches the next.
+
+| Order | Page | Query |
+| --- | --- | --- |
+| 1 | Apartments | `getBuildings`, `getApartmentStates` |
+| 2 | Rent, leases tab | `getOpenCharges` |
+| 3 | Rent, tenants tab | `getOpenCharges` plus lease and resident rows |
+| 4 | Maintenance, tickets | `getTickets` |
+| 5 | Maintenance, technicians | `getTechnicianPerformance` |
+| 6 | Dashboard overview | `getBuildingPerformance`, `getEvents` |
+
+Per page, the same recipe:
+
+1. Make the page a Server Component that fetches, and push the interactive part
+   into a child client component.
+2. Map the row shape onto the props the component already takes.
+3. Compare against the same page on the mock data. The numbers should match the
+   seed.
+
+**Gate:** every page renders from Postgres, and signing in as a second agency
+shows none of the first agency's data. RLS is already proven for this, but
+prove it through the interface too.
+
+---
+
+## Phase 4 · Writes
+
+One to two days. Every mutation the interface performs already has a matching
+server action in `lib/supabase/actions.ts`.
+
+Replace the `lib/store.tsx` calls one at a time: `addApartment`, `createLease`,
+`recordPayment`, `createTicket`, `updateTicket`, `deleteTicket`, `assignTicket`,
+`resolveTicket`, `addTechnician`, `updateTechnician`, `deleteTechnician`.
+
+Keep the toasts. Add an error path: the actions return
+`{ ok: false, error }` and nothing reads it yet.
+
+**Gate:** a payment recorded in the interface moves the charge to paid in the
+database, and the receipt prints from the stored row rather than from state.
+
+---
+
+## Phase 5 · Photos to Storage
+
+`addApartmentPhoto` uploads to the private `apartment-photos` bucket and
+`signPhotoUrls` issues one hour signed URLs. The gallery and the add apartment
+form still hold images as data URLs in memory.
+
+**Gate:** an uploaded photo survives a reload, and its URL is not readable by
+another agency.
+
+---
+
+## Phase 6 · Settings persistence
+
+`settings/page.tsx` is local state. Agency name, WhatsApp number, country,
+city, currency, reminder rules and team members write to `agencies`,
+`reminder_rules` and `memberships`.
+
+The receipt already reads its issuer from one place, `agency` in `lib/data.ts`.
+That is where the `agencies` row should land, and doing so makes the receipt
+correct for any agency rather than for Horizon Realty.
+
+---
+
+## Phase 7 · WhatsApp, started at phase 0
+
+Outside the code and slow:
+
+- Meta business verification
+- A number on the WhatsApp Business Platform
+- Message templates in French, one per reminder rule, submitted for approval.
+  Proactive messages outside the 24 hour service window need an approved
+  template; free text is rejected.
+- Webhook subscribed to `https://<domain>/api/webhooks/whatsapp`
+
+**Gate:** a message sent to the business number opens a ticket in the dashboard.
+The webhook already handles this end to end; it just needs a real number.
+
+---
+
+## Phase 8 · Reminder dispatch
+
+The last `TODO` in the source. `app/api/cron/reminders/route.ts` claims the send
+in `reminder_events` and stops before calling the Cloud API.
+
+- Send through the approved template.
+- Write `provider_message_id` and move `status` from `queued`.
+- On failure, mark the row failed so the next run can retry it.
+
+The cron is daily, which is the Hobby ceiling, and a rule fires once its offset
+has been reached so a missed day catches up. Moving to Pro lets it run hourly
+with no code change.
+
+**Gate:** a tenant with rent due receives one message, and a second run that day
+sends nothing.
+
+---
+
+## Phase 9 · Clear the mock data
+
+Only once no page imports `lib/store.tsx`.
+
+1. Delete `lib/store.tsx` and the seed arrays in `lib/data.ts`, keeping `fmt`,
+   the sort helpers, `isoPaidOn` and the types.
+2. Delete the `seed` group in `lib/i18n/dictionaries.ts` and the `s()` helper
+   that translates mock strings. Real rows carry their own text, so ticket
+   assignees stop reading `B. Keita (plumber)` in both languages.
+3. Wipe the demo agency from the live database.
+4. Replace the stock photos in `public/photos` with the agency's own, or leave
+   them as gallery placeholders.
+
+**Gate:** `grep -r "lib/store" app` returns nothing, and the app runs against an
+empty database without crashing. Empty states matter here: a new agency signs in
+to zero buildings.
+
+---
+
+## Phase 10 · Before real agencies
+
+- Point in time recovery on Supabase. Tenant payment records are not something
+  to lose.
+- Error tracking and a log drain. Today a failed cron is silent.
+- Rate limiting on the WhatsApp webhook. It is signature checked but unthrottled.
+- Interface tests and CI. The database has 23 checks; the interface has none.
+- Privacy policy, terms, data retention. The product holds tenant names, phone
+  numbers and payment histories.
+- Billing, once there is someone to bill. Deliberately last: choose a provider
+  that actually settles in Guinea.
+
+---
+
+## Rough shape
+
+| Phase | Effort |
+| --- | --- |
+| 0 Project and environment | half a day |
+| 1 Currency | 1 to 2 hours |
+| 2 Auth | half a day |
+| 3 Reads | 1 to 2 days |
+| 4 Writes | 1 to 2 days |
+| 5 Photos | half a day |
+| 6 Settings | half a day |
+| 7 WhatsApp | days to weeks of waiting, hours of work |
+| 8 Reminders | half a day |
+| 9 Clear the mock | 2 to 3 hours |
+| 10 Hardening | ongoing |
+
+Phases 0 to 4 are the ones that turn a demo into software. Everything after is
+finishing.
