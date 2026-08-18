@@ -1,4 +1,4 @@
-import type { Building, Payment, RentStatus, Technician, Ticket } from "@/lib/data";
+import type { ActivityItem, Building, Payment, RentStatus, Technician, Ticket } from "@/lib/data";
 import { seedPhotos } from "@/lib/data";
 import { isSupabaseConfigured } from "./config";
 import { createClient } from "./server";
@@ -50,9 +50,11 @@ const stockInterior = (i: number) =>
 export type Portfolio = {
   /** The signed in user's agency, which every insert must carry. */
   agencyId: string;
+  agencyInfo: { name: string; city: string; country: string; whatsapp: string };
   buildings: Building[];
   tickets: Ticket[];
   technicians: Technician[];
+  activity: ActivityItem[];
 };
 
 /**
@@ -64,6 +66,17 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
 
   const supabase = await createClient();
 
+  // The authoritative source for the agency id. Buildings and apartment
+  // states are both empty for a brand new agency, so deriving it from their
+  // first row silently produced "" and made every write look unconfigured.
+  const { data: agencyRow } = await supabase
+    .from("agencies")
+    .select("id, name, city, country, whatsapp_number")
+    .limit(1)
+    .maybeSingle();
+  if (!agencyRow) return null;
+  const agencyId = agencyRow.id;
+
   const [
     { data: buildingRows },
     { data: performance },
@@ -73,6 +86,7 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
     { data: ticketRows },
     { data: technicianRows },
     { data: photoRows },
+    { data: eventRows },
   ] = await Promise.all([
     supabase.from("buildings").select("*").order("name"),
     supabase.from("v_building_performance").select("*"),
@@ -87,12 +101,11 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
       .order("opened_at", { ascending: false }),
     supabase.from("technicians").select("*").order("full_name"),
     supabase.from("apartment_photos").select("*").order("position"),
+    supabase.from("events").select("*").order("starts_at"),
   ]);
 
   // Nothing to show means the account has no buildings yet, not a failure.
   if (!buildingRows) return null;
-
-  const agencyId = buildingRows[0]?.agency_id ?? (states ?? [])[0]?.agency_id ?? "";
 
   // The photo bucket is private, so the browser needs signed URLs. One batch
   // for the whole gallery; an hour outlives any dashboard visit.
@@ -167,6 +180,8 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
               name: u.resident_name,
               phone: readablePhone(u.resident_phone),
               since: u.lease_started_on ? periodOf(u.lease_started_on) : "",
+              // Absent on an open ended lease, which is the common case.
+              until: u.lease_ends_on ? periodOf(u.lease_ends_on) : undefined,
             }
           : undefined,
         // A vacant unit has no rent state; the interface treats that as pending.
@@ -227,5 +242,25 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
     since: periodOf(String(tech.created_at).slice(0, 10)),
   }));
 
-  return { agencyId, buildings, tickets, technicians };
+  // "09:00" from an ISO timestamp, local to the server's clock. Reminders and
+  // showings in Conakry are all on the same tz, so this stays simple.
+  const timeOf = (iso: string) => new Date(iso).toISOString().slice(11, 16);
+
+  const activity: ActivityItem[] = (eventRows ?? []).map((e) => ({
+    buildingId: e.building_id,
+    time: timeOf(e.starts_at),
+    title: e.title,
+    detail: e.detail ?? "",
+    kind: e.kind,
+    who: e.assignee ?? "",
+  }));
+
+  const agencyInfo = {
+    name: agencyRow.name,
+    city: agencyRow.city,
+    country: agencyRow.country,
+    whatsapp: agencyRow.whatsapp_number ?? "",
+  };
+
+  return { agencyId, agencyInfo, buildings, tickets, technicians, activity };
 }

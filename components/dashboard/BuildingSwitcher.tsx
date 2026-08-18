@@ -3,11 +3,11 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { fmt } from "@/lib/data";
-import { useBuilding } from "@/lib/building-context";
+import { useBuildingOptional } from "@/lib/building-context";
 import { useI18n } from "@/lib/i18n/context";
 
 export function BuildingSwitcher({ align = "left" }: { align?: "left" | "right" }) {
-  const { building, setBuildingId, buildings } = useBuilding();
+  const { building, setBuildingId, buildings } = useBuildingOptional();
   const { t, s: ts } = useI18n();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -25,6 +25,8 @@ export function BuildingSwitcher({ align = "left" }: { align?: "left" | "right" 
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
+
+  if (!building) return null;
 
   return (
     <div ref={ref} className="relative">

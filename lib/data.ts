@@ -36,7 +36,7 @@ export type Apartment = {
   sqm: number;
   rent: number;
   cycle: "monthly" | "yearly";
-  tenant?: { name: string; phone: string; since: string };
+  tenant?: { name: string; phone: string; since: string; until?: string };
   rentStatus: RentStatus;
   netYield: number;
   payments: Payment[];
@@ -272,7 +272,13 @@ export const fmt = (n: number) =>
  * The agency issuing receipts. Demo values today, read from the agencies row
  * once a live Supabase project is connected.
  */
-export const agency = {
+/**
+ * The fields a printed receipt needs that agencies does not yet carry a
+ * column for (street address, registration number, a contact email). Name,
+ * city, country and phone are overridden with the real agency once one is
+ * signed in; these four stay as sensible defaults either way.
+ */
+export const agencyDefaults = {
   name: "Horizon Realty",
   address: "Immeuble Kakimbo, Quartier de la Corniche",
   city: "Conakry",
@@ -341,7 +347,7 @@ export type ActivityItem = {
   time: string;
   title: string;
   detail: string;
-  kind: "viewing" | "work";
+  kind: "viewing" | "work" | "inspection" | "other";
   who: string;
 };
 

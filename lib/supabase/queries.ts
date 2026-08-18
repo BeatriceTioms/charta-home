@@ -1,11 +1,13 @@
 import { createClient } from "./server";
 import type {
+  AgencyMember,
   ApartmentPhotoRow,
   ApartmentState,
   BuildingPerformance,
   BuildingRow,
   ChargeStatusRow,
   EventRow,
+  ReminderRuleRow,
   SubscriptionRow,
   TechnicianPerformance,
   TicketRow,
@@ -142,4 +144,29 @@ export async function signPhotoUrls(paths: string[]): Promise<Record<string, str
     if (entry.path && entry.signedUrl) pairs.push([entry.path, entry.signedUrl]);
   }
   return Object.fromEntries(pairs);
+}
+
+/**
+ * Everything the settings page needs: the agency row, the caller's own role
+ * (which decides whether the form is even editable), the reminder cadence,
+ * and the team roster with email, which only the RPC can supply.
+ */
+export async function getSettingsData() {
+  const membership = await getCurrentAgency();
+  if (!membership?.agencies) return null;
+
+  const supabase = await createClient();
+  const agencyId = membership.agency_id;
+
+  const [{ data: rules }, { data: members }] = await Promise.all([
+    supabase.from("reminder_rules").select("*").eq("agency_id", agencyId).order("offset_days"),
+    supabase.rpc("list_agency_members", { target_agency: agencyId }),
+  ]);
+
+  return {
+    agency: membership.agencies,
+    myRole: membership.role,
+    reminderRules: (rules ?? []) as ReminderRuleRow[],
+    members: (members ?? []) as AgencyMember[],
+  };
 }

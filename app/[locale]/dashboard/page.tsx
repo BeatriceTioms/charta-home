@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { activity, fmt } from "@/lib/data";
+import { fmt } from "@/lib/data";
 import { useBuilding } from "@/lib/building-context";
 import { useStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n/context";
@@ -162,6 +162,7 @@ export default function DashboardPage() {
     progress: bTickets.filter((x) => x.status === "in-progress").length,
     resolved: bTickets.filter((x) => x.status === "resolved").length,
   };
+  const { activity } = useStore();
   const schedule = activity.filter((a) => a.buildingId === building.id);
   const viewings = schedule.filter((a) => a.kind === "viewing").length;
 

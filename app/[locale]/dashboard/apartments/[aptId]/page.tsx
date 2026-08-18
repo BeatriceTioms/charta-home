@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
 import { useState } from "react";
-import { activity, byPeriodDesc, fmt } from "@/lib/data";
+import { byPeriodDesc, fmt } from "@/lib/data";
 import { useBuilding } from "@/lib/building-context";
 import { useStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n/context";
@@ -105,12 +105,22 @@ function LeaseModal({
       setError(t.dash.common.required);
       return;
     }
+    const since = String(data.get("start") ?? "");
+    const until = String(data.get("end") ?? "");
+    // The database rejects this too, but catching it here says so in French
+    // rather than surfacing a Postgres exception.
+    if (until && until < since) {
+      setError(m.errorEndBeforeStart);
+      return;
+    }
+
     addLease(building.id, apartmentId, {
       name,
       phone: String(data.get("phone") ?? ""),
       rent: Number(data.get("rent") ?? defaultRent),
       cycle: (data.get("cycle") as "monthly" | "yearly") ?? "monthly",
-      since: String(data.get("start") ?? ""),
+      since,
+      until,
     });
     notify(`${name} · ${m.submit}`);
     onClose();
@@ -129,7 +139,7 @@ function LeaseModal({
         <Field label={m.phone}>
           <input name="phone" placeholder={m.phonePlaceholder} className={fieldCls} />
         </Field>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           <Field label={m.rent}>
             <input name="rent" type="number" min={0} step={50} defaultValue={defaultRent} className={fieldCls} />
           </Field>
@@ -139,8 +149,13 @@ function LeaseModal({
               <option value="yearly">{t.dash.rent.yearly}</option>
             </select>
           </Field>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
           <Field label={m.startDate}>
             <input name="start" type="date" defaultValue="2026-09-01" className={fieldCls} />
+          </Field>
+          <Field label={m.endDate} hint={m.endDateHint}>
+            <input name="end" type="date" className={fieldCls} />
           </Field>
         </div>
         <ModalActions onCancel={onClose} submitLabel={m.submit} />
@@ -166,6 +181,7 @@ export default function ApartmentPage() {
   const aptTickets = tickets.filter(
     (x) => x.buildingId === building.id && x.apartment === apartment.label
   );
+  const { activity } = useStore();
   const schedule = activity.filter((a) => a.buildingId === building.id);
   const team = [...new Set(schedule.map((s) => s.who))];
 
@@ -268,7 +284,10 @@ export default function ApartmentPage() {
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {/* Two columns, not four: this grid sits in the narrower of two page
+              columns, and a GNF amount needs roughly twice the width a dollar
+              figure did. */}
+          <div className="grid gap-4 sm:grid-cols-2">
             <StatCard
               emphasis
               label={t.dash.apartment.monthlyRent}
@@ -358,8 +377,10 @@ export default function ApartmentPage() {
                 </div>
                 <dl className="mt-5 space-y-2.5 text-sm">
                   <div className="flex justify-between gap-3">
-                    <dt className="text-onyx/45 dark:text-white/45">{t.dash.apartment.phone}</dt>
-                    <dd className="font-medium text-azure-950 dark:text-white">
+                    <dt className="shrink-0 text-onyx/45 dark:text-white/45">
+                      {t.dash.apartment.phone}
+                    </dt>
+                    <dd className="min-w-0 text-right font-medium text-azure-950 dark:text-white">
                       <a href={`tel:${apartment.tenant.phone.replace(/\s/g, "")}`} className="hover:underline">
                         {apartment.tenant.phone}
                       </a>
@@ -371,10 +392,23 @@ export default function ApartmentPage() {
                       {apartment.cycle === "monthly" ? t.dash.rent.monthly : t.dash.rent.yearly}
                     </dd>
                   </div>
+                  {apartment.tenant.until && (
+                    <div className="flex justify-between gap-3">
+                      <dt className="shrink-0 text-onyx/45 dark:text-white/45">
+                        {t.dash.apartment.leaseEnds}
+                      </dt>
+                      <dd className="text-right font-medium text-azure-950 dark:text-white">
+                        {apartment.tenant.until}
+                      </dd>
+                    </div>
+                  )}
                   <div className="flex justify-between gap-3">
-                    <dt className="text-onyx/45 dark:text-white/45">{t.dash.apartment.rent}</dt>
-                    <dd className="font-medium text-azure-950 dark:text-white">
-                      {fmt(apartment.rent)} {t.dash.common.perMonth}
+                    <dt className="shrink-0 text-onyx/45 dark:text-white/45">
+                      {t.dash.apartment.rent}
+                    </dt>
+                    <dd className="min-w-0 text-right font-medium text-azure-950 dark:text-white">
+                      {fmt(apartment.rent)}{" "}
+                      <span className="whitespace-nowrap">{t.dash.common.perMonth}</span>
                     </dd>
                   </div>
                 </dl>

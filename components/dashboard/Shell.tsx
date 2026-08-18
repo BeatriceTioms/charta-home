@@ -9,7 +9,8 @@ import { ThemeToggle } from "./ThemeToggle";
 import { BuildingSwitcher } from "./BuildingSwitcher";
 import { Toasts } from "./Toasts";
 import { BuildingProvider } from "@/lib/building-context";
-import { StoreProvider, type StoreSeed } from "@/lib/store";
+import { StoreProvider, useStore, type StoreSeed } from "@/lib/store";
+import { FirstBuilding } from "./FirstBuilding";
 import { useI18n } from "@/lib/i18n/context";
 import { signOut } from "@/lib/supabase/auth-actions";
 
@@ -53,6 +54,8 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { t, path, locale } = useI18n();
   const [collapsed, setCollapsed] = useState(false);
+  const { buildings } = useStore();
+  const hasBuildings = buildings.length > 0;
 
   const groups = [
     {
@@ -293,7 +296,9 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
           </nav>
         </header>
 
-        <main className="relative z-10 flex-1 px-5 py-8 sm:px-8">{children}</main>
+        <main className="relative z-10 flex-1 px-5 py-8 sm:px-8">
+          {hasBuildings ? children : <FirstBuilding />}
+        </main>
       </div>
 
       <Toasts />

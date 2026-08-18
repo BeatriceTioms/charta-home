@@ -1,8 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "./server";
-import type { LeaseCycle, PaymentMethod, ReportChannel, TicketPriority } from "./types";
+import { createAdminClient, createClient } from "./server";
+import type { LeaseCycle, MemberRole, PaymentMethod, ReportChannel, TicketPriority } from "./types";
 
 /**
  * Write helpers. Anything with an invariant goes through a Postgres function so
@@ -56,6 +56,8 @@ export async function createLease(
     cycle: LeaseCycle;
     startsOn: string;
     deposit?: number;
+    /** Fixed term leases end on a date; open ended ones leave this null. */
+    endsOn?: string | null;
   }
 ): Promise<ActionResult> {
   const supabase = await createClient();
@@ -67,6 +69,7 @@ export async function createLease(
     cycle_in: input.cycle,
     starts_on_in: input.startsOn,
     deposit_in: input.deposit ?? 0,
+    ends_on_in: input.endsOn || null,
   });
   if (error) return { ok: false, error: error.message };
   revalidateDashboard(locale);
@@ -380,6 +383,158 @@ export async function deleteApartmentPhoto(
     .remove([input.storagePath]);
   if (storageError) return { ok: false, error: storageError.message };
 
+  revalidateDashboard(locale);
+  return { ok: true };
+}
+
+/* --------------------------------------------------------------- buildings */
+
+/**
+ * The first thing a new agency needs. RLS lets owner, manager or accountant
+ * insert directly, so this is a plain write with no invariant to protect.
+ */
+export async function addBuilding(
+  locale: string,
+  input: { agencyId: string; name: string; address: string; city: string }
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("buildings")
+    .insert({
+      agency_id: input.agencyId,
+      name: input.name,
+      address: input.address,
+      city: input.city,
+    })
+    .select("id")
+    .single();
+  if (error) return { ok: false, error: error.message };
+  revalidateDashboard(locale);
+  return { ok: true, id: data.id };
+}
+
+/* ------------------------------------------------------------- settings */
+
+export async function updateAgencySettings(
+  locale: string,
+  input: {
+    agencyId: string;
+    name: string;
+    whatsappNumber: string;
+    country: string;
+    city: string;
+    currency: string;
+  }
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("agencies")
+    .update({
+      name: input.name,
+      whatsapp_number: input.whatsappNumber || null,
+      country: input.country,
+      city: input.city,
+      currency: input.currency,
+    })
+    .eq("id", input.agencyId);
+  if (error) return { ok: false, error: error.message };
+  revalidateDashboard(locale);
+  return { ok: true };
+}
+
+/**
+ * One rule per (agency, offset, channel). The settings page writes the whole
+ * cadence at once, so this replaces it wholesale: upsert what was sent, then
+ * drop any rule left behind.
+ *
+ * That second step matters because the lead time is editable. Moving the
+ * courtesy reminder from three days before to five creates a rule at -5 and
+ * would otherwise leave the one at -3 still firing.
+ *
+ * Deleting is safe for history: reminder_events references rule_id with
+ * `on delete set null`, so past sends survive without their rule.
+ */
+export async function upsertReminderRules(
+  locale: string,
+  input: {
+    agencyId: string;
+    rules: { offsetDays: number; channel: ReportChannel; isActive: boolean; escalationStep?: number }[];
+  }
+): Promise<ActionResult> {
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("reminder_rules").upsert(
+    input.rules.map((r) => ({
+      agency_id: input.agencyId,
+      offset_days: r.offsetDays,
+      channel: r.channel,
+      is_active: r.isActive,
+      escalation_step: r.escalationStep ?? 0,
+    })),
+    { onConflict: "agency_id,offset_days,channel" }
+  );
+  if (error) return { ok: false, error: error.message };
+
+  const keep = input.rules.map((r) => r.offsetDays);
+  const { error: pruneError } = await supabase
+    .from("reminder_rules")
+    .delete()
+    .eq("agency_id", input.agencyId)
+    .not("offset_days", "in", `(${keep.join(",")})`);
+  if (pruneError) return { ok: false, error: pruneError.message };
+
+  revalidateDashboard(locale);
+  return { ok: true };
+}
+
+/**
+ * Invites a teammate by email and seats them on the agency. Two steps that
+ * cross a privilege boundary, so this checks the caller's own role first with
+ * the ordinary client, under RLS, before reaching for the admin client that
+ * can create a user and would otherwise bypass RLS entirely.
+ *
+ * Delivery depends on SMTP being configured on the Supabase project; without
+ * it the account is created but the invite email may not arrive.
+ */
+export async function inviteMember(
+  locale: string,
+  input: { agencyId: string; email: string; role: MemberRole }
+): Promise<ActionResult> {
+  const caller = await createClient();
+  const { data: allowed } = await caller.rpc("has_role", {
+    target_agency: input.agencyId,
+    allowed: ["owner"],
+  });
+  if (!allowed) return { ok: false, error: "only the owner can invite" };
+
+  const admin = createAdminClient();
+  const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(
+    input.email
+  );
+  if (inviteError) return { ok: false, error: inviteError.message };
+
+  const { error } = await admin.from("memberships").insert({
+    user_id: invited.user.id,
+    agency_id: input.agencyId,
+    role: input.role,
+    full_name: input.email.split("@")[0],
+  });
+  if (error) return { ok: false, error: error.message };
+  revalidateDashboard(locale);
+  return { ok: true };
+}
+
+export async function removeMember(
+  locale: string,
+  input: { agencyId: string; userId: string }
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("memberships")
+    .delete()
+    .eq("agency_id", input.agencyId)
+    .eq("user_id", input.userId);
+  if (error) return { ok: false, error: error.message };
   revalidateDashboard(locale);
   return { ok: true };
 }

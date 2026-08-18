@@ -31,6 +31,14 @@ export type Agency = {
   updated_at: string;
 };
 
+export type AgencyMember = {
+  user_id: string;
+  full_name: string | null;
+  role: MemberRole;
+  email: string;
+  created_at: string;
+};
+
 export type Membership = {
   user_id: string;
   agency_id: string;
@@ -84,6 +92,7 @@ export type ApartmentState = {
   resident_name: string | null;
   resident_phone: string | null;
   lease_started_on: string | null;
+  lease_ends_on: string | null;
   is_occupied: boolean;
   rent_state: ChargeState;
 };
@@ -296,7 +305,21 @@ export type Database = {
   public: {
     Tables: {
       agencies: { Row: Agency; Insert: Partial<Agency>; Update: Partial<Agency>; Relationships: [] };
-      memberships: { Row: Membership; Insert: Partial<Membership>; Update: Partial<Membership>; Relationships: [] };
+      memberships: {
+        Row: Membership;
+        Insert: Partial<Membership>;
+        Update: Partial<Membership>;
+        // getCurrentAgency embeds the agency row in one select.
+        Relationships: [
+          {
+            foreignKeyName: "memberships_agency_id_fkey";
+            columns: ["agency_id"];
+            isOneToOne: false;
+            referencedRelation: "agencies";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       buildings: { Row: BuildingRow; Insert: Partial<BuildingRow>; Update: Partial<BuildingRow>; Relationships: [] };
       apartments: { Row: ApartmentRow; Insert: Partial<ApartmentRow>; Update: Partial<ApartmentRow>; Relationships: [] };
       tickets: {
@@ -367,6 +390,7 @@ export type Database = {
           cycle_in?: LeaseCycle;
           starts_on_in?: string;
           deposit_in?: number;
+          ends_on_in?: string | null;
         };
         Returns: string;
       };
@@ -391,6 +415,14 @@ export type Database = {
           estimated_cost?: number | null;
         };
         Returns: void;
+      };
+      list_agency_members: {
+        Args: { target_agency: string };
+        Returns: AgencyMember[];
+      };
+      has_role: {
+        Args: { target_agency: string; allowed: MemberRole[] };
+        Returns: boolean;
       };
       ensure_rent_charge: {
         Args: { target_lease: string; period: string };

@@ -25,10 +25,12 @@ import { useI18n } from "@/lib/i18n/context";
 import * as sb from "@/lib/supabase/actions";
 import type { PaymentMethod } from "@/lib/supabase/types";
 import {
+  activity as seedActivity,
   buildings as seedBuildings,
   seedPhotos,
   technicians as seedTechnicians,
   tickets as seedTickets,
+  type ActivityItem,
   type Apartment,
   type ApartmentPhoto,
   type Building,
@@ -43,7 +45,12 @@ export type Toast = { id: number; message: string };
 type StoreValue = {
   buildings: Building[];
   tickets: Ticket[];
+  activity: ActivityItem[];
+  agencyInfo: { name: string; city: string; country: string; whatsapp: string } | null;
   toasts: Toast[];
+  /** The signed in agency, empty string on the mock. */
+  agencyId: string;
+  addBuilding: (input: { name: string; address: string; city: string }) => Promise<string | undefined>;
   notify: (message: string) => void;
   dismissToast: (id: number) => void;
 
@@ -62,7 +69,15 @@ type StoreValue = {
   addLease: (
     buildingId: string,
     apartmentId: string,
-    input: { name: string; phone: string; rent: number; cycle: "monthly" | "yearly"; since: string }
+    input: {
+      name: string;
+      phone: string;
+      rent: number;
+      cycle: "monthly" | "yearly";
+      since: string;
+      /** Move out date on a fixed term lease, empty when open ended. */
+      until?: string;
+    }
   ) => void;
   recordPayment: (
     buildingId: string,
@@ -114,9 +129,11 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 /** Real rows when a project is configured, the mock portfolio otherwise. */
 export type StoreSeed = {
   agencyId?: string;
+  agencyInfo?: { name: string; city: string; country: string; whatsapp: string };
   buildings: Building[];
   tickets: Ticket[];
   technicians: Technician[];
+  activity: ActivityItem[];
 };
 
 /** The dashboard form's payment methods, in the database's spelling. */
@@ -171,6 +188,9 @@ export function StoreProvider({
   const [technicians, setTechnicians] = useState<Technician[]>(() =>
     (seed?.technicians ?? seedTechnicians).map((t) => ({ ...t }))
   );
+  const [activity, setActivity] = useState<ActivityItem[]>(
+    () => seed?.activity ?? seedActivity
+  );
   const [remindedKeys, setRemindedKeys] = useState<string[]>([]);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
@@ -178,6 +198,7 @@ export function StoreProvider({
   const router = useRouter();
   const live = Boolean(seed?.agencyId);
   const agencyId = seed?.agencyId ?? "";
+  const agencyInfo = seed?.agencyInfo ?? null;
 
   const notify = useCallback((message: string) => {
     const id = toastId++;
@@ -195,6 +216,7 @@ export function StoreProvider({
     setBuildings(decorate(seed.buildings));
     setTickets(seed.tickets.map((x) => ({ ...x })));
     setTechnicians(seed.technicians.map((x) => ({ ...x })));
+    setActivity(seed.activity);
   }, [seed]);
 
   /** Sends a write to the server, surfaces failure, and pulls back truth. */
@@ -289,10 +311,29 @@ export function StoreProvider({
     [agencyId, locale, persist]
   );
 
+  const addBuilding = useCallback<StoreValue["addBuilding"]>(
+    async (input) => {
+      if (!live) return undefined;
+      const result = await sb.addBuilding(locale, { agencyId, ...input });
+      if (!result.ok) {
+        notify(t.dash.common.saveFailed);
+        return undefined;
+      }
+      router.refresh();
+      return result.id;
+    },
+    [live, locale, agencyId, notify, t, router]
+  );
+
   const addLease = useCallback<StoreValue["addLease"]>(
     (buildingId, apartmentId, input) => {
       updateApartment(buildingId, apartmentId, {
-        tenant: { name: input.name, phone: input.phone, since: input.since },
+        tenant: {
+          name: input.name,
+          phone: input.phone,
+          since: input.since,
+          until: input.until || undefined,
+        },
         rent: input.rent,
         cycle: input.cycle,
         rentStatus: "pending",
@@ -306,6 +347,7 @@ export function StoreProvider({
           rent: input.rent,
           cycle: input.cycle,
           startsOn: input.since,
+          endsOn: input.until || null,
         })
       );
     },
@@ -642,7 +684,11 @@ export function StoreProvider({
     () => ({
       buildings,
       tickets,
+      activity,
+      agencyInfo,
       toasts,
+      agencyId,
+      addBuilding,
       notify,
       dismissToast,
       addApartment,
@@ -665,7 +711,7 @@ export function StoreProvider({
       remindedKeys,
     }),
     [
-      buildings, tickets, toasts, notify, dismissToast, addApartment, addLease,
+      buildings, tickets, activity, agencyInfo, toasts, agencyId, addBuilding, notify, dismissToast, addApartment, addLease,
       recordPayment, markReminded, addTicket, updateTicket, deleteTicket, assignTicket,
       resolveTicket, photosFor, addPhoto, updatePhoto, deletePhoto, technicians,
       addTechnician, updateTechnician, deleteTechnician, remindedKeys,

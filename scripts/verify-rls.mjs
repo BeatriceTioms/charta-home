@@ -260,6 +260,53 @@ const [sent] = await asUser(userA.id, `
   where rent_charge_id = '${charge.id}' and rule_id = '${rule.id}'`);
 check("exactly one reminder event survives the retry", sent.n === 1, `${sent.n} rows`);
 
+/* ----------------------------------------------------- lease end date --
+ * ends_on has to survive the round trip and refuse an impossible range,
+ * because the only guard against a typo is the database.
+ */
+const [fixedApt] = await asUser(userA.id, `
+  insert into apartments (agency_id, building_id, label, rooms, bathrooms, sqm, base_rent)
+  values ('${a1.id}', '${bA.id}', 'Apt Fixed', 2, 1, 60, 900000) returning id`);
+
+const [fixedLease] = await asUser(userA.id, `
+  select public.create_lease('${fixedApt.id}', 'Fatou Camara', '+224620998877',
+    900000, 'monthly', date '2026-09-01', 0, date '2027-08-31') as id`);
+const [ends] = await asUser(userA.id, `
+  select ends_on::text from leases where id = '${fixedLease.id}'`);
+check("create_lease stores the move out date", ends.ends_on === "2027-08-31", ends.ends_on);
+
+const [stateRow] = await asUser(userA.id, `
+  select lease_ends_on::text from v_apartment_state where apartment_id = '${fixedApt.id}'`);
+check("v_apartment_state exposes lease_ends_on",
+  stateRow.lease_ends_on === "2027-08-31", stateRow.lease_ends_on);
+
+let backwardsRejected = false;
+try {
+  await asUser(userA.id, `
+    select public.create_lease('${fixedApt.id}', 'Backwards Lease', '+224620111000',
+      900000, 'monthly', date '2026-09-01', 0, date '2026-01-01')`);
+} catch {
+  backwardsRejected = true;
+}
+check("a lease ending before it starts is refused", backwardsRejected);
+
+/* ------------------------------------------------- settings: member list --
+ * list_agency_members bridges auth.users, which PostgREST cannot reach
+ * directly. It must return the email and it must refuse a non member.
+ */
+const membersOfA = await asUser(userA.id, `select * from list_agency_members('${a1.id}')`);
+check("list_agency_members returns the roster with email",
+  membersOfA.length >= 1 && membersOfA.every((m) => m.email),
+  `${membersOfA.length} member(s)`);
+
+let refusedForOutsider = false;
+try {
+  await asUser(userB.id, `select * from list_agency_members('${a1.id}')`);
+} catch {
+  refusedForOutsider = true;
+}
+check("list_agency_members refuses a caller outside the agency", refusedForOutsider);
+
 await db.close();
 
 const failed = results.filter((r) => !r.pass);

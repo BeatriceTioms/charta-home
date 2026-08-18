@@ -508,6 +508,18 @@ export const fr = {
   },
 
   dash: {
+    onboarding: {
+      title: "Ajoutez votre premier immeuble",
+      subtitle:
+        "Votre agence est prête. Il ne manque plus qu'un immeuble pour commencer à gérer vos appartements.",
+      name: "Nom de l'immeuble",
+      namePlaceholder: "Résidence Les Palmiers",
+      address: "Adresse",
+      addressPlaceholder: "14 Avenue des Palmiers",
+      city: "Ville",
+      submit: "Créer l'immeuble",
+      created: "{name} créé.",
+    },
     groups: {
       main: "Menu principal",
       portfolio: "Patrimoine",
@@ -686,6 +698,7 @@ export const fr = {
       statusCol: "Statut",
       tenant: "Locataire",
       tenantSince: "Locataire depuis {date}",
+      leaseEnds: "Fin du bail",
       phone: "Téléphone / WhatsApp",
       cycle: "Cycle du bail",
       rent: "Loyer",
@@ -719,6 +732,9 @@ export const fr = {
         rent: "Loyer mensuel",
         cycle: "Cycle",
         startDate: "Début du bail",
+        endDate: "Fin du bail",
+        endDateHint: "Laissez vide pour un bail sans terme.",
+        errorEndBeforeStart: "La fin du bail ne peut pas précéder son début.",
         submit: "Créer le bail",
       },
     },
@@ -1001,6 +1017,9 @@ export const fr = {
       reminders: "Rappels de paiement",
       remindersNote: "Choisissez quand et comment vos locataires sont relancés.",
       beforeDue: "Rappel courtois avant l'échéance",
+      leadTime: "Combien de jours avant l'échéance",
+      leadDays: "{count} jours avant",
+      leadDayOne: "{count} jour avant",
       onDue: "Le jour de l'échéance",
       afterDue: "Relance après l'échéance",
       escalation: "Escalade au bout de 10 jours",
@@ -1593,6 +1612,18 @@ export const en: Dictionary = {
   },
 
   dash: {
+    onboarding: {
+      title: "Add your first building",
+      subtitle:
+        "Your agency is ready. All that is left is one building to start managing apartments.",
+      name: "Building name",
+      namePlaceholder: "Palm Residence",
+      address: "Address",
+      addressPlaceholder: "14 Palm Avenue",
+      city: "City",
+      submit: "Create the building",
+      created: "{name} created.",
+    },
     groups: {
       main: "Main menu",
       portfolio: "Portfolio",
@@ -1771,6 +1802,7 @@ export const en: Dictionary = {
       statusCol: "Status",
       tenant: "Tenant",
       tenantSince: "Tenant since {date}",
+      leaseEnds: "Lease ends",
       phone: "Phone / WhatsApp",
       cycle: "Lease cycle",
       rent: "Rent",
@@ -1804,6 +1836,9 @@ export const en: Dictionary = {
         rent: "Monthly rent",
         cycle: "Cycle",
         startDate: "Lease start",
+        endDate: "Lease end",
+        endDateHint: "Leave empty for an open ended lease.",
+        errorEndBeforeStart: "The lease cannot end before it starts.",
         submit: "Create lease",
       },
     },
@@ -2086,6 +2121,9 @@ export const en: Dictionary = {
       reminders: "Payment reminders",
       remindersNote: "Choose when and how your tenants are reminded.",
       beforeDue: "Courtesy reminder before the due date",
+      leadTime: "How many days before the due date",
+      leadDays: "{count} days before",
+      leadDayOne: "{count} day before",
       onDue: "On the due date",
       afterDue: "Follow up after the due date",
       escalation: "Escalation after 10 days",

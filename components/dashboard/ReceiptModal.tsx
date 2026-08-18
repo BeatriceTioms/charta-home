@@ -1,7 +1,8 @@
 "use client";
 
 import { LogoMark } from "@/components/Logo";
-import { agency, fmt } from "@/lib/data";
+import { agencyDefaults, fmt } from "@/lib/data";
+import { useStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n/context";
 
 export type ReceiptData = {
@@ -30,7 +31,20 @@ export function ReceiptModal({
   onClose: () => void;
 }) {
   const { t, f, locale } = useI18n();
+  const { agencyInfo } = useStore();
   const m = t.dash.rent.receiptModal;
+
+  // The signed in agency's own details where the row carries them, the
+  // defaults for the fields agencies has no column for yet.
+  const agency = {
+    ...agencyDefaults,
+    ...(agencyInfo && {
+      name: agencyInfo.name,
+      city: agencyInfo.city,
+      country: agencyInfo.country,
+      ...(agencyInfo.whatsapp && { phone: agencyInfo.whatsapp }),
+    }),
+  };
   const tag = locale === "fr" ? "fr-FR" : "en-GB";
 
   const longDate = (value: string) =>

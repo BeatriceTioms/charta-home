@@ -37,7 +37,7 @@ export function Modal({
       aria-label={title}
     >
       <div
-        className="my-auto w-full max-w-lg rounded-3xl border border-white/70 bg-white p-7 shadow-2xl dark:border-white/10 dark:bg-azure-950"
+        className="my-auto w-full max-w-lg rounded-3xl border border-white/70 bg-white p-7 shadow-2xl dark:border-white/10 dark:bg-onyx"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
