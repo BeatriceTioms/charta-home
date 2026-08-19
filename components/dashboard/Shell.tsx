@@ -99,13 +99,15 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="relative flex min-h-screen bg-gradient-to-br from-soft-100 via-white to-soft-200 text-azure-950 dark:from-onyx dark:via-onyx dark:to-azure-950 dark:text-white">
-      {/* ambient color for the glass to blur */}
+    <div className="relative flex min-h-screen bg-gradient-to-br from-white via-white to-soft-100/50 text-azure-950 dark:from-onyx dark:via-onyx dark:to-azure-950 dark:text-white">
+      {/* Ambient colour for the glass to blur. Faint on purpose in daylight:
+          the glass needs something behind it to pick up, but anything stronger
+          reads as a blue page rather than a white one. */}
       <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0">
-        <div className="absolute -top-32 left-[15%] h-[32rem] w-[32rem] rounded-full bg-soft-500/60 blur-3xl dark:bg-azure-600/25" />
-        <div className="absolute -right-24 top-1/4 h-[28rem] w-[28rem] rounded-full bg-azure-600/30 blur-3xl dark:bg-soft-500/12" />
-        <div className="absolute -left-32 top-1/2 h-[30rem] w-[30rem] rounded-full bg-azure-700/25 blur-3xl dark:bg-azure-700/30" />
-        <div className="absolute bottom-0 left-1/3 h-[26rem] w-[26rem] rounded-full bg-soft-400/45 blur-3xl dark:bg-azure-600/15" />
+        <div className="absolute -top-32 left-[15%] h-[32rem] w-[32rem] rounded-full bg-soft-500/20 blur-3xl dark:bg-azure-600/25" />
+        <div className="absolute -right-24 top-1/4 h-[28rem] w-[28rem] rounded-full bg-azure-600/10 blur-3xl dark:bg-soft-500/12" />
+        <div className="absolute -left-32 top-1/2 h-[30rem] w-[30rem] rounded-full bg-azure-700/8 blur-3xl dark:bg-azure-700/30" />
+        <div className="absolute bottom-0 left-1/3 h-[26rem] w-[26rem] rounded-full bg-soft-400/15 blur-3xl dark:bg-azure-600/15" />
       </div>
 
       {/* floating glass sidebar */}

@@ -188,11 +188,19 @@ export default function DashboardPage() {
   const resolvedTicket = bTickets.find((x) => x.status === "resolved");
   const lastUnit = occupied[occupied.length - 1];
 
+  // A ticket carries its unit's label rather than its id, so the photo comes
+  // from matching that back against the building.
+  const ticketUnit = resolvedTicket
+    ? building.apartments.find((a) => a.label === resolvedTicket.apartment)
+    : undefined;
+
   const recent = [
     paidUnit && {
       title: t.dash.overview.activityPayment,
       detail: `${paidUnit.label} · ${paidUnit.tenant!.name}`,
       time: t.dash.overview.hoursAgo,
+      photo: paidUnit.photos?.[0]?.src ?? "",
+      alt: paidUnit.label,
       icon: (
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M20 6L9 17l-5-5" />
@@ -203,6 +211,8 @@ export default function DashboardPage() {
       title: t.dash.overview.activityTicket,
       detail: resolvedTicket.title,
       time: t.dash.overview.yesterday,
+      photo: ticketUnit?.photos?.[0]?.src ?? "",
+      alt: ticketUnit?.label ?? resolvedTicket.apartment,
       icon: (
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
           <path d="M14.7 6.3a4.5 4.5 0 00-6 6L3 18l3 3 5.7-5.7a4.5 4.5 0 006-6L15 12l-3-3 2.7-2.7z" />
@@ -213,6 +223,8 @@ export default function DashboardPage() {
       title: t.dash.overview.activityLease,
       detail: `${lastUnit.label} · ${lastUnit.tenant!.name}`,
       time: t.dash.overview.daysAgo,
+      photo: lastUnit.photos?.[0]?.src ?? "",
+      alt: lastUnit.label,
       icon: (
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
           <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6M9 13h6M9 17h4" />
@@ -223,6 +235,8 @@ export default function DashboardPage() {
     title: string;
     detail: string;
     time: string;
+    photo: string;
+    alt: string;
     icon: React.ReactNode;
   }[];
 
@@ -342,7 +356,11 @@ export default function DashboardPage() {
               {recent.map((a) => (
                 <div key={a.title} className="overflow-hidden rounded-2xl border border-azure-900/8 dark:border-white/8">
                   <div className="relative h-32">
-                    <PhotoPlaceholder className="absolute inset-0 h-full w-full" />
+                    {a.photo ? (
+                      <Image src={a.photo} alt={a.alt} fill className="object-cover" />
+                    ) : (
+                      <PhotoPlaceholder className="absolute inset-0 h-full w-full" />
+                    )}
                     <span className="absolute left-3 top-3 grid h-8 w-8 place-items-center rounded-full bg-onyx/70 text-soft-500 backdrop-blur-sm">
                       {a.icon}
                     </span>

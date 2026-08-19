@@ -230,24 +230,18 @@ export function ProgressBar({ pct, className = "" }: { pct: number; className?: 
  * empty slot, not a feature, and colouring it made vacant units read as though
  * they carried an image. The paperclip says what the slot wants.
  */
+/**
+ * What sits where a photograph would. Left as bare glass rather than an icon:
+ * a unit without a picture is a gap to fill, and an empty pane says that
+ * quietly, where a symbol repeated down a grid of cards starts to read as
+ * clutter. The controls that add a photo live on the surface that owns it.
+ */
 export function PhotoPlaceholder({ className = "" }: { className?: string }) {
   return (
     <div
-      className={`grid place-items-center bg-neutral-200 dark:bg-neutral-800 ${className}`}
+      className={`border border-white/50 bg-white/40 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06] ${className}`}
       aria-hidden="true"
-    >
-      <svg
-        viewBox="0 0 24 24"
-        className="h-1/3 w-1/3 max-h-10 max-w-10 text-neutral-500 dark:text-neutral-400"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-      </svg>
-    </div>
+    />
   );
 }
 
