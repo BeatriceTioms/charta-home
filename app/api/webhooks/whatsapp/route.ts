@@ -4,6 +4,9 @@ import { createAdminClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
+/** Only the fields this handler reads from an inbound message. */
+type WaMessage = { id: string; from: string; text?: { body?: string } };
+
 /** Meta calls this once to verify the callback URL. */
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -39,8 +42,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "bad signature" }, { status: 401 });
   }
 
-  const payload = JSON.parse(raw);
   const supabase = createAdminClient();
+
+  // Meta's own retries are welcome; a flood is not. Counted in Postgres
+  // because serverless instances share no memory. Checked after the
+  // signature, so an unsigned caller can never consume the budget.
+  const { data: allowed, error: limitError } = await supabase.rpc("take_rate_limit", {
+    bucket_key: "whatsapp-webhook",
+    max_hits: 600,
+    window_seconds: 60,
+  });
+  if (limitError) {
+    console.error("rate limit check failed:", limitError.message);
+  } else if (allowed === false) {
+    // 429 asks Meta to back off and retry, rather than dropping the message.
+    return NextResponse.json({ error: "rate limited" }, { status: 429 });
+  }
+
+  let payload: { entry?: { changes?: { value?: { messages?: WaMessage[] } }[] }[] };
+  try {
+    payload = JSON.parse(raw);
+  } catch {
+    return NextResponse.json({ error: "malformed payload" }, { status: 400 });
+  }
   let handled = 0;
 
   for (const entry of payload.entry ?? []) {

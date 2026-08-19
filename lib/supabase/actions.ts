@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { validateImage } from "@/lib/uploads";
 import { createAdminClient, createClient } from "./server";
 import type { LeaseCycle, MemberRole, PaymentMethod, ReportChannel, TicketPriority } from "./types";
 
@@ -285,12 +286,16 @@ export async function addApartmentPhoto(
     return { ok: false, error: "missing photo upload fields" };
   }
 
+  const check = await validateImage(file);
+  if (!check.ok) return { ok: false, error: `image rejected: ${check.reason}` };
+
   const supabase = await createClient();
   const path = `${agencyId}/${apartmentId}/${crypto.randomUUID()}`;
 
   const { error: uploadError } = await supabase.storage
     .from("apartment-photos")
-    .upload(path, file, { contentType: file.type || "image/jpeg", upsert: false });
+    // The type the bytes claim, not the one the client declared.
+    .upload(path, file, { contentType: check.mime, upsert: false });
   if (uploadError) return { ok: false, error: uploadError.message };
 
   const { count } = await supabase
@@ -333,10 +338,13 @@ export async function replaceApartmentPhoto(
   };
 
   if (file instanceof File && file.size > 0) {
+    const check = await validateImage(file);
+    if (!check.ok) return { ok: false, error: `image rejected: ${check.reason}` };
+
     const path = `${agencyId}/${apartmentId}/${crypto.randomUUID()}`;
     const { error: uploadError } = await supabase.storage
       .from("apartment-photos")
-      .upload(path, file, { contentType: file.type || "image/jpeg", upsert: false });
+      .upload(path, file, { contentType: check.mime, upsert: false });
     if (uploadError) return { ok: false, error: uploadError.message };
     patch.storage_path = path;
   }
@@ -682,12 +690,15 @@ export async function setBuildingPhoto(
     return { ok: false, error: "missing building photo fields" };
   }
 
+  const check = await validateImage(file);
+  if (!check.ok) return { ok: false, error: `image rejected: ${check.reason}` };
+
   const supabase = await createClient();
   const path = `${agencyId}/${buildingId}/${crypto.randomUUID()}`;
 
   const { error: uploadError } = await supabase.storage
     .from("building-photos")
-    .upload(path, file, { contentType: file.type || "image/jpeg", upsert: false });
+    .upload(path, file, { contentType: check.mime, upsert: false });
   if (uploadError) return { ok: false, error: uploadError.message };
 
   const { error } = await supabase

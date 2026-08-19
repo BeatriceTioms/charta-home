@@ -70,7 +70,9 @@ const q = async (sql) => (await db.query(sql)).rows;
 const [tables] = await q(
   `select count(*)::int as n from pg_tables where schemaname = 'public'`
 );
-check("every table is created", tables.n === 23, `${tables.n} tables`);
+// A deliberate canary: this number is expected to change when the schema
+// grows, and a mismatch means either a new table or a bundle that truncated.
+check("every table is created", tables.n === 24, `${tables.n} tables`);
 
 const [views] = await q(
   `select count(*)::int as n from pg_views where schemaname = 'public'`

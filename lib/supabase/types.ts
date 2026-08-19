@@ -265,6 +265,12 @@ export type ReminderTargetRow = {
   apartment_label: string;
 };
 
+export type RateLimitRow = {
+  bucket: string;
+  window_start: string;
+  hits: number;
+};
+
 export type ReminderEventRow = {
   id: string;
   agency_id: string;
@@ -360,6 +366,7 @@ export type Database = {
       wa_conversations: { Row: WaConversationRow; Insert: Partial<WaConversationRow>; Update: Partial<WaConversationRow>; Relationships: [] };
       expenses: { Row: ExpenseRow; Insert: Partial<ExpenseRow>; Update: Partial<ExpenseRow>; Relationships: [] };
       events: { Row: EventRow; Insert: Partial<EventRow>; Update: Partial<EventRow>; Relationships: [] };
+      rate_limits: { Row: RateLimitRow; Insert: Partial<RateLimitRow>; Update: Partial<RateLimitRow>; Relationships: [] };
       rent_charges: { Row: RentChargeRow; Insert: Partial<RentChargeRow>; Update: Partial<RentChargeRow>; Relationships: [] };
       payments: { Row: PaymentRow; Insert: Partial<PaymentRow>; Update: Partial<PaymentRow>; Relationships: [] };
       payment_allocations: {
@@ -438,6 +445,10 @@ export type Database = {
       };
       has_role: {
         Args: { target_agency: string; allowed: MemberRole[] };
+        Returns: boolean;
+      };
+      take_rate_limit: {
+        Args: { bucket_key: string; max_hits: number; window_seconds: number };
         Returns: boolean;
       };
       ensure_rent_charge: {

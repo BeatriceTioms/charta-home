@@ -260,6 +260,51 @@ const [sent] = await asUser(userA.id, `
   where rent_charge_id = '${charge.id}' and rule_id = '${rule.id}'`);
 check("exactly one reminder event survives the retry", sent.n === 1, `${sent.n} rows`);
 
+/* ------------------------------------------------- guards in the database --
+ * These used to live only in the server action, which meant they held for the
+ * dashboard and not for anyone calling PostgREST with their own token.
+ */
+const [guardApt] = await asUser(userA.id, `
+  insert into apartments (agency_id, building_id, label, rooms, bathrooms, sqm, base_rent)
+  values ('${a1.id}', '${bA.id}', 'Apt Guard', 1, 1, 30, 400000) returning id`);
+await asUser(userA.id, `
+  select public.create_lease('${guardApt.id}', 'Sekou Camara', '+224620555111',
+    400000, 'monthly', date '2026-01-01')`);
+
+let occupiedDeleteBlocked = false;
+try {
+  await asUser(userA.id, `delete from apartments where id = '${guardApt.id}'`);
+} catch {
+  occupiedDeleteBlocked = true;
+}
+check("the database refuses to delete an occupied apartment", occupiedDeleteBlocked);
+
+const [stillThere] = await asUser(userA.id, `
+  select count(*)::int as n from apartments where id = '${guardApt.id}'`);
+check("the occupied apartment and its history survive", stillThere.n === 1);
+
+// Ending the lease should release it.
+await asUser(userA.id, `
+  update leases set status = 'ended' where apartment_id = '${guardApt.id}'`);
+await asUser(userA.id, `delete from apartments where id = '${guardApt.id}'`);
+const [nowGone] = await asUser(userA.id, `
+  select count(*)::int as n from apartments where id = '${guardApt.id}'`);
+check("once the lease is ended the unit can be deleted", nowGone.n === 0);
+
+/* ----------------------------------------------------------- rate limiting */
+const [first] = await q(`select public.take_rate_limit('test-bucket', 3, 60) as ok`);
+check("the first hit inside the limit is allowed", first.ok === true);
+await q(`select public.take_rate_limit('test-bucket', 3, 60)`);
+const [third] = await q(`select public.take_rate_limit('test-bucket', 3, 60) as ok`);
+check("the last hit inside the limit is allowed", third.ok === true);
+const [fourth] = await q(`select public.take_rate_limit('test-bucket', 3, 60) as ok`);
+check("the hit past the limit is refused", fourth.ok === false);
+
+// A stale window starts over rather than staying blocked forever.
+await q(`update rate_limits set window_start = now() - interval '2 minutes' where bucket = 'test-bucket'`);
+const [afterWindow] = await q(`select public.take_rate_limit('test-bucket', 3, 60) as ok`);
+check("a new window resets the counter", afterWindow.ok === true);
+
 /* ------------------------------------------------------- edit and delete --
  * The CRUD the interface offers has to hold at the database too: a unit is
  * editable, a tenant's own row is correctable, and an occupied unit must not
