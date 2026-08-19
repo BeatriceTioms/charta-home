@@ -3,13 +3,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { fmt } from "@/lib/data";
+
 import { useBuilding } from "@/lib/building-context";
 import { useStore } from "@/lib/store";
+import { useMoney } from "@/lib/money";
 import { useI18n } from "@/lib/i18n/context";
 import { Card, CardTitle, PageTitle, PhotoPlaceholder, ProgressBar, RentChip } from "@/components/dashboard/ui";
 import { Field, Modal, ModalActions, fieldCls } from "@/components/dashboard/Modal";
 import { MultiPhotoPicker } from "@/components/dashboard/PhotoPicker";
+import { BuildingPhoto } from "@/components/dashboard/BuildingPhoto";
 
 type Filter = "all" | "occupied" | "vacant" | "overdue";
 
@@ -89,6 +91,7 @@ function AddApartmentModal({ onClose }: { onClose: () => void }) {
 export default function ApartmentsPage() {
   const { building } = useBuilding();
   const { t, f, path } = useI18n();
+  const { fmt } = useMoney();
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
   const [adding, setAdding] = useState(false);
@@ -142,11 +145,12 @@ export default function ApartmentsPage() {
       <Card className="overflow-hidden p-0">
         <div className="grid gap-0 md:grid-cols-[1.1fr_1fr]">
           <div className="relative h-56 md:h-auto">
-            {building.photo ? (
-              <Image src={building.photo} alt={building.name} fill className="object-cover" />
-            ) : (
-              <PhotoPlaceholder className="absolute inset-0 h-full w-full" />
-            )}
+            <BuildingPhoto
+              buildingId={building.id}
+              photo={building.photo}
+              name={building.name}
+              className="absolute inset-0 h-full w-full"
+            />
             <span className="absolute left-4 top-4 rounded-full bg-white/85 px-3.5 py-1.5 text-xs font-bold text-azure-950 backdrop-blur-sm">
               {building.netYield}% {t.dash.apartments.netYield}
             </span>

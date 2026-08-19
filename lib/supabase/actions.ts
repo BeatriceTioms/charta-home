@@ -545,3 +545,196 @@ export async function removeMember(
   revalidateDashboard(locale);
   return { ok: true };
 }
+
+/* ------------------------------------------------- apartments and leases */
+
+export async function updateApartment(
+  locale: string,
+  input: {
+    apartmentId: string;
+    label?: string;
+    rooms?: number;
+    bathrooms?: number;
+    sqm?: number;
+    baseRent?: number;
+  }
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("apartments")
+    .update({
+      ...(input.label !== undefined && { label: input.label }),
+      ...(input.rooms !== undefined && { rooms: input.rooms }),
+      ...(input.bathrooms !== undefined && { bathrooms: input.bathrooms }),
+      ...(input.sqm !== undefined && { sqm: input.sqm }),
+      ...(input.baseRent !== undefined && { base_rent: input.baseRent }),
+    })
+    .eq("id", input.apartmentId);
+  if (error) return { ok: false, error: error.message };
+  revalidateDashboard(locale);
+  return { ok: true };
+}
+
+/**
+ * Removes a unit. Leases, charges and payments cascade from it, so this is
+ * refused while anyone still lives there: an agency deleting an occupied unit
+ * by accident would take its whole payment history with it.
+ */
+export async function deleteApartment(
+  locale: string,
+  apartmentId: string
+): Promise<ActionResult> {
+  const supabase = await createClient();
+
+  const { count } = await supabase
+    .from("leases")
+    .select("id", { count: "exact", head: true })
+    .eq("apartment_id", apartmentId)
+    .eq("status", "active");
+  if ((count ?? 0) > 0) return { ok: false, error: "occupied" };
+
+  const { error } = await supabase.from("apartments").delete().eq("id", apartmentId);
+  if (error) return { ok: false, error: error.message };
+  revalidateDashboard(locale);
+  return { ok: true };
+}
+
+/** Corrects a tenant's own details, which live on the resident row. */
+export async function updateResident(
+  locale: string,
+  input: { residentId: string; fullName?: string; phone?: string; email?: string | null }
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("residents")
+    .update({
+      ...(input.fullName !== undefined && { full_name: input.fullName }),
+      ...(input.phone !== undefined && { phone_e164: input.phone }),
+      ...(input.email !== undefined && { email: input.email }),
+    })
+    .eq("id", input.residentId);
+  if (error) return { ok: false, error: error.message };
+  revalidateDashboard(locale);
+  return { ok: true };
+}
+
+/** Adjusts the terms of a running lease. */
+export async function updateLease(
+  locale: string,
+  input: {
+    leaseId: string;
+    rentAmount?: number;
+    cycle?: LeaseCycle;
+    startsOn?: string;
+    endsOn?: string | null;
+  }
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("leases")
+    .update({
+      ...(input.rentAmount !== undefined && { rent_amount: input.rentAmount }),
+      ...(input.cycle !== undefined && { cycle: input.cycle }),
+      ...(input.startsOn !== undefined && { starts_on: input.startsOn }),
+      ...(input.endsOn !== undefined && { ends_on: input.endsOn }),
+    })
+    .eq("id", input.leaseId);
+  if (error) return { ok: false, error: error.message };
+  revalidateDashboard(locale);
+  return { ok: true };
+}
+
+/**
+ * Ends a tenancy. The lease is marked ended rather than deleted, because the
+ * rent it collected is the agency's own accounting history and deleting the
+ * lease would cascade it away.
+ */
+export async function endLease(
+  locale: string,
+  input: { leaseId: string; endsOn: string }
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("leases")
+    .update({ status: "ended", ends_on: input.endsOn })
+    .eq("id", input.leaseId);
+  if (error) return { ok: false, error: error.message };
+  revalidateDashboard(locale);
+  return { ok: true };
+}
+
+/* ---------------------------------------------------------- building photo */
+
+/**
+ * The building's own photograph, uploaded to the private building-photos
+ * bucket under <agency_id>/<building_id>/, which is what the storage policy
+ * matches on. Fields: agencyId, buildingId, file, and optionally oldPath.
+ */
+export async function setBuildingPhoto(
+  locale: string,
+  form: FormData
+): Promise<ActionResult> {
+  const agencyId = String(form.get("agencyId") ?? "");
+  const buildingId = String(form.get("buildingId") ?? "");
+  const oldPath = String(form.get("oldPath") ?? "");
+  const file = form.get("file");
+  if (!agencyId || !buildingId || !(file instanceof File)) {
+    return { ok: false, error: "missing building photo fields" };
+  }
+
+  const supabase = await createClient();
+  const path = `${agencyId}/${buildingId}/${crypto.randomUUID()}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("building-photos")
+    .upload(path, file, { contentType: file.type || "image/jpeg", upsert: false });
+  if (uploadError) return { ok: false, error: uploadError.message };
+
+  const { error } = await supabase
+    .from("buildings")
+    .update({ photo_path: path })
+    .eq("id", buildingId);
+  if (error) return { ok: false, error: error.message };
+
+  // Only once the row points at the new object, so a failure never leaves the
+  // building with a path to something that is gone.
+  if (oldPath) await supabase.storage.from("building-photos").remove([oldPath]);
+
+  revalidateDashboard(locale);
+  return { ok: true };
+}
+
+export async function removeBuildingPhoto(
+  locale: string,
+  input: { buildingId: string; storagePath: string }
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("buildings")
+    .update({ photo_path: null })
+    .eq("id", input.buildingId);
+  if (error) return { ok: false, error: error.message };
+  if (input.storagePath) {
+    await supabase.storage.from("building-photos").remove([input.storagePath]);
+  }
+  revalidateDashboard(locale);
+  return { ok: true };
+}
+
+export async function updateBuilding(
+  locale: string,
+  input: { buildingId: string; name?: string; address?: string; city?: string }
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("buildings")
+    .update({
+      ...(input.name !== undefined && { name: input.name }),
+      ...(input.address !== undefined && { address: input.address }),
+      ...(input.city !== undefined && { city: input.city }),
+    })
+    .eq("id", input.buildingId);
+  if (error) return { ok: false, error: error.message };
+  revalidateDashboard(locale);
+  return { ok: true };
+}

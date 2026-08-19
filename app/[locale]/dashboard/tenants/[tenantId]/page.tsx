@@ -3,17 +3,10 @@
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import {
-  byOpenedDesc,
-  byPeriodDesc,
-  fmt,
-  isoPaidOn,
-  shortRef,
-  type RentStatus,
-  type TicketStatus,
-} from "@/lib/data";
+import { byOpenedDesc, byPeriodDesc, isoPaidOn, shortRef, type RentStatus, type TicketStatus } from "@/lib/data";
 import { useBuilding } from "@/lib/building-context";
 import { useStore } from "@/lib/store";
+import { useMoney } from "@/lib/money";
 import { useI18n } from "@/lib/i18n/context";
 import { Card, CardTitle, RentChip, StatCard, TicketChip, ViaBadge } from "@/components/dashboard/ui";
 import { ReceiptModal, type ReceiptData } from "@/components/dashboard/ReceiptModal";
@@ -29,6 +22,7 @@ export default function TenantPage() {
   const { building } = useBuilding();
   const { tickets, markReminded, remindedKeys, notify } = useStore();
   const { t, f, s: ts, path } = useI18n();
+  const { fmt } = useMoney();
   const params = useParams<{ tenantId: string }>();
   const tn = t.dash.tenants;
 

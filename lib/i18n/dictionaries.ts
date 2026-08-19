@@ -509,6 +509,16 @@ export const fr = {
   },
 
   dash: {
+    buildingPhoto: {
+      add: "Ajouter une photo",
+      replace: "Remplacer la photo",
+      remove: "Retirer",
+      modalTitle: "Photo de l'immeuble",
+      removeTitle: "Retirer la photo ?",
+      removeBody: "L'immeuble affichera un visuel neutre.",
+      updated: "Photo mise à jour.",
+      removed: "Photo retirée.",
+    },
     noAgency: {
       title: "Espace introuvable",
       body: "Aucune agence n'est rattachée à cette session. Reconnectez vous, ou créez votre agence si c'est votre première visite.",
@@ -727,6 +737,39 @@ export const fr = {
           "Bonjour {name}, un rappel courtois : votre loyer de {amount} pour {apartment} est à régler. Merci et bonne journée.",
         submit: "Envoyer le rappel",
         sent: "Rappel envoyé à {name}.",
+      },
+      editModal: {
+        title: "Modifier le logement",
+        label: "Nom du logement",
+        rooms: "Pièces",
+        bathrooms: "Salles de bain",
+        sqm: "Surface en m²",
+        rent: "Loyer",
+        updated: "Logement mis à jour.",
+      },
+      tenantModal: {
+        title: "Modifier le locataire",
+        name: "Nom complet",
+        phone: "Téléphone",
+        rent: "Loyer",
+        cycle: "Cycle du bail",
+        endDate: "Fin du bail",
+        endDateHint: "Laissez vide pour un bail sans terme.",
+        updated: "Locataire mis à jour.",
+      },
+      deleteModal: {
+        title: "Supprimer ce logement ?",
+        subtitle: "Cette action est définitive.",
+        occupied: "Ce logement est occupé. Clôturez d'abord le bail.",
+        deleted: "Logement supprimé.",
+      },
+      endLeaseModal: {
+        title: "Clôturer le bail",
+        subtitle: "Le bail de {name} prendra fin à la date choisie.",
+        date: "Date de sortie",
+        hint: "L'historique des paiements est conservé.",
+        submit: "Clôturer le bail",
+        ended: "Bail clôturé.",
       },
       leaseModal: {
         title: "Ajouter un bail",
@@ -1590,6 +1633,16 @@ export const en: Dictionary = {
   },
 
   dash: {
+    buildingPhoto: {
+      add: "Add a photo",
+      replace: "Replace the photo",
+      remove: "Remove",
+      modalTitle: "Building photo",
+      removeTitle: "Remove the photo?",
+      removeBody: "The building will show a neutral visual.",
+      updated: "Photo updated.",
+      removed: "Photo removed.",
+    },
     noAgency: {
       title: "Workspace not found",
       body: "No agency is attached to this session. Sign in again, or create your agency if this is your first visit.",
@@ -1808,6 +1861,39 @@ export const en: Dictionary = {
           "Good morning {name}, a courteous reminder that your rent of {amount} for {apartment} is due. Thank you and have a good day.",
         submit: "Send reminder",
         sent: "Reminder sent to {name}.",
+      },
+      editModal: {
+        title: "Edit the unit",
+        label: "Unit name",
+        rooms: "Rooms",
+        bathrooms: "Bathrooms",
+        sqm: "Area in m²",
+        rent: "Rent",
+        updated: "Unit updated.",
+      },
+      tenantModal: {
+        title: "Edit the tenant",
+        name: "Full name",
+        phone: "Phone",
+        rent: "Rent",
+        cycle: "Lease cycle",
+        endDate: "Lease end",
+        endDateHint: "Leave empty for an open ended lease.",
+        updated: "Tenant updated.",
+      },
+      deleteModal: {
+        title: "Delete this unit?",
+        subtitle: "This cannot be undone.",
+        occupied: "This unit is occupied. End the lease first.",
+        deleted: "Unit deleted.",
+      },
+      endLeaseModal: {
+        title: "End the lease",
+        subtitle: "{name}'s lease will end on the date you choose.",
+        date: "Move out date",
+        hint: "The payment history is kept.",
+        submit: "End the lease",
+        ended: "Lease ended.",
       },
       leaseModal: {
         title: "Add lease",

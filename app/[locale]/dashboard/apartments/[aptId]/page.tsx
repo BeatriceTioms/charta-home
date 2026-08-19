@@ -2,11 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { notFound, useParams } from "next/navigation";
+import { notFound, useParams, useRouter } from "next/navigation";
 import { useState } from "react";
-import { byPeriodDesc, fmt } from "@/lib/data";
+import { byPeriodDesc, type Apartment } from "@/lib/data";
 import { useBuilding } from "@/lib/building-context";
 import { useStore } from "@/lib/store";
+import { useMoney } from "@/lib/money";
 import { useI18n } from "@/lib/i18n/context";
 import { Card, CardTitle, PageTitle, PhotoPlaceholder, RentChip, StatCard, TicketChip } from "@/components/dashboard/ui";
 import { Field, Modal, ModalActions, fieldCls } from "@/components/dashboard/Modal";
@@ -37,6 +38,7 @@ function ReminderModal({
 }) {
   const { t, f } = useI18n();
   const { notify } = useStore();
+  const { fmt } = useMoney();
   const m = t.dash.apartment.reminderModal;
   const [channel, setChannel] = useState("whatsapp");
 
@@ -164,15 +166,142 @@ function LeaseModal({
   );
 }
 
-export default function ApartmentPage() {
+/** Correct a unit's own details: its name, its size, what it rents for. */
+function EditApartmentModal({
+  apartment,
+  onClose,
+}: {
+  apartment: Apartment;
+  onClose: () => void;
+}) {
+  const { t } = useI18n();
   const { building } = useBuilding();
-  const { tickets } = useStore();
+  const { updateApartment2, notify } = useStore();
+  const m = t.dash.apartment.editModal;
+  const [error, setError] = useState<string>();
+
+  const submit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const data = new FormData(e.currentTarget);
+    const label = String(data.get("label") ?? "").trim();
+    if (!label) {
+      setError(t.dash.common.required);
+      return;
+    }
+    updateApartment2(building.id, apartment.id, {
+      label,
+      rooms: Number(data.get("rooms") ?? apartment.rooms),
+      bathrooms: Number(data.get("bathrooms") ?? apartment.bathrooms),
+      sqm: Number(data.get("sqm") ?? apartment.sqm),
+      rent: Number(data.get("rent") ?? apartment.rent),
+    });
+    notify(m.updated);
+    onClose();
+  };
+
+  return (
+    <Modal title={m.title} subtitle={apartment.label} onClose={onClose}>
+      <form onSubmit={submit} className="space-y-4">
+        <Field label={m.label} error={error}>
+          <input name="label" defaultValue={apartment.label} className={fieldCls} />
+        </Field>
+        <div className="grid grid-cols-3 gap-3">
+          <Field label={m.rooms}>
+            <input name="rooms" type="number" min={0} defaultValue={apartment.rooms} className={fieldCls} />
+          </Field>
+          <Field label={m.bathrooms}>
+            <input name="bathrooms" type="number" min={0} defaultValue={apartment.bathrooms} className={fieldCls} />
+          </Field>
+          <Field label={m.sqm}>
+            <input name="sqm" type="number" min={0} defaultValue={apartment.sqm} className={fieldCls} />
+          </Field>
+        </div>
+        <Field label={m.rent}>
+          <input name="rent" type="number" min={0} defaultValue={apartment.rent} className={fieldCls} />
+        </Field>
+        <ModalActions onCancel={onClose} submitLabel={t.dash.common.save} />
+      </form>
+    </Modal>
+  );
+}
+
+/** Correct the tenant's details and the terms they signed. */
+function EditTenantModal({
+  apartment,
+  onClose,
+}: {
+  apartment: Apartment;
+  onClose: () => void;
+}) {
+  const { t } = useI18n();
+  const { building } = useBuilding();
+  const { updateTenant, notify } = useStore();
+  const m = t.dash.apartment.tenantModal;
+  const [error, setError] = useState<string>();
+
+  const submit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const data = new FormData(e.currentTarget);
+    const name = String(data.get("name") ?? "").trim();
+    if (!name) {
+      setError(t.dash.common.required);
+      return;
+    }
+    updateTenant(building.id, apartment.id, {
+      name,
+      phone: String(data.get("phone") ?? ""),
+      rent: Number(data.get("rent") ?? apartment.rent),
+      cycle: (data.get("cycle") as "monthly" | "yearly") ?? apartment.cycle,
+      until: String(data.get("end") ?? ""),
+    });
+    notify(m.updated);
+    onClose();
+  };
+
+  return (
+    <Modal title={m.title} subtitle={apartment.tenant?.name} onClose={onClose}>
+      <form onSubmit={submit} className="space-y-4">
+        <Field label={m.name} error={error}>
+          <input name="name" defaultValue={apartment.tenant?.name} className={fieldCls} />
+        </Field>
+        <Field label={m.phone}>
+          <input name="phone" defaultValue={apartment.tenant?.phone} className={fieldCls} />
+        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label={m.rent}>
+            <input name="rent" type="number" min={0} defaultValue={apartment.rent} className={fieldCls} />
+          </Field>
+          <Field label={m.cycle}>
+            <select name="cycle" defaultValue={apartment.cycle} className={fieldCls}>
+              <option value="monthly">{t.dash.rent.monthly}</option>
+              <option value="yearly">{t.dash.rent.yearly}</option>
+            </select>
+          </Field>
+        </div>
+        <Field label={m.endDate} hint={m.endDateHint}>
+          <input name="end" type="date" className={fieldCls} />
+        </Field>
+        <ModalActions onCancel={onClose} submitLabel={t.dash.common.save} />
+      </form>
+    </Modal>
+  );
+}
+
+export default function ApartmentPage() {
+  const { fmt } = useMoney();
+  const { building } = useBuilding();
+  const { tickets, deleteApartment, endLease, notify } = useStore();
   const { t, f, s: ts, path, locale } = useI18n();
   const params = useParams<{ aptId: string }>();
+  const router = useRouter();
 
   const [view, setView] = useState(0);
   const [reminding, setReminding] = useState(false);
   const [leasing, setLeasing] = useState(false);
+  const [editingUnit, setEditingUnit] = useState(false);
+  const [editingTenant, setEditingTenant] = useState(false);
+  const [removingUnit, setRemovingUnit] = useState(false);
+  const [endingLease, setEndingLease] = useState(false);
 
   const apartment = building.apartments.find((a) => a.id === params.aptId);
   if (!apartment) notFound();
@@ -234,12 +363,26 @@ export default function ApartmentPage() {
             </p>
           </div>
         </div>
-        <button
-          onClick={() => (apartment.tenant ? setReminding(true) : setLeasing(true))}
-          className="rounded-full bg-onyx px-6 py-3 text-sm font-semibold text-white transition hover:bg-azure-900 dark:bg-soft-500 dark:text-azure-950 dark:hover:bg-soft-400"
-        >
-          {apartment.tenant ? t.dash.apartment.sendReminder : t.dash.apartment.addLease}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setEditingUnit(true)}
+            className="rounded-full border border-azure-900/15 px-5 py-3 text-sm font-semibold text-azure-950 transition hover:bg-azure-900/5 dark:border-white/15 dark:text-white dark:hover:bg-white/10"
+          >
+            {t.dash.maintenance.edit}
+          </button>
+          <button
+            onClick={() => setRemovingUnit(true)}
+            className="rounded-full border border-azure-900/15 px-5 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-50 dark:border-white/15 dark:hover:bg-red-500/10"
+          >
+            {t.dash.maintenance.delete}
+          </button>
+          <button
+            onClick={() => (apartment.tenant ? setReminding(true) : setLeasing(true))}
+            className="rounded-full bg-onyx px-6 py-3 text-sm font-semibold text-white transition hover:bg-azure-900 dark:bg-soft-500 dark:text-azure-950 dark:hover:bg-soft-400"
+          >
+            {apartment.tenant ? t.dash.apartment.sendReminder : t.dash.apartment.addLease}
+          </button>
+        </div>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.9fr_1fr]">
@@ -374,6 +517,20 @@ export default function ApartmentPage() {
             <CardTitle>{t.dash.apartment.tenant}</CardTitle>
             {apartment.tenant ? (
               <div>
+                <div className="mb-4 flex items-center justify-end gap-2">
+                  <button
+                    onClick={() => setEditingTenant(true)}
+                    className="rounded-full border border-azure-900/15 px-3.5 py-1.5 text-xs font-semibold text-azure-950 transition hover:bg-azure-900/5 dark:border-white/15 dark:text-white dark:hover:bg-white/10"
+                  >
+                    {t.dash.maintenance.edit}
+                  </button>
+                  <button
+                    onClick={() => setEndingLease(true)}
+                    className="rounded-full border border-azure-900/15 px-3.5 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 dark:border-white/15 dark:hover:bg-red-500/10"
+                  >
+                    {t.dash.apartment.endLeaseModal.title}
+                  </button>
+                </div>
                 <div className="flex items-center gap-3.5">
                   <span className="grid h-12 w-12 place-items-center rounded-full bg-azure-800 text-sm font-bold text-soft-500">
                     {apartment.tenant.name.split(" ").map((w) => w[0]).join("")}
@@ -549,6 +706,76 @@ export default function ApartmentPage() {
           onClose={() => setReminding(false)}
         />
       )}
+      {editingUnit && (
+        <EditApartmentModal apartment={apartment} onClose={() => setEditingUnit(false)} />
+      )}
+
+      {editingTenant && apartment.tenant && (
+        <EditTenantModal apartment={apartment} onClose={() => setEditingTenant(false)} />
+      )}
+
+      {removingUnit && (
+        <Modal
+          title={t.dash.apartment.deleteModal.title}
+          subtitle={
+            apartment.tenant
+              ? t.dash.apartment.deleteModal.occupied
+              : t.dash.apartment.deleteModal.subtitle
+          }
+          onClose={() => setRemovingUnit(false)}
+        >
+          <div className="flex gap-3">
+            <button
+              disabled={Boolean(apartment.tenant)}
+              onClick={() => {
+                deleteApartment(building.id, apartment.id);
+                notify(t.dash.apartment.deleteModal.deleted);
+                router.push(path("/dashboard/apartments"));
+              }}
+              className="flex-1 rounded-full bg-red-600 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-40"
+            >
+              {t.dash.maintenance.delete}
+            </button>
+            <button
+              onClick={() => setRemovingUnit(false)}
+              className="rounded-full border border-azure-900/15 px-6 py-3 text-sm font-semibold text-azure-800 transition hover:bg-azure-900/5 dark:border-white/15 dark:text-white dark:hover:bg-white/10"
+            >
+              {t.dash.common.cancel}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {endingLease && apartment.tenant && (
+        <Modal
+          title={t.dash.apartment.endLeaseModal.title}
+          subtitle={f(t.dash.apartment.endLeaseModal.subtitle, { name: apartment.tenant.name })}
+          onClose={() => setEndingLease(false)}
+        >
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const endsOn = String(new FormData(e.currentTarget).get("endsOn") ?? "");
+              endLease(building.id, apartment.id, endsOn);
+              notify(t.dash.apartment.endLeaseModal.ended);
+              setEndingLease(false);
+            }}
+            className="space-y-4"
+          >
+            <Field label={t.dash.apartment.endLeaseModal.date} hint={t.dash.apartment.endLeaseModal.hint}>
+              <input
+                name="endsOn"
+                type="date"
+                required
+                defaultValue={new Date().toISOString().slice(0, 10)}
+                className={fieldCls}
+              />
+            </Field>
+            <ModalActions onCancel={() => setEndingLease(false)} submitLabel={t.dash.apartment.endLeaseModal.submit} />
+          </form>
+        </Modal>
+      )}
+
       {leasing && (
         <LeaseModal
           apartmentId={apartment.id}

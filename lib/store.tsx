@@ -40,7 +40,7 @@ type StoreValue = {
   buildings: Building[];
   tickets: Ticket[];
   activity: ActivityItem[];
-  agencyInfo: { name: string; city: string; country: string; whatsapp: string } | null;
+  agencyInfo: { name: string; city: string; country: string; whatsapp: string; currency: string } | null;
   toasts: Toast[];
   /** The signed in agency, empty string on the mock. */
   agencyId: string;
@@ -60,6 +60,20 @@ type StoreValue = {
       photos?: string[];
     }
   ) => void;
+  updateApartment2: (
+    buildingId: string,
+    apartmentId: string,
+    input: { label: string; rooms: number; bathrooms: number; sqm: number; rent: number }
+  ) => void;
+  deleteApartment: (buildingId: string, apartmentId: string) => void;
+  updateTenant: (
+    buildingId: string,
+    apartmentId: string,
+    input: { name: string; phone: string; rent: number; cycle: "monthly" | "yearly"; until?: string }
+  ) => void;
+  endLease: (buildingId: string, apartmentId: string, endsOn: string) => void;
+  setBuildingPhoto: (buildingId: string, src: string) => void;
+  removeBuildingPhoto: (buildingId: string) => void;
   addLease: (
     buildingId: string,
     apartmentId: string,
@@ -123,7 +137,7 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 /** The signed in agency's portfolio, loaded server side. */
 export type StoreSeed = {
   agencyId: string;
-  agencyInfo?: { name: string; city: string; country: string; whatsapp: string };
+  agencyInfo?: { name: string; city: string; country: string; whatsapp: string; currency: string };
   buildings: Building[];
   tickets: Ticket[];
   technicians: Technician[];
@@ -326,6 +340,136 @@ export function StoreProvider({
       );
     },
     [updateApartment, persist, locale]
+  );
+
+  const updateApartment2 = useCallback<StoreValue["updateApartment2"]>(
+    (buildingId, apartmentId, input) => {
+      updateApartment(buildingId, apartmentId, {
+        label: input.label,
+        rooms: input.rooms,
+        bathrooms: input.bathrooms,
+        sqm: input.sqm,
+        rent: input.rent,
+      });
+      persist(() =>
+        sb.updateApartment(locale, {
+          apartmentId,
+          label: input.label,
+          rooms: input.rooms,
+          bathrooms: input.bathrooms,
+          sqm: input.sqm,
+          baseRent: input.rent,
+        })
+      );
+    },
+    [updateApartment, persist, locale]
+  );
+
+  const deleteApartment = useCallback<StoreValue["deleteApartment"]>(
+    (buildingId, apartmentId) => {
+      setBuildings((list) =>
+        list.map((b) =>
+          b.id !== buildingId
+            ? b
+            : { ...b, apartments: b.apartments.filter((a) => a.id !== apartmentId) }
+        )
+      );
+      persist(() => sb.deleteApartment(locale, apartmentId));
+    },
+    [persist, locale]
+  );
+
+  const updateTenant = useCallback<StoreValue["updateTenant"]>(
+    (buildingId, apartmentId, input) => {
+      const apartment = buildings
+        .find((b) => b.id === buildingId)
+        ?.apartments.find((a) => a.id === apartmentId);
+      updateApartment(buildingId, apartmentId, {
+        tenant: apartment?.tenant
+          ? {
+              ...apartment.tenant,
+              name: input.name,
+              phone: input.phone,
+              until: input.until || undefined,
+            }
+          : undefined,
+        rent: input.rent,
+        cycle: input.cycle,
+      });
+
+      // The name and number live on the resident, the terms on the lease, so
+      // one edit in the interface is two writes in the database.
+      if (apartment?.residentId) {
+        persist(() =>
+          sb.updateResident(locale, {
+            residentId: apartment.residentId!,
+            fullName: input.name,
+            phone: input.phone.replace(/\s/g, ""),
+          })
+        );
+      }
+      if (apartment?.leaseId) {
+        persist(() =>
+          sb.updateLease(locale, {
+            leaseId: apartment.leaseId!,
+            rentAmount: input.rent,
+            cycle: input.cycle,
+            endsOn: input.until || null,
+          })
+        );
+      }
+    },
+    [buildings, updateApartment, persist, locale]
+  );
+
+  const endLease = useCallback<StoreValue["endLease"]>(
+    (buildingId, apartmentId, endsOn) => {
+      const leaseId = buildings
+        .find((b) => b.id === buildingId)
+        ?.apartments.find((a) => a.id === apartmentId)?.leaseId;
+      updateApartment(buildingId, apartmentId, {
+        tenant: undefined,
+        rentStatus: "pending",
+      });
+      if (leaseId) persist(() => sb.endLease(locale, { leaseId, endsOn }));
+    },
+    [buildings, updateApartment, persist, locale]
+  );
+
+  const setBuildingPhoto = useCallback<StoreValue["setBuildingPhoto"]>(
+    (buildingId, src) => {
+      const existing = buildings.find((b) => b.id === buildingId);
+      setBuildings((list) =>
+        list.map((b) => (b.id === buildingId ? { ...b, photo: src } : b))
+      );
+      persist(async () =>
+        sb.setBuildingPhoto(
+          locale,
+          await toUploadForm(src, {
+            agencyId,
+            buildingId,
+            oldPath: existing?.photoPath ?? "",
+          })
+        )
+      );
+    },
+    [buildings, persist, locale, agencyId]
+  );
+
+  const removeBuildingPhoto = useCallback<StoreValue["removeBuildingPhoto"]>(
+    (buildingId) => {
+      const existing = buildings.find((b) => b.id === buildingId);
+      setBuildings((list) =>
+        list.map((b) => (b.id === buildingId ? { ...b, photo: "" } : b))
+      );
+      persist(() =>
+        sb.removeBuildingPhoto(locale, {
+          buildingId,
+          storagePath: existing?.photoPath ?? "",
+        })
+      );
+    },
+    [buildings, persist, locale]
   );
 
   const recordPayment = useCallback<StoreValue["recordPayment"]>(
@@ -666,6 +810,12 @@ export function StoreProvider({
       notify,
       dismissToast,
       addApartment,
+      updateApartment2,
+      deleteApartment,
+      updateTenant,
+      endLease,
+      setBuildingPhoto,
+      removeBuildingPhoto,
       addLease,
       recordPayment,
       markReminded,
@@ -685,7 +835,8 @@ export function StoreProvider({
       remindedKeys,
     }),
     [
-      buildings, tickets, activity, agencyInfo, toasts, agencyId, addBuilding, notify, dismissToast, addApartment, addLease,
+      buildings, tickets, activity, agencyInfo, toasts, agencyId, addBuilding, notify, dismissToast, addApartment, updateApartment2, deleteApartment, updateTenant, endLease,
+      setBuildingPhoto, removeBuildingPhoto, addLease,
       recordPayment, markReminded, addTicket, updateTicket, deleteTicket, assignTicket,
       resolveTicket, photosFor, addPhoto, updatePhoto, deletePhoto, technicians,
       addTechnician, updateTechnician, deleteTechnician, remindedKeys,

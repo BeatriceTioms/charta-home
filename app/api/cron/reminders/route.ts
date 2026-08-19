@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { formatMoney } from "@/lib/data";
 import { createAdminClient } from "@/lib/supabase/server";
 import {
   isWhatsAppConfigured,
@@ -110,7 +111,7 @@ export async function GET(request: Request) {
 
       const body = renderMessage(rule.message_body ?? "", {
         tenant: target.resident_name ?? "",
-        amount: `${Number(charge.amount).toLocaleString("fr-FR")} ${target.currency ?? "GNF"}`,
+        amount: formatMoney(Number(charge.amount), target.currency),
         period: new Date(charge.due_on).toLocaleDateString("fr-FR"),
         days: String(Math.abs(daysFromDue)),
         agency: target.agency_name ?? "",

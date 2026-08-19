@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { fmt, type Technician } from "@/lib/data";
+import { type Technician } from "@/lib/data";
 import { useStore } from "@/lib/store";
+import { useMoney } from "@/lib/money";
 import { useI18n } from "@/lib/i18n/context";
 import { Card, CardTitle, StatCard } from "@/components/dashboard/ui";
 import { Field, Modal, ModalActions, fieldCls } from "@/components/dashboard/Modal";
@@ -120,6 +121,7 @@ export function TechniciansPanel({
 }) {
   const { t, f, path } = useI18n();
   const { technicians, tickets, deleteTechnician, notify } = useStore();
+  const { fmt } = useMoney();
   const tr = t.dash.technicians;
 
   const [editing, setEditing] = useState<Technician | null>(null);

@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { fmt } from "@/lib/data";
+
 import { useBuilding } from "@/lib/building-context";
 import { useStore } from "@/lib/store";
+import { useMoney } from "@/lib/money";
 import { useI18n } from "@/lib/i18n/context";
 import { Card, CardTitle, PhotoPlaceholder } from "@/components/dashboard/ui";
 
@@ -47,7 +48,6 @@ function WorkOrdersDonut({
   );
 }
 
-
 function FollowUpRow({
   name,
   unit,
@@ -64,6 +64,7 @@ function FollowUpRow({
   phone: string;
 }) {
   const { t, f, path } = useI18n();
+  const { fmt } = useMoney();
   const steps = t.dash.overview.steps;
 
   return (
@@ -154,6 +155,7 @@ export default function DashboardPage() {
     resolved: bTickets.filter((x) => x.status === "resolved").length,
   };
   const { activity } = useStore();
+  const { fmt } = useMoney();
   const schedule = activity.filter((a) => a.buildingId === building.id);
   const viewings = schedule.filter((a) => a.kind === "viewing").length;
 

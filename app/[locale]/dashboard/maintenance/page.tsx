@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { byOpenedDesc, fmt, type Ticket, type TicketStatus } from "@/lib/data";
+import { byOpenedDesc, type Ticket, type TicketStatus } from "@/lib/data";
 import { useBuilding } from "@/lib/building-context";
 import { useStore } from "@/lib/store";
+import { useMoney } from "@/lib/money";
 import { useI18n } from "@/lib/i18n/context";
 import { PageTitle, StatCard, Tabs, TicketChip, ViaBadge } from "@/components/dashboard/ui";
 import { Field, Modal, ModalActions, fieldCls } from "@/components/dashboard/Modal";
@@ -308,6 +309,7 @@ export default function MaintenancePage() {
   const { building } = useBuilding();
   const { tickets, technicians } = useStore();
   const { t, f, s: ts } = useI18n();
+  const { fmt } = useMoney();
 
   const [view, setView] = useState<View>("tickets");
   const [addingTech, setAddingTech] = useState(false);

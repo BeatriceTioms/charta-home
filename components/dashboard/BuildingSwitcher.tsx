@@ -2,14 +2,16 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { fmt } from "@/lib/data";
+
 import { useBuildingOptional } from "@/lib/building-context";
 import { useI18n } from "@/lib/i18n/context";
+import { useMoney } from "@/lib/money";
 import { PhotoPlaceholder } from "./ui";
 
 export function BuildingSwitcher({ align = "left" }: { align?: "left" | "right" }) {
   const { building, setBuildingId, buildings } = useBuildingOptional();
   const { t } = useI18n();
+  const { fmt } = useMoney();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 

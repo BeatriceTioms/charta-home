@@ -260,6 +260,68 @@ const [sent] = await asUser(userA.id, `
   where rent_charge_id = '${charge.id}' and rule_id = '${rule.id}'`);
 check("exactly one reminder event survives the retry", sent.n === 1, `${sent.n} rows`);
 
+/* ------------------------------------------------------- edit and delete --
+ * The CRUD the interface offers has to hold at the database too: a unit is
+ * editable, a tenant's own row is correctable, and an occupied unit must not
+ * quietly take its payment history down with it.
+ */
+const [editApt] = await asUser(userA.id, `
+  insert into apartments (agency_id, building_id, label, rooms, bathrooms, sqm, base_rent)
+  values ('${a1.id}', '${bA.id}', 'Apt Edit', 1, 1, 30, 500000) returning id`);
+
+await asUser(userA.id, `
+  update apartments set label = 'Apt Edited', base_rent = 650000 where id = '${editApt.id}'`);
+const [edited] = await asUser(userA.id, `
+  select label, base_rent::int from apartments where id = '${editApt.id}'`);
+check("an apartment can be edited", edited.label === "Apt Edited" && edited.base_rent === 650000,
+  `${edited.label} at ${edited.base_rent}`);
+
+let rivalEditBlocked = false;
+try {
+  await asUser(userB.id, `update apartments set label = 'Stolen' where id = '${editApt.id}'`);
+  const [after] = await asUser(userA.id, `select label from apartments where id = '${editApt.id}'`);
+  rivalEditBlocked = after.label === "Apt Edited";
+} catch {
+  rivalEditBlocked = true;
+}
+check("another agency cannot edit that apartment", rivalEditBlocked);
+
+await asUser(userA.id, `delete from apartments where id = '${editApt.id}'`);
+const [goneCount] = await asUser(userA.id, `
+  select count(*)::int as n from apartments where id = '${editApt.id}'`);
+check("a vacant apartment can be deleted", goneCount.n === 0);
+
+// A tenant's name and number live on the resident row.
+const [resident] = await asUser(userA.id, `
+  select id from residents where agency_id = '${a1.id}' limit 1`);
+await asUser(userA.id, `
+  update residents set full_name = 'Mariam D. Corrected' where id = '${resident.id}'`);
+const [renamed] = await asUser(userA.id, `
+  select full_name from residents where id = '${resident.id}'`);
+check("a tenant's details can be corrected", renamed.full_name === "Mariam D. Corrected");
+
+let rivalResidentBlocked = false;
+try {
+  await asUser(userB.id, `update residents set full_name = 'Hijacked' where id = '${resident.id}'`);
+  const [after] = await asUser(userA.id, `select full_name from residents where id = '${resident.id}'`);
+  rivalResidentBlocked = after.full_name === "Mariam D. Corrected";
+} catch {
+  rivalResidentBlocked = true;
+}
+check("another agency cannot rename that tenant", rivalResidentBlocked);
+
+// Ending a lease must keep the money it collected.
+const [endMe] = await asUser(userA.id, `select id from leases where agency_id = '${a1.id}' limit 1`);
+const [chargesBefore] = await asUser(userA.id, `
+  select count(*)::int as n from rent_charges where lease_id = '${endMe.id}'`);
+await asUser(userA.id, `
+  update leases set status = 'ended', ends_on = current_date where id = '${endMe.id}'`);
+const [chargesAfter] = await asUser(userA.id, `
+  select count(*)::int as n from rent_charges where lease_id = '${endMe.id}'`);
+check("ending a lease keeps its payment history",
+  chargesBefore.n === chargesAfter.n && chargesBefore.n > 0,
+  `${chargesBefore.n} charges before, ${chargesAfter.n} after`);
+
 /* ----------------------------------------------------- lease end date --
  * ends_on has to survive the round trip and refuse an impossible range,
  * because the only guard against a typo is the database.

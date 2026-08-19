@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { fmt, type RentStatus } from "@/lib/data";
+import { type RentStatus } from "@/lib/data";
 import { useBuilding } from "@/lib/building-context";
 import { useStore } from "@/lib/store";
+import { useMoney } from "@/lib/money";
 import { useI18n } from "@/lib/i18n/context";
 import { RentChip, StatCard } from "@/components/dashboard/ui";
 
@@ -20,6 +21,7 @@ export function TenantsPanel() {
   const { building } = useBuilding();
   const { tickets } = useStore();
   const { t, f, s: ts, path } = useI18n();
+  const { fmt } = useMoney();
   const tn = t.dash.tenants;
 
   const [month, setMonth] = useState("all");

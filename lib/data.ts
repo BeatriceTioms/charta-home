@@ -36,6 +36,8 @@ export type Apartment = {
   id: string;
   /** The active lease behind this unit, needed to record a payment live. */
   leaseId?: string;
+  /** The tenant's own row, which is where a name or number is corrected. */
+  residentId?: string;
   photos?: ApartmentPhoto[];
   label: string;
   rooms: number;
@@ -54,7 +56,10 @@ export type Building = {
   name: string;
   address: string;
   city: string;
+  /** Signed URL for display, empty when the agency has not uploaded one. */
   photo: string;
+  /** Storage object path, needed to replace or delete the photo. */
+  photoPath?: string;
   interior: string;
   amenities: string[];
   incomeYtd: number;
@@ -90,8 +95,31 @@ export type Ticket = {
  * Guinean francs. No subunit exists, so never any decimals, and the grouping
  * follows French convention because that is the language of the market.
  */
-export const fmt = (n: number) =>
-  `${Math.round(n).toLocaleString("fr-FR").replace(/\u202f/g, "\u00a0")}\u00a0GNF`;
+/**
+ * Currencies with no minor unit. Showing "1 200 000,00 GNF" would be wrong,
+ * not merely noisy: a franc guinéen has no hundredths to show.
+ */
+const ZERO_DECIMAL = new Set(["GNF", "XOF", "XAF", "JPY", "KRW", "RWF", "UGX", "VND", "CLP", "KMF", "DJF"]);
+
+/**
+ * Money, in the agency's own currency.
+ *
+ * The agency chooses its currency at signup and can change it in settings, so
+ * nothing here may assume Guinea. Grouping follows French convention because
+ * that is the interface language; the code is placed after the amount, which
+ * is how it is written in francophone West Africa.
+ */
+export function formatMoney(amount: number, currency = "GNF"): string {
+  const code = (currency || "GNF").toUpperCase();
+  const digits = ZERO_DECIMAL.has(code) ? 0 : 2;
+  const value = amount.toLocaleString("fr-FR", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+  // Narrow no break spaces render inconsistently, and an amount should never
+  // split across a line.
+  return `${value.replace(/\u202f/g, "\u00a0")}\u00a0${code}`;
+}
 
 /**
  * The agency issuing receipts. Demo values today, read from the agencies row

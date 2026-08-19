@@ -1,8 +1,9 @@
 "use client";
 
 import { LogoMark } from "@/components/Logo";
-import { agencyDefaults, fmt } from "@/lib/data";
+import { agencyDefaults } from "@/lib/data";
 import { useStore } from "@/lib/store";
+import { useMoney } from "@/lib/money";
 import { useI18n } from "@/lib/i18n/context";
 
 export type ReceiptData = {
@@ -32,6 +33,7 @@ export function ReceiptModal({
 }) {
   const { t, f, locale } = useI18n();
   const { agencyInfo } = useStore();
+  const { fmt } = useMoney();
   const m = t.dash.rent.receiptModal;
 
   // The signed in agency's own details where the row carries them, the

@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import { byOpenedDesc, fmt, type TicketStatus } from "@/lib/data";
+import { byOpenedDesc, type TicketStatus } from "@/lib/data";
 import { useBuilding } from "@/lib/building-context";
 import { useStore } from "@/lib/store";
+import { useMoney } from "@/lib/money";
 import { useI18n } from "@/lib/i18n/context";
 import { Card, CardTitle, StatCard, TicketChip, ViaBadge } from "@/components/dashboard/ui";
 import { TechnicianForm } from "@/components/dashboard/TechniciansPanel";
@@ -22,6 +23,7 @@ export default function TechnicianPage() {
   const { building } = useBuilding();
   const { technicians, tickets, deleteTechnician, notify } = useStore();
   const { t, f, s: ts, path } = useI18n();
+  const { fmt } = useMoney();
   const params = useParams<{ techId: string }>();
   const tr = t.dash.technicians;
 

@@ -43,7 +43,7 @@ const ticketStatus = (raw: string): Ticket["status"] =>
 export type Portfolio = {
   /** The signed in user's agency, which every insert must carry. */
   agencyId: string;
-  agencyInfo: { name: string; city: string; country: string; whatsapp: string };
+  agencyInfo: { name: string; city: string; country: string; whatsapp: string; currency: string };
   buildings: Building[];
   tickets: Ticket[];
   technicians: Technician[];
@@ -64,7 +64,7 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
   // first row silently produced "" and made every write look unconfigured.
   const { data: agencyRow } = await supabase
     .from("agencies")
-    .select("id, name, city, country, whatsapp_number")
+    .select("id, name, city, country, whatsapp_number, currency")
     .limit(1)
     .maybeSingle();
   if (!agencyRow) return null;
@@ -120,6 +120,20 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
     }
   }
 
+  // The building bucket is private too, so its photo needs the same treatment.
+  const buildingPhotoUrls = new Map<string, string>();
+  const buildingPaths = (buildingRows ?? [])
+    .map((b) => b.photo_path)
+    .filter((x): x is string => Boolean(x));
+  if (buildingPaths.length > 0) {
+    const { data: signed } = await supabase.storage
+      .from("building-photos")
+      .createSignedUrls(buildingPaths, 60 * 60);
+    for (const entry of signed ?? []) {
+      if (entry.path && entry.signedUrl) buildingPhotoUrls.set(entry.path, entry.signedUrl);
+    }
+  }
+
   // When a charge was settled, and on what day.
   const paidOnByCharge = new Map<string, string>();
   for (const row of allocations ?? []) {
@@ -153,9 +167,10 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
       name: b.name,
       address: b.address,
       city: b.city,
-      // Empty until the agency uploads one; the interface draws a monogram
-      // tile rather than borrowing somebody else's photograph.
-      photo: b.photo_path ?? "",
+      // Empty until the agency uploads one; the interface draws a placeholder
+      // rather than borrowing somebody else's photograph.
+      photo: b.photo_path ? buildingPhotoUrls.get(b.photo_path) ?? "" : "",
+      photoPath: b.photo_path ?? undefined,
       interior: b.interior_path ?? "",
       amenities: b.amenities ?? [],
       incomeYtd: Number(perf?.income_ytd ?? 0),
@@ -164,6 +179,7 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
       apartments: units.map((u) => ({
         id: u.apartment_id,
         leaseId: u.lease_id ?? undefined,
+        residentId: u.resident_id ?? undefined,
         label: u.label,
         rooms: u.rooms ?? 0,
         bathrooms: u.bathrooms ?? 0,
@@ -247,6 +263,7 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
     city: agencyRow.city,
     country: agencyRow.country,
     whatsapp: agencyRow.whatsapp_number ?? "",
+    currency: agencyRow.currency ?? "GNF",
   };
 
   return { agencyId, agencyInfo, buildings, tickets, technicians, activity };

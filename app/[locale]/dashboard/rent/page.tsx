@@ -3,9 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { byPeriodDesc, fmt, shortRef, type RentStatus } from "@/lib/data";
+import { byPeriodDesc, shortRef, type RentStatus } from "@/lib/data";
 import { useBuilding } from "@/lib/building-context";
 import { useStore } from "@/lib/store";
+import { useMoney } from "@/lib/money";
 import { useI18n } from "@/lib/i18n/context";
 import { PageTitle, PhotoPlaceholder, RentChip, Tabs } from "@/components/dashboard/ui";
 import { TenantsPanel } from "@/components/dashboard/TenantsPanel";
@@ -22,6 +23,7 @@ function RecordPaymentModal({ onClose }: { onClose: () => void }) {
   const { t, f, s: ts } = useI18n();
   const { building } = useBuilding();
   const { recordPayment, notify } = useStore();
+  const { fmt } = useMoney();
   const m = t.dash.rent.recordModal;
 
   // Any leased apartment can take a payment, not only the ones in arrears.
@@ -134,6 +136,7 @@ export default function RentPage() {
   const { building } = useBuilding();
   const { markReminded, remindedKeys, notify } = useStore();
   const { t, f, s: ts, path } = useI18n();
+  const { fmt } = useMoney();
 
   const [tab, setTab] = useState<Tab>("leases");
   const [status, setStatus] = useState<StatusFilter>("all");
