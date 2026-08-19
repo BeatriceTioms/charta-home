@@ -21,6 +21,19 @@ export type ReceiptData = {
   reference: string;
 };
 
+/**
+ * The printed receipt is built as raw HTML in a new window, so every value
+ * interpolated into it has to be escaped. Tenant and agency names are typed by
+ * people, and a name containing a tag would otherwise become markup.
+ */
+const esc = (value: unknown) =>
+  String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
 const rule = "border-b border-onyx/10";
 const term = "text-[10px] font-semibold uppercase tracking-[0.12em] text-onyx/40";
 
@@ -73,10 +86,10 @@ export function ReceiptModal({
     if (!w) return;
 
     const row = (label: string, period: string, value: number) =>
-      `<tr><td>${label}</td><td class="mid">${period}</td><td class="num">${fmt(value)}</td></tr>`;
+      `<tr><td>${esc(label)}</td><td class="mid">${esc(period)}</td><td class="num">${esc(fmt(value))}</td></tr>`;
 
-    w.document.write(`<!doctype html><html lang="${locale}"><head><meta charset="utf-8">
-<title>${m.title} ${receipt.reference}</title>
+    w.document.write(`<!doctype html><html lang="${esc(locale)}"><head><meta charset="utf-8">
+<title>${esc(m.title)} ${esc(receipt.reference)}</title>
 <style>
   @page { size: A4; margin: 18mm; }
   * { box-sizing: border-box; }
@@ -110,58 +123,58 @@ export function ReceiptModal({
 </style></head><body><div class="sheet">
   <header>
     <div>
-      <div class="brand">${agency.name}</div>
-      <div class="issuer">${agency.address}<br/>${agency.city}, ${agency.country}<br/>${agency.phone} · ${agency.email}<br/>${m.registration} ${agency.registration}</div>
+      <div class="brand">${esc(agency.name)}</div>
+      <div class="issuer">${esc(agency.address)}<br/>${esc(agency.city)}, ${esc(agency.country)}<br/>${esc(agency.phone)} · ${esc(agency.email)}<br/>${esc(m.registration)} ${esc(agency.registration)}</div>
     </div>
     <div class="doc">
-      <h1>${m.docType}</h1>
-      <span class="stamp">${m.paid}</span>
-      <div class="meta">${m.number} ${receipt.reference}<br/>${m.issuedOn} ${issuedOn}</div>
+      <h1>${esc(m.docType)}</h1>
+      <span class="stamp">${esc(m.paid)}</span>
+      <div class="meta">${esc(m.number)} ${esc(receipt.reference)}<br/>${esc(m.issuedOn)} ${esc(issuedOn)}</div>
     </div>
   </header>
 
   <div class="parties">
     <div class="party">
-      <div class="term">${m.landlord}</div>
-      <div class="name">${agency.name}</div>
-      <div class="muted">${agency.address}<br/>${agency.city}, ${agency.country}</div>
+      <div class="term">${esc(m.landlord)}</div>
+      <div class="name">${esc(agency.name)}</div>
+      <div class="muted">${esc(agency.address)}<br/>${esc(agency.city)}, ${esc(agency.country)}</div>
     </div>
     <div class="party">
-      <div class="term">${m.tenant}</div>
-      <div class="name">${receipt.tenant}</div>
-      <div class="muted">${receipt.apartment}, ${receipt.building}${receipt.tenantPhone ? `<br/>${receipt.tenantPhone}` : ""}</div>
+      <div class="term">${esc(m.tenant)}</div>
+      <div class="name">${esc(receipt.tenant)}</div>
+      <div class="muted">${esc(receipt.apartment)}, ${esc(receipt.building)}${receipt.tenantPhone ? `<br/>${esc(receipt.tenantPhone)}` : ""}</div>
     </div>
   </div>
 
   <div class="prop">
-    <div class="term">${m.property}</div>
-    <div class="name">${receipt.apartment}, ${receipt.building}</div>
-    <div class="muted">${receipt.address}</div>
+    <div class="term">${esc(m.property)}</div>
+    <div class="name">${esc(receipt.apartment)}, ${esc(receipt.building)}</div>
+    <div class="muted">${esc(receipt.address)}</div>
   </div>
 
   <table>
-    <thead><tr><th>${m.description}</th><th class="mid">${m.period}</th><th class="num">${m.amount}</th></tr></thead>
+    <thead><tr><th>${esc(m.description)}</th><th class="mid">${esc(m.period)}</th><th class="num">${esc(m.amount)}</th></tr></thead>
     <tbody>
       ${row(m.rentLine, receipt.period, receipt.amount)}
       ${charges > 0 ? row(m.chargesLine, receipt.period, charges) : ""}
     </tbody>
-    <tfoot><tr><td colspan="2">${m.total}</td><td class="num">${fmt(total)}</td></tr></tfoot>
+    <tfoot><tr><td colspan="2">${esc(m.total)}</td><td class="num">${esc(fmt(total))}</td></tr></tfoot>
   </table>
 
   <div class="payment">
-    <div><div class="term">${m.paidOn}</div><div class="name">${paidOn}</div></div>
-    ${receipt.method ? `<div><div class="term">${m.method}</div><div class="name">${receipt.method}</div></div>` : ""}
-    <div><div class="term">${m.reference}</div><div class="name">${receipt.reference}</div></div>
+    <div><div class="term">${esc(m.paidOn)}</div><div class="name">${esc(paidOn)}</div></div>
+    ${receipt.method ? `<div><div class="term">${esc(m.method)}</div><div class="name">${esc(receipt.method)}</div></div>` : ""}
+    <div><div class="term">${esc(m.reference)}</div><div class="name">${esc(receipt.reference)}</div></div>
   </div>
 
-  <p class="legal">${m.legal}</p>
+  <p class="legal">${esc(m.legal)}</p>
 
   <div class="sign">
-    <div class="muted">${f(m.place, { city: agency.city, date: issuedOn })}</div>
-    <div class="line">${m.signature}</div>
+    <div class="muted">${esc(f(m.place, { city: agency.city, date: issuedOn }))}</div>
+    <div class="line">${esc(m.signature)}</div>
   </div>
 
-  <footer><span>${f(m.issued, { agency: agency.name })}</span><span>${m.page}</span></footer>
+  <footer><span>${esc(f(m.issued, { agency: agency.name }))}</span><span>${esc(m.page)}</span></footer>
 </div><script>window.print()</script></body></html>`);
     w.document.close();
   };
