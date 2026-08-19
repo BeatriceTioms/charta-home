@@ -733,7 +733,8 @@ export const fr = {
         whatsapp: "WhatsApp",
         sms: "SMS",
         email: "Email",
-        preview: "Aperçu du message",
+        preview: "Message",
+        previewHint: "Modifiez le texte avant l'envoi si besoin.",
         message:
           "Bonjour {name}, un rappel courtois : votre loyer de {amount} pour {apartment} est à régler. Merci et bonne journée.",
         submit: "Envoyer le rappel",
@@ -771,6 +772,10 @@ export const fr = {
         hint: "L'historique des paiements est conservé.",
         submit: "Clôturer le bail",
         ended: "Bail clôturé.",
+        errorBeforeStart:
+          "La date de sortie ne peut pas précéder le début du bail, le {date}.",
+        errorNoLease: "Aucun bail actif sur ce logement.",
+        errorNotAllowed: "Votre rôle ne permet pas de clôturer un bail.",
       },
       leaseModal: {
         title: "Ajouter un bail",
@@ -1106,6 +1111,10 @@ export const fr = {
         roles: { owner: "Associé", manager: "Gestionnaire", accountant: "Comptable", caretaker: "Gardien" },
         submit: "Envoyer l'invitation",
         invited: "Invitation envoyée à {email}.",
+        emailHint: "Un email part vers cette adresse avec un lien pour créer le compte.",
+        errorNotOwner: "Seul un associé peut inviter un collègue.",
+        errorEmailFailed:
+          "Le compte est créé mais l'email n'est pas parti. Vérifiez la configuration de l'envoi.",
       },
       remove: "Retirer",
       plan: "Formule et facturation",
@@ -1859,7 +1868,8 @@ export const en: Dictionary = {
         whatsapp: "WhatsApp",
         sms: "SMS",
         email: "Email",
-        preview: "Message preview",
+        preview: "Message",
+        previewHint: "Edit the wording before it goes out if you need to.",
         message:
           "Good morning {name}, a courteous reminder that your rent of {amount} for {apartment} is due. Thank you and have a good day.",
         submit: "Send reminder",
@@ -1897,6 +1907,9 @@ export const en: Dictionary = {
         hint: "The payment history is kept.",
         submit: "End the lease",
         ended: "Lease ended.",
+        errorBeforeStart: "The move out date cannot fall before the lease began, on {date}.",
+        errorNoLease: "This unit has no active lease.",
+        errorNotAllowed: "Your role does not allow ending a lease.",
       },
       leaseModal: {
         title: "Add lease",
@@ -2232,6 +2245,10 @@ export const en: Dictionary = {
         roles: { owner: "Partner", manager: "Manager", accountant: "Accountant", caretaker: "Caretaker" },
         submit: "Send invitation",
         invited: "Invitation sent to {email}.",
+        emailHint: "An email goes to this address with a link to create the account.",
+        errorNotOwner: "Only a partner can invite a colleague.",
+        errorEmailFailed:
+          "The account exists but the email did not go out. Check the sending configuration.",
       },
       remove: "Remove",
       plan: "Plan and billing",

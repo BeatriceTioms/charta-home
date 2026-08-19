@@ -186,6 +186,10 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
         sqm: u.sqm ?? 0,
         rent: Number(u.rent_amount ?? u.base_rent ?? 0),
         cycle: (u.cycle ?? "monthly") as LeaseCycle,
+        // The raw start date, alongside the readable one. Closing a lease has
+        // to refuse a date before it began, and that check needs the date
+        // itself rather than the period it is displayed as.
+        leaseStartsOn: u.lease_started_on ?? undefined,
         tenant: u.is_occupied && u.resident_name
           ? {
               name: u.resident_name,

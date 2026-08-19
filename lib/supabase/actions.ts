@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { invitationEmail, isEmailConfigured, sendEmail } from "@/lib/email";
 import { validateImage } from "@/lib/uploads";
 import { createAdminClient, createClient } from "./server";
 import type { LeaseCycle, MemberRole, PaymentMethod, ReportChannel, TicketPriority } from "./types";
@@ -522,18 +523,80 @@ export async function inviteMember(
   });
   if (!allowed) return { ok: false, error: "only the owner can invite" };
 
-  const admin = createAdminClient();
-  const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(
-    input.email
-  );
-  if (inviteError) return { ok: false, error: inviteError.message };
+  const email = input.email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { ok: false, error: "invite-bad-email" };
+  }
 
-  const { error } = await admin.from("memberships").insert({
-    user_id: invited.user.id,
-    agency_id: input.agencyId,
-    role: input.role,
-    full_name: input.email.split("@")[0],
-  });
+  const admin = createAdminClient();
+
+  // Who is inviting, and to what, so the email reads like a person rather
+  // than a system. Both are already readable to the caller under its own RLS.
+  const { data: { user } } = await caller.auth.getUser();
+  const { data: agency } = await caller
+    .from("agencies")
+    .select("name")
+    .eq("id", input.agencyId)
+    .single();
+  const { data: inviterRow } = await caller
+    .from("memberships")
+    .select("full_name")
+    .eq("agency_id", input.agencyId)
+    .eq("user_id", user?.id ?? "")
+    .maybeSingle();
+
+  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const redirectTo = `${site}/${locale}/reset-password`;
+  let userId: string;
+
+  if (isEmailConfigured()) {
+    // generateLink mints the same invitation without Supabase sending its own
+    // copy, which leaves the delivery to Resend and the wording to us.
+    const { data: link, error: linkError } = await admin.auth.admin.generateLink({
+      type: "invite",
+      email,
+      options: { redirectTo },
+    });
+    if (linkError || !link?.user) {
+      return { ok: false, error: linkError?.message ?? "could not create the invitation" };
+    }
+    userId = link.user.id;
+
+    const message = invitationEmail({
+      agencyName: agency?.name ?? "Charta Home",
+      inviterName: inviterRow?.full_name ?? user?.email?.split("@")[0] ?? "A colleague",
+      role: input.role,
+      actionLink: link.properties.action_link,
+      locale,
+    });
+    const sent = await sendEmail({ to: email, ...message });
+    if (!sent.ok) {
+      // The account now exists but nobody was told about it. Saying so is
+      // better than a membership row for someone who never hears from us.
+      console.error("invite email failed:", sent.error);
+      return { ok: false, error: `invite-email-failed: ${sent.error}` };
+    }
+  } else {
+    // No Resend key yet, so fall back to Supabase's own sender.
+    const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(
+      email,
+      { redirectTo }
+    );
+    if (inviteError) return { ok: false, error: inviteError.message };
+    userId = invited.user.id;
+  }
+
+  // An address already on the team is the common mistake, and upsert says so
+  // by changing nothing rather than failing on the primary key.
+  const { error } = await admin.from("memberships").upsert(
+    {
+      user_id: userId,
+      agency_id: input.agencyId,
+      role: input.role,
+      full_name: email.split("@")[0],
+    },
+    { onConflict: "user_id,agency_id" }
+  );
   if (error) return { ok: false, error: error.message };
   revalidateDashboard(locale);
   return { ok: true };
@@ -662,11 +725,23 @@ export async function endLease(
   input: { leaseId: string; endsOn: string }
 ): Promise<ActionResult> {
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("leases")
     .update({ status: "ended", ends_on: input.endsOn })
-    .eq("id", input.leaseId);
-  if (error) return { ok: false, error: error.message };
+    .eq("id", input.leaseId)
+    .select("id");
+
+  if (error) {
+    // 23514 is the dates constraint: a lease cannot end before it began. The
+    // raw text names the constraint, which means nothing to whoever is holding
+    // the keys, so it is translated at the caller.
+    if (error.code === "23514") return { ok: false, error: "lease-ends-before-start" };
+    return { ok: false, error: error.message };
+  }
+  // No error and no row means row level security filtered the update out
+  // rather than refusing it, which is what a caretaker's token would do.
+  if (!data || data.length === 0) return { ok: false, error: "lease-not-writable" };
+
   revalidateDashboard(locale);
   return { ok: true };
 }

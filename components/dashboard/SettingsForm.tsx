@@ -70,7 +70,7 @@ function InviteModal({
   agencyId: string;
   live: boolean;
 }) {
-  const { t, f } = useI18n();
+  const { t, f, locale } = useI18n();
   const { notify } = useStore();
   const router = useRouter();
   const m = t.dash.settings.inviteModal;
@@ -94,10 +94,20 @@ function InviteModal({
     }
 
     setSending(true);
-    const result = await sb.inviteMember("fr", { agencyId, email, role });
+    // The locale decides which language the invitation is written in, so it
+    // has to be the one the sender is working in, not a fixed French.
+    const result = await sb.inviteMember(locale, { agencyId, email, role });
     setSending(false);
     if (!result.ok) {
-      setError(result.error);
+      setError(
+        result.error === "invite-bad-email"
+          ? t.contactPage.form.errorEmail
+          : result.error === "only the owner can invite"
+            ? m.errorNotOwner
+            : result.error.startsWith("invite-email-failed")
+              ? m.errorEmailFailed
+              : result.error
+      );
       return;
     }
     notify(f(m.invited, { email }));
@@ -108,7 +118,7 @@ function InviteModal({
   return (
     <Modal title={m.title} subtitle={f(m.subtitle, { agency })} onClose={onClose}>
       <form onSubmit={submit} className="space-y-4">
-        <Field label={m.email} error={error}>
+        <Field label={m.email} hint={m.emailHint} error={error}>
           <input name="email" type="email" placeholder="collegue@agence.com" className={fieldCls} />
         </Field>
         <Field label={m.role}>

@@ -72,7 +72,11 @@ type StoreValue = {
     apartmentId: string,
     input: { name: string; phone: string; rent: number; cycle: LeaseCycle; until?: string }
   ) => void;
-  endLease: (buildingId: string, apartmentId: string, endsOn: string) => void;
+  endLease: (
+    buildingId: string,
+    apartmentId: string,
+    endsOn: string
+  ) => Promise<{ ok: boolean; error?: string }>;
   setBuildingPhoto: (buildingId: string, src: string) => void;
   removeBuildingPhoto: (buildingId: string) => void;
   addLease: (
@@ -423,18 +427,37 @@ export function StoreProvider({
     [buildings, updateApartment, persist, locale]
   );
 
+  /**
+   * Closes the lease and empties the unit. Unlike the other writes this one
+   * reports back, because it is the one the database is most likely to refuse:
+   * a closing date cannot fall before the lease began. Clearing the tenant
+   * first and letting the refresh quietly put them back reads as nothing
+   * happening at all, so the caller waits for the answer and says what went
+   * wrong.
+   */
   const endLease = useCallback<StoreValue["endLease"]>(
-    (buildingId, apartmentId, endsOn) => {
-      const leaseId = buildings
+    async (buildingId, apartmentId, endsOn) => {
+      const apartment = buildings
         .find((b) => b.id === buildingId)
-        ?.apartments.find((a) => a.id === apartmentId)?.leaseId;
-      updateApartment(buildingId, apartmentId, {
-        tenant: undefined,
-        rentStatus: "pending",
-      });
-      if (leaseId) persist(() => sb.endLease(locale, { leaseId, endsOn }));
+        ?.apartments.find((a) => a.id === apartmentId);
+      const leaseId = apartment?.leaseId;
+
+      if (!live) {
+        updateApartment(buildingId, apartmentId, { tenant: undefined, rentStatus: "pending" });
+        return { ok: true };
+      }
+      if (!leaseId) return { ok: false, error: t.dash.apartment.endLeaseModal.errorNoLease };
+
+      const result = await sb.endLease(locale, { leaseId, endsOn });
+      if (!result.ok) {
+        console.error("end lease failed:", result.error);
+        return result;
+      }
+      updateApartment(buildingId, apartmentId, { tenant: undefined, rentStatus: "pending" });
+      router.refresh();
+      return { ok: true };
     },
-    [buildings, updateApartment, persist, locale]
+    [buildings, updateApartment, live, locale, router, t]
   );
 
   const setBuildingPhoto = useCallback<StoreValue["setBuildingPhoto"]>(

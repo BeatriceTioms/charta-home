@@ -52,6 +52,8 @@ export type Apartment = {
   leaseId?: string;
   /** The tenant's own row, which is where a name or number is corrected. */
   residentId?: string;
+  /** ISO start of the active lease. Closing one cannot predate it. */
+  leaseStartsOn?: string;
   photos?: ApartmentPhoto[];
   label: string;
   rooms: number;

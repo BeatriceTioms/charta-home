@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound, useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { byPeriodDesc, cycleLabel, type Apartment, type LeaseCycle } from "@/lib/data";
 import { useBuilding } from "@/lib/building-context";
 import { useStore } from "@/lib/store";
@@ -42,7 +42,13 @@ function ReminderModal({
   const m = t.dash.apartment.reminderModal;
   const [channel, setChannel] = useState("whatsapp");
 
-  const message = f(m.message, { name, amount: fmt(amount), apartment });
+  // The standard wording is a starting point, not the final word. A late
+  // payment is a conversation between people who know each other, and the one
+  // sending it is the one who knows whether this month calls for a nudge or a
+  // firmer note.
+  const [message, setMessage] = useState(() =>
+    f(m.message, { name, amount: fmt(amount), apartment })
+  );
 
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -71,12 +77,16 @@ function ReminderModal({
             <option value="email">{m.email}</option>
           </select>
         </Field>
-        <Field label={m.preview}>
-          <p className="rounded-2xl border border-azure-900/10 bg-soft-50 p-4 text-sm leading-relaxed text-onyx/75 dark:border-white/10 dark:bg-white/5 dark:text-white/70">
-            {message}
-          </p>
+        <Field label={m.preview} hint={m.previewHint}>
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            rows={5}
+            required
+            className={`${fieldCls} resize-none leading-relaxed`}
+          />
         </Field>
-        <ModalActions onCancel={onClose} submitLabel={m.submit} />
+        <ModalActions onCancel={onClose} submitLabel={m.submit} disabled={!message.trim()} />
       </form>
     </Modal>
   );
@@ -291,8 +301,8 @@ function EditTenantModal({
 
 export default function ApartmentPage() {
   const { fmt } = useMoney();
-  const { building } = useBuilding();
-  const { tickets, deleteApartment, endLease, notify } = useStore();
+  const { building: selected, setBuildingId } = useBuilding();
+  const { buildings, tickets, deleteApartment, endLease, notify } = useStore();
   const { t, f, s: ts, path, locale } = useI18n();
   const params = useParams<{ aptId: string }>();
   const router = useRouter();
@@ -304,8 +314,23 @@ export default function ApartmentPage() {
   const [editingTenant, setEditingTenant] = useState(false);
   const [removingUnit, setRemovingUnit] = useState(false);
   const [endingLease, setEndingLease] = useState(false);
+  const [endLeaseError, setEndLeaseError] = useState<string>();
 
+  // A URL names one apartment out of the whole portfolio, so the search is
+  // across every building rather than the one currently selected. On a fresh
+  // load the selection is still the first building, because the saved choice
+  // is only read once the provider has mounted; looking only there turned a
+  // reload or a bookmarked unit into a 404.
+  const owner = buildings.find((b) => b.apartments.some((a) => a.id === params.aptId));
+  const building = owner ?? selected;
   const apartment = building.apartments.find((a) => a.id === params.aptId);
+
+  // Arriving by link also moves the rest of the dashboard to that building,
+  // so the sidebar and the switcher agree with the page being read.
+  useEffect(() => {
+    if (owner && owner.id !== selected.id) setBuildingId(owner.id);
+  }, [owner, selected.id, setBuildingId]);
+
   if (!apartment) notFound();
 
   const label = apartment.label;
@@ -752,15 +777,42 @@ export default function ApartmentPage() {
         <Modal
           title={t.dash.apartment.endLeaseModal.title}
           subtitle={f(t.dash.apartment.endLeaseModal.subtitle, { name: apartment.tenant.name })}
-          onClose={() => setEndingLease(false)}
+          onClose={() => {
+            setEndingLease(false);
+            setEndLeaseError(undefined);
+          }}
         >
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
               const endsOn = String(new FormData(e.currentTarget).get("endsOn") ?? "");
-              endLease(building.id, apartment.id, endsOn);
+              // The database refuses this too, through the dates constraint,
+              // but catching it here names the problem instead of failing the
+              // save for reasons the agency cannot see.
+              if (apartment.leaseStartsOn && endsOn < apartment.leaseStartsOn) {
+                setEndLeaseError(
+                  f(t.dash.apartment.endLeaseModal.errorBeforeStart, {
+                    date: apartment.leaseStartsOn,
+                  })
+                );
+                return;
+              }
+              const result = await endLease(building.id, apartment.id, endsOn);
+              if (!result.ok) {
+                setEndLeaseError(
+                  result.error === "lease-ends-before-start"
+                    ? f(t.dash.apartment.endLeaseModal.errorBeforeStart, {
+                        date: apartment.leaseStartsOn ?? "",
+                      })
+                    : result.error === "lease-not-writable"
+                      ? t.dash.apartment.endLeaseModal.errorNotAllowed
+                      : (result.error ?? t.dash.common.saveFailed)
+                );
+                return;
+              }
               notify(t.dash.apartment.endLeaseModal.ended);
               setEndingLease(false);
+              setEndLeaseError(undefined);
             }}
             className="space-y-4"
           >
@@ -769,11 +821,23 @@ export default function ApartmentPage() {
                 name="endsOn"
                 type="date"
                 required
+                min={apartment.leaseStartsOn}
                 defaultValue={new Date().toISOString().slice(0, 10)}
                 className={fieldCls}
               />
             </Field>
-            <ModalActions onCancel={() => setEndingLease(false)} submitLabel={t.dash.apartment.endLeaseModal.submit} />
+            {endLeaseError && (
+              <p className="rounded-2xl bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-400">
+                {endLeaseError}
+              </p>
+            )}
+            <ModalActions
+              onCancel={() => {
+                setEndingLease(false);
+                setEndLeaseError(undefined);
+              }}
+              submitLabel={t.dash.apartment.endLeaseModal.submit}
+            />
           </form>
         </Modal>
       )}
