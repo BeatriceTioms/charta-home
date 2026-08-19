@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import { byOpenedDesc, byPeriodDesc, isoPaidOn, shortRef, type RentStatus, type TicketStatus } from "@/lib/data";
+import { byOpenedDesc, byPeriodDesc, cycleLabel, isoPaidOn, shortRef, type RentStatus, type TicketStatus } from "@/lib/data";
 import { useBuilding } from "@/lib/building-context";
 import { useStore } from "@/lib/store";
 import { useMoney } from "@/lib/money";
@@ -137,7 +137,7 @@ export default function TenantPage() {
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <RentChip status={apartment.rentStatus as RentStatus} />
                 <span className="rounded-full border border-white/70 bg-white/50 px-3 py-1 text-xs font-semibold text-onyx/60 backdrop-blur-xl dark:border-white/10 dark:bg-white/5 dark:text-white/60">
-                  {apartment.cycle === "monthly" ? t.dash.rent.monthly : t.dash.rent.yearly}
+                  {cycleLabel(apartment.cycle, t.dash.rent)}
                 </span>
                 <Link
                   href={path(`/dashboard/apartments/${apartment.id}`)}

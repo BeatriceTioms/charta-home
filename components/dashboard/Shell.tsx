@@ -247,7 +247,13 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
           collapsed ? "lg:pl-[7.5rem]" : "lg:pl-[18rem]"
         }`}
       >
-        <header className="sticky top-0 z-30 border-b border-white/60 bg-white/40 backdrop-blur-2xl dark:border-white/5 dark:bg-white/[0.03]">
+        {/*
+          The bar floats as a rounded card rather than spanning edge to edge.
+          The sticky wrapper keeps its own blur so the strip of page showing
+          through the inset stays legible as the content scrolls under it.
+        */}
+        <header className="sticky top-0 z-30 px-3 pb-2 pt-3 backdrop-blur-2xl sm:px-5">
+          <div className="overflow-hidden rounded-3xl border border-white/60 bg-white/50 shadow-sm backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.04]">
           <div className="flex h-16 items-center justify-between gap-4 px-5 sm:px-8">
             <div className="lg:hidden">
               <span className="dark:hidden">
@@ -294,6 +300,7 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
               );
             })}
           </nav>
+          </div>
         </header>
 
         <main className="relative z-10 flex-1 px-5 py-8 sm:px-8">

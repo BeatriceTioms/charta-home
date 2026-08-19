@@ -28,6 +28,7 @@ import {
   type Apartment,
   type ApartmentPhoto,
   type Building,
+  type LeaseCycle,
   type RentStatus,
   type Technician,
   type Ticket,
@@ -56,7 +57,7 @@ type StoreValue = {
       bathrooms: number;
       sqm: number;
       rent: number;
-      cycle: "monthly" | "yearly";
+      cycle: LeaseCycle;
       photos?: string[];
     }
   ) => void;
@@ -69,7 +70,7 @@ type StoreValue = {
   updateTenant: (
     buildingId: string,
     apartmentId: string,
-    input: { name: string; phone: string; rent: number; cycle: "monthly" | "yearly"; until?: string }
+    input: { name: string; phone: string; rent: number; cycle: LeaseCycle; until?: string }
   ) => void;
   endLease: (buildingId: string, apartmentId: string, endsOn: string) => void;
   setBuildingPhoto: (buildingId: string, src: string) => void;
@@ -81,7 +82,7 @@ type StoreValue = {
       name: string;
       phone: string;
       rent: number;
-      cycle: "monthly" | "yearly";
+      cycle: LeaseCycle;
       since: string;
       /** Move out date on a fixed term lease, empty when open ended. */
       until?: string;

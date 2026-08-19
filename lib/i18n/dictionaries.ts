@@ -678,6 +678,7 @@ export const fr = {
         rent: "Loyer mensuel",
         cycle: "Cycle du bail",
         monthly: "Mensuel",
+        quarterly: "Trimestriel",
         yearly: "Annuel",
         photos: "Photos du logement",
         photosHint:
@@ -807,6 +808,7 @@ export const fr = {
       remind: "Relancer",
       reminded: "Rappel envoyé",
       monthly: "Mensuel",
+      quarterly: "Trimestriel",
       yearly: "Annuel",
       exported: "Fichier exporté",
       recordModal: {
@@ -1802,6 +1804,7 @@ export const en: Dictionary = {
         rent: "Monthly rent",
         cycle: "Lease cycle",
         monthly: "Monthly",
+        quarterly: "Quarterly",
         yearly: "Yearly",
         photos: "Unit photos",
         photosHint:
@@ -1931,6 +1934,7 @@ export const en: Dictionary = {
       remind: "Remind",
       reminded: "Reminder sent",
       monthly: "Monthly",
+      quarterly: "Quarterly",
       yearly: "Yearly",
       exported: "File exported",
       recordModal: {

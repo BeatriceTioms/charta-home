@@ -5,7 +5,7 @@
  */
 
 export type MemberRole = "owner" | "manager" | "accountant" | "caretaker";
-export type LeaseCycle = "monthly" | "yearly";
+export type LeaseCycle = "monthly" | "quarterly" | "yearly";
 export type LeaseStatus = "upcoming" | "active" | "ended";
 export type ChargeStatus = "open" | "paid" | "void";
 export type ChargeState = "paid" | "pending" | "overdue" | "void";

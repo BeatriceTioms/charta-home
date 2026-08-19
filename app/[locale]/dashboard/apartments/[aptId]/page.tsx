@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound, useParams, useRouter } from "next/navigation";
 import { useState } from "react";
-import { byPeriodDesc, type Apartment } from "@/lib/data";
+import { byPeriodDesc, cycleLabel, type Apartment, type LeaseCycle } from "@/lib/data";
 import { useBuilding } from "@/lib/building-context";
 import { useStore } from "@/lib/store";
 import { useMoney } from "@/lib/money";
@@ -120,7 +120,7 @@ function LeaseModal({
       name,
       phone: String(data.get("phone") ?? ""),
       rent: Number(data.get("rent") ?? defaultRent),
-      cycle: (data.get("cycle") as "monthly" | "yearly") ?? "monthly",
+      cycle: (data.get("cycle") as LeaseCycle) ?? "monthly",
       since,
       until,
     });
@@ -148,6 +148,7 @@ function LeaseModal({
           <Field label={m.cycle}>
             <select name="cycle" defaultValue="monthly" className={fieldCls}>
               <option value="monthly">{t.dash.rent.monthly}</option>
+              <option value="quarterly">{t.dash.rent.quarterly}</option>
               <option value="yearly">{t.dash.rent.yearly}</option>
             </select>
           </Field>
@@ -251,7 +252,7 @@ function EditTenantModal({
       name,
       phone: String(data.get("phone") ?? ""),
       rent: Number(data.get("rent") ?? apartment.rent),
-      cycle: (data.get("cycle") as "monthly" | "yearly") ?? apartment.cycle,
+      cycle: (data.get("cycle") as LeaseCycle) ?? apartment.cycle,
       until: String(data.get("end") ?? ""),
     });
     notify(m.updated);
@@ -274,6 +275,7 @@ function EditTenantModal({
           <Field label={m.cycle}>
             <select name="cycle" defaultValue={apartment.cycle} className={fieldCls}>
               <option value="monthly">{t.dash.rent.monthly}</option>
+              <option value="quarterly">{t.dash.rent.quarterly}</option>
               <option value="yearly">{t.dash.rent.yearly}</option>
             </select>
           </Field>
@@ -358,7 +360,7 @@ export default function ApartmentPage() {
               </svg>
               {building.name} ·{" "}
               {f(t.dash.apartment.leaseCycle, {
-                cycle: apartment.cycle === "monthly" ? t.dash.rent.monthly : t.dash.rent.yearly,
+                cycle: cycleLabel(apartment.cycle, t.dash.rent),
               })}
             </p>
           </div>
@@ -446,7 +448,7 @@ export default function ApartmentPage() {
               label={t.dash.apartment.monthlyRent}
               value={fmt(apartment.rent)}
               hint={f(t.dash.apartment.leaseCycle, {
-                cycle: apartment.cycle === "monthly" ? t.dash.rent.monthly : t.dash.rent.yearly,
+                cycle: cycleLabel(apartment.cycle, t.dash.rent),
               })}
             />
             <StatCard
@@ -556,7 +558,7 @@ export default function ApartmentPage() {
                   <div className="flex justify-between gap-3">
                     <dt className="text-onyx/45 dark:text-white/45">{t.dash.apartment.cycle}</dt>
                     <dd className="font-medium text-azure-950 dark:text-white">
-                      {apartment.cycle === "monthly" ? t.dash.rent.monthly : t.dash.rent.yearly}
+                      {cycleLabel(apartment.cycle, t.dash.rent)}
                     </dd>
                   </div>
                   {apartment.tenant.until && (

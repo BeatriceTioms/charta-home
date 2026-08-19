@@ -32,6 +32,20 @@ export type Technician = {
   since: string;
 };
 
+/**
+ * How often the rent falls due. These are the values of the `lease_cycle`
+ * enum in Postgres, so the two must be changed together.
+ */
+export type LeaseCycle = "monthly" | "quarterly" | "yearly";
+
+/** The translated name of a cycle, from any dictionary section that carries all three. */
+export function cycleLabel(
+  cycle: LeaseCycle,
+  labels: { monthly: string; quarterly: string; yearly: string }
+): string {
+  return labels[cycle] ?? labels.monthly;
+}
+
 export type Apartment = {
   id: string;
   /** The active lease behind this unit, needed to record a payment live. */
@@ -44,7 +58,7 @@ export type Apartment = {
   bathrooms: number;
   sqm: number;
   rent: number;
-  cycle: "monthly" | "yearly";
+  cycle: LeaseCycle;
   tenant?: { name: string; phone: string; since: string; until?: string };
   rentStatus: RentStatus;
   netYield: number;

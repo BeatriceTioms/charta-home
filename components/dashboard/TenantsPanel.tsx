@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { type RentStatus } from "@/lib/data";
+import { cycleLabel, type RentStatus } from "@/lib/data";
 import { useBuilding } from "@/lib/building-context";
 import { useStore } from "@/lib/store";
 import { useMoney } from "@/lib/money";
@@ -217,7 +217,7 @@ export function TenantsPanel() {
                           {apt.tenant!.name}
                         </p>
                         <p className="whitespace-nowrap text-xs text-onyx/45 dark:text-white/45">
-                          {apt.cycle === "monthly" ? t.dash.rent.monthly : t.dash.rent.yearly} ·{" "}
+                          {cycleLabel(apt.cycle, t.dash.rent)} ·{" "}
                           {f(
                             inPeriod.length === 1 ? tn.paymentsCountOne : tn.paymentsCount,
                             { count: inPeriod.length }

@@ -55,6 +55,7 @@ function FollowUpRow({
   amount,
   step,
   phone,
+  photo,
 }: {
   name: string;
   unit: string;
@@ -62,6 +63,7 @@ function FollowUpRow({
   amount: number;
   step: number;
   phone: string;
+  photo: string;
 }) {
   const { t, f, path } = useI18n();
   const { fmt } = useMoney();
@@ -70,7 +72,17 @@ function FollowUpRow({
   return (
     <div className="flex flex-wrap items-center gap-5 rounded-2xl border border-azure-900/8 p-4 dark:border-white/8">
       <Link href={path(`/dashboard/apartments/${aptId}`)} className="flex min-w-56 items-center gap-3.5">
-        <PhotoPlaceholder className="h-14 w-20 shrink-0 rounded-xl" />
+        {photo ? (
+          <Image
+            src={photo}
+            alt={unit}
+            width={80}
+            height={56}
+            className="h-14 w-20 shrink-0 rounded-xl object-cover"
+          />
+        ) : (
+          <PhotoPlaceholder className="h-14 w-20 shrink-0 rounded-xl" />
+        )}
         <div>
           <p className="text-sm font-bold text-azure-950 transition hover:text-azure-600 dark:text-white dark:hover:text-soft-500">
             {unit} · {name}
@@ -168,6 +180,8 @@ export default function DashboardPage() {
       amount: a.rent,
       phone: a.tenant!.phone,
       step: a.rentStatus === "overdue" ? 2 : 1,
+      // The unit's cover photo, so a name in the chase list has a face.
+      photo: a.photos?.[0]?.src ?? "",
     }));
 
   const paidUnit = occupied.find((a) => a.rentStatus === "paid");

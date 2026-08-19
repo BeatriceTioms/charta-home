@@ -65,6 +65,17 @@ try {
   process.exit(1);
 }
 
+// Pasting the bundle into a project that already has part of it applied is the
+// ordinary case once the schema starts growing. Running the whole thing a
+// second time is the strongest form of that: if this passes, no partially
+// applied project can hit a duplicate object error either.
+try {
+  await db.exec(await read("bundle.sql"));
+  check("bundle.sql applies again on top of itself", true);
+} catch (err) {
+  check("bundle.sql applies again on top of itself", false, err.message);
+}
+
 const q = async (sql) => (await db.query(sql)).rows;
 
 const [tables] = await q(

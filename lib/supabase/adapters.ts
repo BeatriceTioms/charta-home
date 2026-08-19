@@ -1,4 +1,4 @@
-import type { ActivityItem, Building, Payment, RentStatus, Technician, Ticket } from "@/lib/data";
+import type { ActivityItem, Building, LeaseCycle, Payment, RentStatus, Technician, Ticket } from "@/lib/data";
 import { isSupabaseConfigured } from "./config";
 import { createClient } from "./server";
 
@@ -185,7 +185,7 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
         bathrooms: u.bathrooms ?? 0,
         sqm: u.sqm ?? 0,
         rent: Number(u.rent_amount ?? u.base_rent ?? 0),
-        cycle: (u.cycle ?? "monthly") as "monthly" | "yearly",
+        cycle: (u.cycle ?? "monthly") as LeaseCycle,
         tenant: u.is_occupied && u.resident_name
           ? {
               name: u.resident_name,

@@ -223,22 +223,29 @@ export function ProgressBar({ pct, className = "" }: { pct: number; className?: 
  * quiet outline of a home, so an empty gallery still looks deliberate rather
  * than broken, and nobody mistakes stock photography for their own unit.
  */
+/**
+ * Stands in for a photograph that has not been uploaded yet.
+ *
+ * Deliberately neutral grey rather than brand blue: a missing photo is an
+ * empty slot, not a feature, and colouring it made vacant units read as though
+ * they carried an image. The paperclip says what the slot wants.
+ */
 export function PhotoPlaceholder({ className = "" }: { className?: string }) {
   return (
     <div
-      className={`grid place-items-center bg-gradient-to-br from-soft-200 to-soft-400 dark:from-azure-900 dark:to-azure-950 ${className}`}
+      className={`grid place-items-center bg-neutral-200 dark:bg-neutral-800 ${className}`}
       aria-hidden="true"
     >
       <svg
         viewBox="0 0 24 24"
-        className="h-1/3 w-1/3 max-h-10 max-w-10 text-azure-800/25 dark:text-white/20"
+        className="h-1/3 w-1/3 max-h-10 max-w-10 text-neutral-500 dark:text-neutral-400"
         fill="none"
         stroke="currentColor"
         strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
       >
-        <path d="M3 10.5 12 3l9 7.5M5 9.5V21h14V9.5M10 21v-6h4v6" />
+        <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
       </svg>
     </div>
   );

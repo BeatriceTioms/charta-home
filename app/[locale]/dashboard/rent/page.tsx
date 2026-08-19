@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { byPeriodDesc, shortRef, type RentStatus } from "@/lib/data";
+import { byPeriodDesc, cycleLabel, shortRef, type RentStatus } from "@/lib/data";
 import { useBuilding } from "@/lib/building-context";
 import { useStore } from "@/lib/store";
 import { useMoney } from "@/lib/money";
@@ -198,7 +198,7 @@ export default function RentPage() {
     const lines = rows.map((a) => [
       a.label,
       a.tenant!.name,
-      a.cycle === "monthly" ? t.dash.rent.monthly : t.dash.rent.yearly,
+      cycleLabel(a.cycle, t.dash.rent),
       t.dash.status[a.rentStatus],
       String(a.rent),
     ]);
@@ -353,7 +353,7 @@ export default function RentPage() {
                       {shortRef(a.id)}
                     </td>
                     <td className="py-4 pr-4 text-onyx/60 dark:text-white/60">
-                      {a.cycle === "monthly" ? t.dash.rent.monthly : t.dash.rent.yearly}
+                      {cycleLabel(a.cycle, t.dash.rent)}
                     </td>
                     <td className="py-4 pr-4">
                       <RentChip status={a.rentStatus} />

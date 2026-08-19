@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { useBuilding } from "@/lib/building-context";
+import type { LeaseCycle } from "@/lib/data";
 import { useStore } from "@/lib/store";
 import { useMoney } from "@/lib/money";
 import { useI18n } from "@/lib/i18n/context";
@@ -37,7 +38,7 @@ function AddApartmentModal({ onClose }: { onClose: () => void }) {
       bathrooms: Number(data.get("bathrooms") ?? 1),
       sqm: Number(data.get("sqm") ?? 60),
       rent: Number(data.get("rent") ?? 800),
-      cycle: (data.get("cycle") as "monthly" | "yearly") ?? "monthly",
+      cycle: (data.get("cycle") as LeaseCycle) ?? "monthly",
       photos,
     });
     notify(`${label} · ${m.submit}`);
@@ -68,6 +69,7 @@ function AddApartmentModal({ onClose }: { onClose: () => void }) {
           <Field label={m.cycle}>
             <select name="cycle" defaultValue="monthly" className={fieldCls}>
               <option value="monthly">{m.monthly}</option>
+              <option value="quarterly">{m.quarterly}</option>
               <option value="yearly">{m.yearly}</option>
             </select>
           </Field>
