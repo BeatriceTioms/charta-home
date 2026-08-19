@@ -153,7 +153,7 @@ export function TenantsPanel() {
             >
               <option value="all">{tn.allApartments}</option>
               {leased.map((a) => (
-                <option key={a.id} value={a.id}>{ts("apartments", a.label)}</option>
+                <option key={a.id} value={a.id}>{a.label}</option>
               ))}
             </select>
             <select
@@ -229,7 +229,7 @@ export function TenantsPanel() {
                     {apt.tenant!.phone}
                   </td>
                   <td className="whitespace-nowrap py-4 pr-4 font-semibold text-azure-950 dark:text-white">
-                    {ts("apartments", apt.label)}
+                    {apt.label}
                   </td>
                   <td className="whitespace-nowrap py-4 pr-4 text-onyx/60 dark:text-white/60">
                     {apt.tenant!.since}

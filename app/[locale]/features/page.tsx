@@ -255,7 +255,7 @@ function TicketReportCard() {
   return (
     <div className="glass w-64 rounded-2xl rounded-tl-md p-4">
       <p className="text-sm leading-relaxed text-onyx/75">
-        {t.seed.tickets["Kitchen tap leaking"]}
+        {t.featuresPage.ticketSample}
       </p>
       <p className="mt-1.5 text-[11px] text-onyx/40">Apt 1B · WhatsApp</p>
     </div>

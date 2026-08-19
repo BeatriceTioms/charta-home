@@ -6,7 +6,7 @@ import { fmt } from "@/lib/data";
 import { useBuilding } from "@/lib/building-context";
 import { useStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n/context";
-import { Card, CardTitle } from "@/components/dashboard/ui";
+import { Card, CardTitle, PhotoPlaceholder } from "@/components/dashboard/ui";
 
 function WorkOrdersDonut({
   segments,
@@ -47,7 +47,6 @@ function WorkOrdersDonut({
   );
 }
 
-const UNIT_PHOTOS = ["/photos/interior-2.jpg", "/photos/interior-3.jpg", "/photos/interior-4.jpg"];
 
 function FollowUpRow({
   name,
@@ -55,7 +54,6 @@ function FollowUpRow({
   aptId,
   amount,
   step,
-  photo,
   phone,
 }: {
   name: string;
@@ -63,7 +61,6 @@ function FollowUpRow({
   aptId: string;
   amount: number;
   step: number;
-  photo: string;
   phone: string;
 }) {
   const { t, f, path } = useI18n();
@@ -72,13 +69,7 @@ function FollowUpRow({
   return (
     <div className="flex flex-wrap items-center gap-5 rounded-2xl border border-azure-900/8 p-4 dark:border-white/8">
       <Link href={path(`/dashboard/apartments/${aptId}`)} className="flex min-w-56 items-center gap-3.5">
-        <Image
-          src={photo}
-          alt={unit}
-          width={160}
-          height={112}
-          className="h-14 w-20 shrink-0 rounded-xl object-cover"
-        />
+        <PhotoPlaceholder className="h-14 w-20 shrink-0 rounded-xl" />
         <div>
           <p className="text-sm font-bold text-azure-950 transition hover:text-azure-600 dark:text-white dark:hover:text-soft-500">
             {unit} · {name}
@@ -142,7 +133,7 @@ function FollowUpRow({
 export default function DashboardPage() {
   const { building } = useBuilding();
   const { tickets } = useStore();
-  const { t, f, s: ts, path, locale } = useI18n();
+  const { t, f, path, locale } = useI18n();
 
   const occupied = building.apartments.filter((a) => a.tenant);
   const vacant = building.apartments.length - occupied.length;
@@ -168,14 +159,13 @@ export default function DashboardPage() {
 
   const chasing = occupied
     .filter((a) => a.rentStatus !== "paid")
-    .map((a, i) => ({
+    .map((a) => ({
       name: a.tenant!.name,
-      unit: ts("apartments", a.label),
+      unit: a.label,
       aptId: a.id,
       amount: a.rent,
       phone: a.tenant!.phone,
       step: a.rentStatus === "overdue" ? 2 : 1,
-      photo: UNIT_PHOTOS[i % UNIT_PHOTOS.length],
     }));
 
   const paidUnit = occupied.find((a) => a.rentStatus === "paid");
@@ -185,9 +175,8 @@ export default function DashboardPage() {
   const recent = [
     paidUnit && {
       title: t.dash.overview.activityPayment,
-      detail: `${ts("apartments", paidUnit.label)} · ${paidUnit.tenant!.name}`,
+      detail: `${paidUnit.label} · ${paidUnit.tenant!.name}`,
       time: t.dash.overview.hoursAgo,
-      photo: UNIT_PHOTOS[0],
       icon: (
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M20 6L9 17l-5-5" />
@@ -196,9 +185,8 @@ export default function DashboardPage() {
     },
     resolvedTicket && {
       title: t.dash.overview.activityTicket,
-      detail: ts("tickets", resolvedTicket.title),
+      detail: resolvedTicket.title,
       time: t.dash.overview.yesterday,
-      photo: UNIT_PHOTOS[1],
       icon: (
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
           <path d="M14.7 6.3a4.5 4.5 0 00-6 6L3 18l3 3 5.7-5.7a4.5 4.5 0 006-6L15 12l-3-3 2.7-2.7z" />
@@ -207,9 +195,8 @@ export default function DashboardPage() {
     },
     lastUnit && {
       title: t.dash.overview.activityLease,
-      detail: `${ts("apartments", lastUnit.label)} · ${lastUnit.tenant!.name}`,
+      detail: `${lastUnit.label} · ${lastUnit.tenant!.name}`,
       time: t.dash.overview.daysAgo,
-      photo: UNIT_PHOTOS[2],
       icon: (
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
           <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6M9 13h6M9 17h4" />
@@ -220,7 +207,6 @@ export default function DashboardPage() {
     title: string;
     detail: string;
     time: string;
-    photo: string;
     icon: React.ReactNode;
   }[];
 
@@ -244,13 +230,17 @@ export default function DashboardPage() {
         {/* left column */}
         <div className="space-y-6">
           <div className="relative overflow-hidden rounded-[2rem]">
-            <Image
-              src={building.photo}
-              alt={building.name}
-              width={1600}
-              height={1067}
-              className="h-[360px] w-full object-cover"
-            />
+            {building.photo ? (
+              <Image
+                src={building.photo}
+                alt={building.name}
+                width={1600}
+                height={1067}
+                className="h-[360px] w-full object-cover"
+              />
+            ) : (
+              <PhotoPlaceholder className="h-[360px] w-full" />
+            )}
             <div className="absolute inset-0 bg-gradient-to-r from-onyx/85 via-onyx/45 to-onyx/10" />
             <div className="absolute inset-0 flex flex-col justify-between p-8">
               <div className="flex flex-wrap gap-2">
@@ -277,7 +267,7 @@ export default function DashboardPage() {
                   <svg viewBox="0 0 24 24" className="h-4 w-4 text-soft-500" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1118 0z" /><circle cx="12" cy="10" r="3" />
                   </svg>
-                  {building.address} · {ts("cities", building.city)}
+                  {building.address} · {building.city}
                 </p>
                 <p className="mt-3 max-w-md text-sm leading-relaxed text-white/75">
                   {f(t.dash.overview.incomeVsExpenses, {
@@ -336,7 +326,7 @@ export default function DashboardPage() {
               {recent.map((a) => (
                 <div key={a.title} className="overflow-hidden rounded-2xl border border-azure-900/8 dark:border-white/8">
                   <div className="relative h-32">
-                    <Image src={a.photo} alt="" fill className="object-cover" />
+                    <PhotoPlaceholder className="absolute inset-0 h-full w-full" />
                     <span className="absolute left-3 top-3 grid h-8 w-8 place-items-center rounded-full bg-onyx/70 text-soft-500 backdrop-blur-sm">
                       {a.icon}
                     </span>
@@ -397,7 +387,7 @@ export default function DashboardPage() {
                 >
                   <span className="min-w-0">
                     <span className="block text-sm font-bold text-azure-950 dark:text-white">
-                      {ts("apartments", a.label)}
+                      {a.label}
                     </span>
                     <span className="block truncate text-xs text-onyx/45 dark:text-white/40">
                       {a.tenant ? a.tenant.name : t.dash.status.vacant}
@@ -466,7 +456,7 @@ export default function DashboardPage() {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="text-sm font-bold">{ts("activity", item.title)}</p>
+                          <p className="text-sm font-bold">{item.title}</p>
                           <p className={`mt-0.5 truncate text-xs ${item.kind === "viewing" ? "opacity-60" : "text-white/65"}`}>
                             {item.detail}
                           </p>

@@ -246,8 +246,23 @@ export type ReminderRuleRow = {
   offset_days: number;
   channel: ReportChannel;
   template_name: string | null;
+  /** What the reminder says, with {tenant} {amount} {period} placeholders. */
+  message_body: string | null;
   escalation_step: number;
   is_active: boolean;
+};
+
+export type ReminderTargetRow = {
+  rent_charge_id: string;
+  agency_id: string;
+  due_on: string;
+  amount: number;
+  agency_name: string;
+  agency_whatsapp: string | null;
+  currency: string;
+  resident_name: string;
+  resident_phone: string | null;
+  apartment_label: string;
 };
 
 export type ReminderEventRow = {
@@ -368,6 +383,7 @@ export type Database = {
       v_building_performance: { Row: BuildingPerformance; Relationships: [] };
       v_charge_status: { Row: ChargeStatusRow; Relationships: [] };
       v_technician_performance: { Row: TechnicianPerformance; Relationships: [] };
+      v_reminder_targets: { Row: ReminderTargetRow; Relationships: [] };
     };
     Functions: {
       create_agency_for_current_user: {

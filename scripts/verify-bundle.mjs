@@ -75,7 +75,7 @@ check("every table is created", tables.n === 23, `${tables.n} tables`);
 const [views] = await q(
   `select count(*)::int as n from pg_views where schemaname = 'public'`
 );
-check("every view is created", views.n === 4, `${views.n} views`);
+check("every view is created", views.n === 5, `${views.n} views`);
 
 const [unguarded] = await q(`
   select count(*)::int as n from pg_tables t

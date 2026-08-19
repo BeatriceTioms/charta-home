@@ -41,7 +41,7 @@ export default function TenantPage() {
   if (!apartment?.tenant) notFound();
 
   const tenant = apartment.tenant;
-  const label = ts("apartments", apartment.label);
+  const label = apartment.label;
   // The unit's own first photo, falling back to the building interior.
   const cover = apartment.photos?.[0]?.src ?? building.interior;
   const remindKey = `${building.id}-${apartment.id}`;
@@ -103,7 +103,7 @@ export default function TenantPage() {
     tenantPhone: tenant.phone,
     apartment: label,
     building: building.name,
-    address: `${building.address}, ${ts("cities", building.city)}`,
+    address: `${building.address}, ${building.city}`,
     amount,
     period,
     paidOn: isoPaidOn(paidOn, key),
@@ -366,7 +366,7 @@ export default function TenantPage() {
               {myTickets.map((x) => (
                 <tr key={x.id} className="border-b border-azure-900/5 last:border-0 dark:border-white/5">
                   <td className="px-6 py-4 pr-4">
-                    <p className="font-bold text-azure-950 dark:text-white">{ts("tickets", x.title)}</p>
+                    <p className="font-bold text-azure-950 dark:text-white">{x.title}</p>
                     <div className="mt-1 flex items-center gap-2">
                       <span className="text-xs text-onyx/40 dark:text-white/40">{x.id}</span>
                       <ViaBadge via={x.reportedVia} />

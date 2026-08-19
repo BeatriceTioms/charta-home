@@ -8,7 +8,7 @@ import { byPeriodDesc, fmt } from "@/lib/data";
 import { useBuilding } from "@/lib/building-context";
 import { useStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n/context";
-import { Card, CardTitle, PageTitle, RentChip, StatCard, TicketChip } from "@/components/dashboard/ui";
+import { Card, CardTitle, PageTitle, PhotoPlaceholder, RentChip, StatCard, TicketChip } from "@/components/dashboard/ui";
 import { Field, Modal, ModalActions, fieldCls } from "@/components/dashboard/Modal";
 import { PhotoGallery } from "@/components/dashboard/PhotoGallery";
 
@@ -170,14 +170,14 @@ export default function ApartmentPage() {
   const { t, f, s: ts, path, locale } = useI18n();
   const params = useParams<{ aptId: string }>();
 
-  const [view, setView] = useState<"living" | "kitchen" | "bedrooms">("living");
+  const [view, setView] = useState(0);
   const [reminding, setReminding] = useState(false);
   const [leasing, setLeasing] = useState(false);
 
   const apartment = building.apartments.find((a) => a.id === params.aptId);
   if (!apartment) notFound();
 
-  const label = ts("apartments", apartment.label);
+  const label = apartment.label;
   const aptTickets = tickets.filter(
     (x) => x.buildingId === building.id && x.apartment === apartment.label
   );
@@ -185,11 +185,9 @@ export default function ApartmentPage() {
   const schedule = activity.filter((a) => a.buildingId === building.id);
   const team = [...new Set(schedule.map((s) => s.who))];
 
-  const PHOTOS: Record<typeof view, string> = {
-    living: building.interior,
-    kitchen: "/photos/interior-4.jpg",
-    bedrooms: "/photos/interior-1.jpg",
-  };
+  // Whatever the agency uploaded for this unit, in order.
+  const photos = apartment.photos ?? [];
+  const shown = photos[Math.min(view, Math.max(0, photos.length - 1))];
 
   const weekdays = WEEK.map((d) => ({
     ...d,
@@ -211,13 +209,16 @@ export default function ApartmentPage() {
               <path d="M19 12H5M11 18l-6-6 6-6" />
             </svg>
           </Link>
-          <Image
-            src={building.interior}
-            alt={label}
-            width={112}
-            height={112}
-            className="h-14 w-14 rounded-2xl object-cover"
-          />
+          {shown ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={shown.src}
+              alt={label}
+              className="h-14 w-14 rounded-2xl object-cover"
+            />
+          ) : (
+            <PhotoPlaceholder className="h-14 w-14 rounded-2xl" />
+          )}
           <div>
             <h1 className="font-serif text-3xl font-medium tracking-tight text-azure-950 dark:text-white sm:text-4xl">
               {label}
@@ -245,28 +246,37 @@ export default function ApartmentPage() {
         <div className="space-y-6">
           {/* interior with working room switcher */}
           <div className="relative overflow-hidden rounded-3xl shadow-sm shadow-azure-800/5">
-            <Image
-              src={PHOTOS[view]}
-              alt={label}
-              width={1600}
-              height={1067}
-              className="aspect-[16/9] w-full object-cover"
-            />
-            <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-1 rounded-full bg-white/85 p-1.5 backdrop-blur-md">
-              {(["living", "kitchen", "bedrooms"] as const).map((key) => (
-                <button
-                  key={key}
-                  onClick={() => setView(key)}
-                  className={`rounded-full px-4 py-1.5 text-xs font-bold transition ${
-                    view === key
-                      ? "bg-azure-800 text-white"
-                      : "font-semibold text-azure-900/60 hover:text-azure-900"
-                  }`}
-                >
-                  {t.dash.apartment.views[key]}
-                </button>
-              ))}
-            </div>
+            {shown ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={shown.src}
+                alt={shown.caption ?? label}
+                className="aspect-[16/9] w-full object-cover"
+              />
+            ) : (
+              <PhotoPlaceholder className="aspect-[16/9] w-full" />
+            )}
+
+            {/* One dot per uploaded photo, and nothing at all below two. */}
+            {photos.length > 1 && (
+              <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-1 rounded-full bg-white/85 p-1.5 backdrop-blur-md">
+                {photos.map((photo, i) => (
+                  <button
+                    key={photo.id}
+                    onClick={() => setView(i)}
+                    aria-label={photo.caption ?? `${i + 1}`}
+                    aria-current={view === i}
+                    className={`rounded-full px-4 py-1.5 text-xs font-bold transition ${
+                      view === i
+                        ? "bg-azure-800 text-white"
+                        : "font-semibold text-azure-900/60 hover:text-azure-900"
+                    }`}
+                  >
+                    {photo.caption?.slice(0, 14) || i + 1}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="absolute inset-x-4 bottom-4 grid max-w-sm grid-cols-3 gap-2">
               {[
                 [String(apartment.rooms), t.dash.apartment.rooms],
@@ -486,7 +496,7 @@ export default function ApartmentPage() {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-sm font-bold">{ts("activity", item.title)}</p>
+                        <p className="text-sm font-bold">{item.title}</p>
                         <p className={`mt-0.5 text-xs ${item.kind === "viewing" ? "opacity-60" : "text-white/65"}`}>
                           {item.detail}
                         </p>
@@ -515,7 +525,7 @@ export default function ApartmentPage() {
                   <div key={x.id} className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-sm font-bold text-azure-950 dark:text-white">
-                        {ts("tickets", x.title)}
+                        {x.title}
                       </p>
                       <p className="text-xs text-onyx/45 dark:text-white/45">
                         {f(t.dash.apartment.openedOn, { date: x.openedOn })}

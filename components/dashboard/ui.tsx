@@ -218,6 +218,32 @@ export function ProgressBar({ pct, className = "" }: { pct: number; className?: 
   );
 }
 
+/**
+ * Stands in for a photo an agency has not uploaded yet. Brand tones and a
+ * quiet outline of a home, so an empty gallery still looks deliberate rather
+ * than broken, and nobody mistakes stock photography for their own unit.
+ */
+export function PhotoPlaceholder({ className = "" }: { className?: string }) {
+  return (
+    <div
+      className={`grid place-items-center bg-gradient-to-br from-soft-200 to-soft-400 dark:from-azure-900 dark:to-azure-950 ${className}`}
+      aria-hidden="true"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        className="h-1/3 w-1/3 max-h-10 max-w-10 text-azure-800/25 dark:text-white/20"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M3 10.5 12 3l9 7.5M5 9.5V21h14V9.5M10 21v-6h4v6" />
+      </svg>
+    </div>
+  );
+}
+
 /* Placeholder visual for a building, monogram tile in brand tones */
 export function BuildingTile({
   name,

@@ -55,7 +55,7 @@ function NewTicketModal({ onClose }: { onClose: () => void }) {
             <option value="">{m.commonArea}</option>
             {building.apartments.map((a) => (
               <option key={a.id} value={a.id}>
-                {ts("apartments", a.label)}
+                {a.label}
               </option>
             ))}
           </select>
@@ -130,10 +130,10 @@ function AssignModal({
       subtitle={
         reassign
           ? f(t.dash.maintenance.reassignModal.subtitle, {
-              ticket: ts("tickets", ticket.title),
+              ticket: ticket.title,
               current: current?.name ?? t.dash.maintenance.unassigned,
             })
-          : f(t.dash.maintenance.assignModal.subtitle, { ticket: ts("tickets", ticket.title) })
+          : f(t.dash.maintenance.assignModal.subtitle, { ticket: ticket.title })
       }
       onClose={onClose}
     >
@@ -145,7 +145,7 @@ function AssignModal({
                 {current.name.split(" ").map((w) => w[0]).join("").slice(0, 2)}
               </span>
               <span className="text-sm font-semibold text-azure-950 dark:text-white">
-                {current.name} · {ts("trades", current.trade) || current.trade}
+                {current.name} · {current.trade}
               </span>
             </div>
           </Field>
@@ -160,7 +160,7 @@ function AssignModal({
             {options.length === 0 && <option disabled>{t.dash.technicians.empty}</option>}
             {options.map((tech) => (
               <option key={tech.id} value={tech.id}>
-                {tech.name} · {ts("trades", tech.trade) || tech.trade}
+                {tech.name} · {tech.trade}
               </option>
             ))}
           </select>
@@ -203,16 +203,16 @@ function EditTicketModal({ ticket, onClose }: { ticket: Ticket; onClose: () => v
   const currentApt = building.apartments.find((a) => a.label === ticket.apartment);
 
   return (
-    <Modal title={m.title} subtitle={f(m.subtitle, { ticket: ts("tickets", ticket.title) })} onClose={onClose}>
+    <Modal title={m.title} subtitle={f(m.subtitle, { ticket: ticket.title })} onClose={onClose}>
       <form onSubmit={submit} className="space-y-4">
         <Field label={t.dash.maintenance.newModal.titleField}>
-          <input name="title" defaultValue={ts("tickets", ticket.title)} className={fieldCls} />
+          <input name="title" defaultValue={ticket.title} className={fieldCls} />
         </Field>
         <Field label={t.dash.maintenance.newModal.apartment}>
           <select name="apartment" defaultValue={currentApt?.id ?? ""} className={fieldCls}>
             <option value="">{t.dash.maintenance.newModal.commonArea}</option>
             {building.apartments.map((a) => (
-              <option key={a.id} value={a.id}>{ts("apartments", a.label)}</option>
+              <option key={a.id} value={a.id}>{a.label}</option>
             ))}
           </select>
         </Field>
@@ -243,7 +243,7 @@ function DeleteTicketModal({ ticket, onClose }: { ticket: Ticket; onClose: () =>
   const m = t.dash.maintenance.deleteConfirm;
 
   return (
-    <Modal title={m.title} subtitle={f(m.subtitle, { ticket: ts("tickets", ticket.title) })} onClose={onClose}>
+    <Modal title={m.title} subtitle={f(m.subtitle, { ticket: ticket.title })} onClose={onClose}>
       <div className="flex gap-3">
         <button
           onClick={() => {
@@ -282,7 +282,7 @@ function ResolveModal({ ticket, onClose }: { ticket: Ticket; onClose: () => void
   return (
     <Modal
       title={m.title}
-      subtitle={f(m.subtitle, { ticket: ts("tickets", ticket.title) })}
+      subtitle={f(m.subtitle, { ticket: ticket.title })}
       onClose={onClose}
     >
       <form onSubmit={submit} className="space-y-4">
@@ -452,7 +452,7 @@ export default function MaintenancePage() {
                 {filtered.map((x) => (
                   <tr key={x.id} className="border-b border-azure-900/5 last:border-0 dark:border-white/5">
                     <td className="px-6 py-4">
-                      <p className="font-bold text-azure-950 dark:text-white">{ts("tickets", x.title)}</p>
+                      <p className="font-bold text-azure-950 dark:text-white">{x.title}</p>
                       <div className="mt-1 flex items-center gap-2">
                         <span className="text-xs text-onyx/40 dark:text-white/40">{x.id}</span>
                         <ViaBadge via={x.reportedVia} />
@@ -471,7 +471,7 @@ export default function MaintenancePage() {
                       )}
                     </td>
                     <td className="whitespace-nowrap py-4 pr-4 font-semibold text-azure-950 dark:text-white">
-                      {ts("apartments", x.apartment)}
+                      {x.apartment}
                     </td>
                     <td className="whitespace-nowrap py-4 pr-4 text-onyx/70 dark:text-white/70">
                       {x.assignee ?? (

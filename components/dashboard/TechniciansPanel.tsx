@@ -118,7 +118,7 @@ export function TechniciansPanel({
   adding: boolean;
   onCloseAdd: () => void;
 }) {
-  const { t, f, s: ts, path } = useI18n();
+  const { t, f, path } = useI18n();
   const { technicians, tickets, deleteTechnician, notify } = useStore();
   const tr = t.dash.technicians;
 
@@ -200,7 +200,7 @@ export function TechniciansPanel({
                             {tech.name}
                           </Link>
                           <p className="text-xs text-onyx/45 dark:text-white/45">
-                            {ts("trades", tech.trade) || tech.trade} ·{" "}
+                            {tech.trade} ·{" "}
                             {tech.isExternal ? tr.external : tr.internal}
                           </p>
                         </div>

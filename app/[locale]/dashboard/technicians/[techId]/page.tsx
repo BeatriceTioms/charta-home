@@ -92,7 +92,7 @@ export default function TechnicianPage() {
               </h1>
               <p className="mt-1 text-sm text-onyx/55 dark:text-white/50">
                 {f(tr.detailSubtitle, {
-                  trade: ts("trades", tech.trade) || tech.trade,
+                  trade: tech.trade,
                   building: building.name,
                   since: tech.since,
                 })}
@@ -102,7 +102,7 @@ export default function TechnicianPage() {
                   {tech.isExternal ? tr.external : tr.internal}
                 </span>
                 <span className="rounded-full border border-white/70 bg-white/50 px-3 py-1 text-xs font-semibold text-onyx/60 backdrop-blur-xl dark:border-white/10 dark:bg-white/5 dark:text-white/60">
-                  {ts("trades", tech.trade) || tech.trade}
+                  {tech.trade}
                 </span>
               </div>
             </div>
@@ -235,14 +235,14 @@ export default function TechnicianPage() {
               {jobs.map((x) => (
                 <tr key={x.id} className="border-b border-azure-900/5 last:border-0 dark:border-white/5">
                   <td className="px-6 py-4 pr-4">
-                    <p className="font-bold text-azure-950 dark:text-white">{ts("tickets", x.title)}</p>
+                    <p className="font-bold text-azure-950 dark:text-white">{x.title}</p>
                     <div className="mt-1 flex items-center gap-2">
                       <span className="text-xs text-onyx/40 dark:text-white/40">{x.id}</span>
                       <ViaBadge via={x.reportedVia} />
                     </div>
                   </td>
                   <td className="whitespace-nowrap py-4 pr-4 font-semibold text-azure-950 dark:text-white">
-                    {ts("apartments", x.apartment)}
+                    {x.apartment}
                   </td>
                   <td className="whitespace-nowrap py-4 pr-4 text-onyx/70 dark:text-white/70">
                     {x.tenant ?? (

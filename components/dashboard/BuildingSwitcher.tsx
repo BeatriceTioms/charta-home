@@ -5,10 +5,11 @@ import { useEffect, useRef, useState } from "react";
 import { fmt } from "@/lib/data";
 import { useBuildingOptional } from "@/lib/building-context";
 import { useI18n } from "@/lib/i18n/context";
+import { PhotoPlaceholder } from "./ui";
 
 export function BuildingSwitcher({ align = "left" }: { align?: "left" | "right" }) {
   const { building, setBuildingId, buildings } = useBuildingOptional();
-  const { t, s: ts } = useI18n();
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -36,19 +37,23 @@ export function BuildingSwitcher({ align = "left" }: { align?: "left" | "right" 
         aria-expanded={open}
         className="flex items-center gap-3 rounded-2xl border border-white/70 bg-white/60 py-1.5 pl-1.5 pr-3 backdrop-blur-xl transition hover:bg-white/80 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
       >
-        <Image
-          src={building.photo}
-          alt=""
-          width={80}
-          height={80}
-          className="h-9 w-9 shrink-0 rounded-xl object-cover"
-        />
+        {building.photo ? (
+          <Image
+            src={building.photo}
+            alt=""
+            width={80}
+            height={80}
+            className="h-9 w-9 shrink-0 rounded-xl object-cover"
+          />
+        ) : (
+          <PhotoPlaceholder className="h-9 w-9 shrink-0 rounded-xl" />
+        )}
         <span className="hidden text-left sm:block">
           <span className="block max-w-[11rem] truncate text-sm font-bold leading-tight text-azure-950 dark:text-white">
             {building.name}
           </span>
           <span className="block text-[11px] leading-tight text-onyx/45 dark:text-white/40">
-            {ts("cities", building.city)} · {building.apartments.length} {t.dash.shell.apartmentsCount}
+            {building.city} · {building.apartments.length} {t.dash.shell.apartmentsCount}
           </span>
         </span>
         <svg

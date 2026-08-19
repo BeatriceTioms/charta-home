@@ -1,23 +1,17 @@
 "use client";
 
-import Image from "next/image";
 import { useRef } from "react";
 
-/** Photos bundled with the app, offered as a picker alongside file upload. */
-export const PHOTO_LIBRARY = [
-  "/photos/interior-1.jpg",
-  "/photos/interior-2.jpg",
-  "/photos/interior-3.jpg",
-  "/photos/interior-4.jpg",
-  "/photos/building-1.jpg",
-  "/photos/building-2.jpg",
-  "/photos/building-3.jpg",
-  "/photos/city.jpg",
-];
+/**
+ * Photo input for apartments. Upload only: an agency's listings should show
+ * their own units, so there is no bundled library to pick a stock interior
+ * from. Files go straight to the private Storage bucket.
+ */
 
 /**
- * Read a picked file as a data URL so the image shows immediately. With
- * Supabase Storage wired up this becomes an upload returning a storage path.
+ * Read a picked file as a data URL so the image appears immediately. The
+ * upload to Storage happens in parallel, and the signed URL replaces this on
+ * the next load.
  */
 export function readFiles(files: FileList | null, onEach: (src: string) => void) {
   if (!files) return;
@@ -65,48 +59,9 @@ export function UploadButton({
   );
 }
 
-/** Library thumbnails that toggle on click, for choosing several photos at once. */
-export function LibraryGrid({
-  selected,
-  onToggle,
-}: {
-  selected: string[];
-  onToggle: (src: string) => void;
-}) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      {PHOTO_LIBRARY.map((src) => {
-        const on = selected.includes(src);
-        return (
-          <button
-            key={src}
-            type="button"
-            onClick={() => onToggle(src)}
-            aria-pressed={on}
-            className={`relative h-14 w-20 overflow-hidden rounded-xl border-2 transition ${
-              on
-                ? "border-azure-800 dark:border-soft-500"
-                : "border-transparent opacity-70 hover:opacity-100"
-            }`}
-          >
-            <Image src={src} alt="" width={160} height={112} className="h-full w-full object-cover" />
-            {on && (
-              <span className="absolute right-1 top-1 grid h-4 w-4 place-items-center rounded-full bg-onyx text-white">
-                <svg viewBox="0 0 24 24" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M20 6L9 17l-5-5" />
-                </svg>
-              </span>
-            )}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 /**
- * Multi photo field: pick from the library, upload from the computer, and
- * review or remove what is already chosen.
+ * Multi photo field: upload from the device, then review or remove what is
+ * queued. The first one becomes the unit's cover.
  */
 export function MultiPhotoPicker({
   value,
@@ -123,13 +78,8 @@ export function MultiPhotoPicker({
   removeLabel: string;
   coverLabel: string;
 }) {
-  const toggle = (src: string) =>
-    onChange(value.includes(src) ? value.filter((x) => x !== src) : [...value, src]);
-
   return (
     <div className="space-y-3">
-      <LibraryGrid selected={value} onToggle={toggle} />
-
       <UploadButton
         label={uploadLabel}
         multiple

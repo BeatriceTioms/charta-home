@@ -7,8 +7,7 @@
  * instantly, and when a Supabase project is configured the same mutation is
  * sent to the matching server action. router.refresh() then reloads the
  * portfolio through the layout and the store re-syncs to server truth, which
- * is how derived state such as a charge moving to paid comes back. Without a
- * project the local update is all there is, which keeps the demo working.
+ * is how derived state such as a charge moving to paid comes back.
  */
 
 import { useRouter } from "next/navigation";
@@ -25,11 +24,6 @@ import { useI18n } from "@/lib/i18n/context";
 import * as sb from "@/lib/supabase/actions";
 import type { PaymentMethod } from "@/lib/supabase/types";
 import {
-  activity as seedActivity,
-  buildings as seedBuildings,
-  seedPhotos,
-  technicians as seedTechnicians,
-  tickets as seedTickets,
   type ActivityItem,
   type Apartment,
   type ApartmentPhoto,
@@ -126,9 +120,9 @@ const StoreContext = createContext<StoreValue | null>(null);
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-/** Real rows when a project is configured, the mock portfolio otherwise. */
+/** The signed in agency's portfolio, loaded server side. */
 export type StoreSeed = {
-  agencyId?: string;
+  agencyId: string;
   agencyInfo?: { name: string; city: string; country: string; whatsapp: string };
   buildings: Building[];
   tickets: Ticket[];
@@ -143,22 +137,6 @@ const METHODS: Record<string, PaymentMethod> = {
   mtn: "mtn_momo",
   bank: "bank_transfer",
 };
-
-/** Every unit gets a gallery: its own photos, or rotated stock covers. */
-const decorate = (list: Building[]): Building[] =>
-  list.map((b) => ({
-    ...b,
-    apartments: b.apartments.map((a, i) => {
-      const cover = seedPhotos.covers[i % seedPhotos.covers.length];
-      const rest = seedPhotos.default.filter((src) => src !== cover);
-      return {
-        ...a,
-        photos:
-          a.photos ??
-          [cover, ...rest].map((src, n) => ({ id: `${b.id}-${a.id}-p${n}`, src })),
-      };
-    }),
-  }));
 
 /** Turns a picked image, data URL or bundled path alike, into an upload. */
 async function toUploadForm(
@@ -177,28 +155,24 @@ export function StoreProvider({
   seed,
 }: {
   children: React.ReactNode;
-  seed?: StoreSeed | null;
+  seed: StoreSeed;
 }) {
-  const [buildings, setBuildings] = useState<Building[]>(() =>
-    decorate(seed?.buildings ?? seedBuildings)
-  );
+  const [buildings, setBuildings] = useState<Building[]>(() => seed.buildings);
   const [tickets, setTickets] = useState<Ticket[]>(() =>
-    (seed?.tickets ?? seedTickets).map((t) => ({ ...t }))
+    seed.tickets.map((t) => ({ ...t }))
   );
   const [technicians, setTechnicians] = useState<Technician[]>(() =>
-    (seed?.technicians ?? seedTechnicians).map((t) => ({ ...t }))
+    seed.technicians.map((t) => ({ ...t }))
   );
-  const [activity, setActivity] = useState<ActivityItem[]>(
-    () => seed?.activity ?? seedActivity
-  );
+  const [activity, setActivity] = useState<ActivityItem[]>(() => seed.activity);
   const [remindedKeys, setRemindedKeys] = useState<string[]>([]);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const { locale, t } = useI18n();
   const router = useRouter();
-  const live = Boolean(seed?.agencyId);
-  const agencyId = seed?.agencyId ?? "";
-  const agencyInfo = seed?.agencyInfo ?? null;
+  const live = Boolean(seed.agencyId);
+  const agencyId = seed.agencyId;
+  const agencyInfo = seed.agencyInfo ?? null;
 
   const notify = useCallback((message: string) => {
     const id = toastId++;
@@ -211,9 +185,9 @@ export function StoreProvider({
   // including anything derived in the database, like a charge moving to paid.
   const seedRef = useRef(seed);
   useEffect(() => {
-    if (!seed || seed === seedRef.current) return;
+    if (seed === seedRef.current) return;
     seedRef.current = seed;
-    setBuildings(decorate(seed.buildings));
+    setBuildings(seed.buildings);
     setTickets(seed.tickets.map((x) => ({ ...x })));
     setTechnicians(seed.technicians.map((x) => ({ ...x })));
     setActivity(seed.activity);

@@ -282,6 +282,7 @@ export const fr = {
     heroSubtitle:
       "Chez Charta Home, nous savons que gérer un patrimoine est exigeant. C'est pourquoi rendement, loyers et maintenance vivent dans un même endroit paisible.",
     heroBubble: "Le loyer est encore arrivé à temps",
+    ticketSample: "Fuite du robinet de cuisine",
     cta: "Commencer le mois offert",
     audienceEyebrow: "Qui nous servons ?",
     audienceTitle: "Les agences de toutes tailles s'y sentent chez elles",
@@ -508,6 +509,11 @@ export const fr = {
   },
 
   dash: {
+    noAgency: {
+      title: "Espace introuvable",
+      body: "Aucune agence n'est rattachée à cette session. Reconnectez vous, ou créez votre agence si c'est votre première visite.",
+      action: "Retour à la connexion",
+    },
     onboarding: {
       title: "Ajoutez votre premier immeuble",
       subtitle:
@@ -933,6 +939,7 @@ export const fr = {
         subtitle: "Choisissez une image et donnez lui une légende.",
         source: "Image",
         upload: "Depuis mon ordinateur",
+        noneChosen: "Aucune image choisie",
         submit: "Ajouter la photo",
         added: "Photo ajoutée.",
       },
@@ -1020,6 +1027,26 @@ export const fr = {
       leadTime: "Combien de jours avant l'échéance",
       leadDays: "{count} jours avant",
       leadDayOne: "{count} jour avant",
+      messageLabel: "Message envoyé",
+      messageDefaults: {
+        before:
+          "Bonjour {tenant}, votre loyer de {amount} pour {apartment} est attendu dans {days} jours, le {period}. Merci de votre confiance. {agency}",
+        onDue:
+          "Bonjour {tenant}, votre loyer de {amount} pour {apartment} est dû aujourd'hui. Merci de votre confiance. {agency}",
+        after:
+          "Bonjour {tenant}, nous n'avons pas encore reçu le loyer de {amount} pour {apartment}, dû le {period}. Merci de régulariser. {agency}",
+        escalation:
+          "Bonjour {tenant}, le loyer de {amount} pour {apartment} reste impayé depuis {days} jours. Merci de nous contacter rapidement. {agency}",
+      },
+      messageModal: {
+        title: "Modifier le message",
+        body: "Texte du message",
+        placeholderHint:
+          "Les éléments entre accolades sont remplacés au moment de l'envoi. Touchez un bouton pour en ajouter un.",
+        preview: "Aperçu",
+        sampleTenant: "Mariam Diallo",
+        sampleApartment: "Apt 1A",
+      },
       onDue: "Le jour de l'échéance",
       afterDue: "Relance après l'échéance",
       escalation: "Escalade au bout de 10 jours",
@@ -1047,56 +1074,6 @@ export const fr = {
   },
 
   seed: {
-    cities: {
-      "Riverside District": "Quartier de la Corniche",
-      "Marina Quarter": "Quartier de la Marina",
-      "Garden Heights": "Hauts Jardins",
-    },
-    amenities: {
-      "Rooftop terrace": "Terrasse sur le toit",
-      "Secure parking": "Parking sécurisé",
-      "Concierge desk": "Conciergerie",
-      "Fibre internet": "Internet fibre",
-      "Sea view balconies": "Balcons vue mer",
-      "Underground parking": "Parking souterrain",
-      "Backup generator": "Groupe électrogène",
-      "Private garden": "Jardin privé",
-      "Swimming pool": "Piscine",
-      "Fully equipped gym": "Salle de sport équipée",
-      "Guest parking": "Parking visiteurs",
-    },
-    tickets: {
-      "Water heater not heating": "Chauffe eau en panne",
-      "Front gate lock jammed": "Serrure du portail bloquée",
-      "Kitchen tap leaking": "Fuite du robinet de cuisine",
-      "Air conditioning service": "Entretien de la climatisation",
-      "Balcony door seal worn": "Joint de porte balcon usé",
-      "Corridor light flickering": "Éclairage du couloir défaillant",
-      "Repaint stairwell": "Repeindre la cage d'escalier",
-      "Broken window latch": "Loquet de fenêtre cassé",
-      "Boiler annual service": "Entretien annuel de la chaudière",
-      "Gate motor replacement": "Remplacement du moteur du portail",
-    },
-    apartments: {
-      "Common area": "Parties communes",
-      "Garden Suite": "Suite Jardin",
-      "Terrace Suite": "Suite Terrasse",
-      "Court Suite": "Suite Cour",
-    },
-    activity: {
-      Viewing: "Visite",
-      Plumbing: "Plomberie",
-      Inspection: "Inspection",
-      Locksmith: "Serrurerie",
-      Cleaning: "Nettoyage",
-      "Garden care": "Entretien du jardin",
-    },
-    trades: {
-      plumber: "plombier",
-      locksmith: "serrurier",
-      carpenter: "menuisier",
-      electrician: "électricien",
-    },
     commonArea: "Parties communes",
     months: {
       Mar: "mars", Apr: "avril", May: "mai", Jun: "juin", Jul: "juillet",
@@ -1386,6 +1363,7 @@ export const en: Dictionary = {
     heroSubtitle:
       "At Charta Home, we understand that managing a portfolio is demanding. That is why returns, rent, and maintenance live in one calm place.",
     heroBubble: "Rent arrived on time again",
+    ticketSample: "Kitchen tap leaking",
     cta: "Begin your free month",
     audienceEyebrow: "Who we serve?",
     audienceTitle: "Agencies of every size feel at home",
@@ -1612,6 +1590,11 @@ export const en: Dictionary = {
   },
 
   dash: {
+    noAgency: {
+      title: "Workspace not found",
+      body: "No agency is attached to this session. Sign in again, or create your agency if this is your first visit.",
+      action: "Back to sign in",
+    },
     onboarding: {
       title: "Add your first building",
       subtitle:
@@ -2037,6 +2020,7 @@ export const en: Dictionary = {
         subtitle: "Choose an image and give it a caption.",
         source: "Image",
         upload: "From my computer",
+        noneChosen: "No image chosen",
         submit: "Add photo",
         added: "Photo added.",
       },
@@ -2124,6 +2108,26 @@ export const en: Dictionary = {
       leadTime: "How many days before the due date",
       leadDays: "{count} days before",
       leadDayOne: "{count} day before",
+      messageLabel: "Message sent",
+      messageDefaults: {
+        before:
+          "Hello {tenant}, your rent of {amount} for {apartment} is due in {days} days, on {period}. Thank you for your trust. {agency}",
+        onDue:
+          "Hello {tenant}, your rent of {amount} for {apartment} is due today. Thank you for your trust. {agency}",
+        after:
+          "Hello {tenant}, we have not yet received the rent of {amount} for {apartment}, due on {period}. Please settle it. {agency}",
+        escalation:
+          "Hello {tenant}, the rent of {amount} for {apartment} has been unpaid for {days} days. Please contact us soon. {agency}",
+      },
+      messageModal: {
+        title: "Edit the message",
+        body: "Message text",
+        placeholderHint:
+          "Anything in braces is replaced when the reminder goes out. Tap a button to add one.",
+        preview: "Preview",
+        sampleTenant: "Mariam Diallo",
+        sampleApartment: "Apt 1A",
+      },
       onDue: "On the due date",
       afterDue: "Follow up after the due date",
       escalation: "Escalation after 10 days",
@@ -2151,56 +2155,6 @@ export const en: Dictionary = {
   },
 
   seed: {
-    cities: {
-      "Riverside District": "Riverside District",
-      "Marina Quarter": "Marina Quarter",
-      "Garden Heights": "Garden Heights",
-    },
-    amenities: {
-      "Rooftop terrace": "Rooftop terrace",
-      "Secure parking": "Secure parking",
-      "Concierge desk": "Concierge desk",
-      "Fibre internet": "Fibre internet",
-      "Sea view balconies": "Sea view balconies",
-      "Underground parking": "Underground parking",
-      "Backup generator": "Backup generator",
-      "Private garden": "Private garden",
-      "Swimming pool": "Swimming pool",
-      "Fully equipped gym": "Fully equipped gym",
-      "Guest parking": "Guest parking",
-    },
-    tickets: {
-      "Water heater not heating": "Water heater not heating",
-      "Front gate lock jammed": "Front gate lock jammed",
-      "Kitchen tap leaking": "Kitchen tap leaking",
-      "Air conditioning service": "Air conditioning service",
-      "Balcony door seal worn": "Balcony door seal worn",
-      "Corridor light flickering": "Corridor light flickering",
-      "Repaint stairwell": "Repaint stairwell",
-      "Broken window latch": "Broken window latch",
-      "Boiler annual service": "Boiler annual service",
-      "Gate motor replacement": "Gate motor replacement",
-    },
-    apartments: {
-      "Common area": "Common area",
-      "Garden Suite": "Garden Suite",
-      "Terrace Suite": "Terrace Suite",
-      "Court Suite": "Court Suite",
-    },
-    activity: {
-      Viewing: "Viewing",
-      Plumbing: "Plumbing",
-      Inspection: "Inspection",
-      Locksmith: "Locksmith",
-      Cleaning: "Cleaning",
-      "Garden care": "Garden care",
-    },
-    trades: {
-      plumber: "plumber",
-      locksmith: "locksmith",
-      carpenter: "carpenter",
-      electrician: "electrician",
-    },
     commonArea: "Common area",
     months: {
       Mar: "Mar", Apr: "Apr", May: "May", Jun: "Jun", Jul: "Jul",

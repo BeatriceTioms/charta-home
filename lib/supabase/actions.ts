@@ -458,7 +458,13 @@ export async function upsertReminderRules(
   locale: string,
   input: {
     agencyId: string;
-    rules: { offsetDays: number; channel: ReportChannel; isActive: boolean; escalationStep?: number }[];
+    rules: {
+      offsetDays: number;
+      channel: ReportChannel;
+      isActive: boolean;
+      escalationStep?: number;
+      messageBody?: string;
+    }[];
   }
 ): Promise<ActionResult> {
   const supabase = await createClient();
@@ -470,6 +476,7 @@ export async function upsertReminderRules(
       channel: r.channel,
       is_active: r.isActive,
       escalation_step: r.escalationStep ?? 0,
+      ...(r.messageBody !== undefined && { message_body: r.messageBody }),
     })),
     { onConflict: "agency_id,offset_days,channel" }
   );

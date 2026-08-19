@@ -311,14 +311,42 @@ export function Shell({
   seed,
 }: {
   children: React.ReactNode;
-  /** Live portfolio from the server, or null to run on the mock. */
-  seed?: StoreSeed | null;
+  /** The agency's portfolio, or null when there is none to load. */
+  seed: StoreSeed | null;
 }) {
+  // No agency behind the session. The middleware already turns away anyone
+  // signed out, so this is the rarer case of a project that is unreachable or
+  // an account with no membership; either way there is nothing to render.
+  if (!seed) return <NoAgency />;
+
   return (
     <StoreProvider seed={seed}>
       <BuildingProvider>
         <DashboardChrome>{children}</DashboardChrome>
       </BuildingProvider>
     </StoreProvider>
+  );
+}
+
+function NoAgency() {
+  const { t, path } = useI18n();
+  return (
+    <div className="grid min-h-screen place-items-center bg-gradient-to-br from-soft-100 via-white to-soft-200 px-6 dark:from-onyx dark:via-onyx dark:to-azure-950">
+      <div className="max-w-md text-center">
+        <LogoMark className="mx-auto h-12 w-12" />
+        <h1 className="mt-6 font-serif text-2xl font-medium text-azure-950 dark:text-white">
+          {t.dash.noAgency.title}
+        </h1>
+        <p className="mt-2 text-sm text-onyx/55 dark:text-white/50">
+          {t.dash.noAgency.body}
+        </p>
+        <Link
+          href={path("/login")}
+          className="mt-6 inline-block rounded-full bg-onyx px-6 py-3 text-sm font-semibold text-white transition hover:bg-azure-900 dark:bg-soft-500 dark:text-azure-950"
+        >
+          {t.dash.noAgency.action}
+        </Link>
+      </div>
+    </div>
   );
 }

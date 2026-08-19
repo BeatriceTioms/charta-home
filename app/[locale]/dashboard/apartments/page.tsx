@@ -7,16 +7,9 @@ import { fmt } from "@/lib/data";
 import { useBuilding } from "@/lib/building-context";
 import { useStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n/context";
-import { Card, CardTitle, PageTitle, ProgressBar, RentChip } from "@/components/dashboard/ui";
+import { Card, CardTitle, PageTitle, PhotoPlaceholder, ProgressBar, RentChip } from "@/components/dashboard/ui";
 import { Field, Modal, ModalActions, fieldCls } from "@/components/dashboard/Modal";
 import { MultiPhotoPicker } from "@/components/dashboard/PhotoPicker";
-
-const UNIT_PHOTOS = [
-  "/photos/interior-2.jpg",
-  "/photos/interior-3.jpg",
-  "/photos/interior-4.jpg",
-  "/photos/interior-1.jpg",
-];
 
 type Filter = "all" | "occupied" | "vacant" | "overdue";
 
@@ -95,7 +88,7 @@ function AddApartmentModal({ onClose }: { onClose: () => void }) {
 
 export default function ApartmentsPage() {
   const { building } = useBuilding();
-  const { t, f, s: ts, path } = useI18n();
+  const { t, f, path } = useI18n();
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
   const [adding, setAdding] = useState(false);
@@ -134,7 +127,7 @@ export default function ApartmentsPage() {
         title={t.dash.apartments.title}
         subtitle={f(t.dash.apartments.subtitle, {
           building: building.name,
-          city: ts("cities", building.city),
+          city: building.city,
         })}
         action={
           <button
@@ -149,7 +142,11 @@ export default function ApartmentsPage() {
       <Card className="overflow-hidden p-0">
         <div className="grid gap-0 md:grid-cols-[1.1fr_1fr]">
           <div className="relative h-56 md:h-auto">
-            <Image src={building.photo} alt={building.name} fill className="object-cover" />
+            {building.photo ? (
+              <Image src={building.photo} alt={building.name} fill className="object-cover" />
+            ) : (
+              <PhotoPlaceholder className="absolute inset-0 h-full w-full" />
+            )}
             <span className="absolute left-4 top-4 rounded-full bg-white/85 px-3.5 py-1.5 text-xs font-bold text-azure-950 backdrop-blur-sm">
               {building.netYield}% {t.dash.apartments.netYield}
             </span>
@@ -162,7 +159,7 @@ export default function ApartmentsPage() {
               <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-azure-600 dark:text-soft-500" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1118 0z" /><circle cx="12" cy="10" r="3" />
               </svg>
-              {building.address}, {ts("cities", building.city)}
+              {building.address}, {building.city}
             </p>
 
             <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -191,7 +188,7 @@ export default function ApartmentsPage() {
                   key={a}
                   className="rounded-full border border-white/70 bg-white/50 px-3 py-1 text-xs font-semibold text-onyx/60 backdrop-blur-xl dark:border-white/10 dark:bg-white/5 dark:text-white/60"
                 >
-                  {ts("amenities", a)}
+                  {a}
                 </span>
               ))}
             </div>
@@ -244,20 +241,24 @@ export default function ApartmentsPage() {
           </p>
         ) : (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {rows.map((a, i) => (
+            {rows.map((a) => (
               <Link
                 key={a.id}
                 href={path(`/dashboard/apartments/${a.id}`)}
                 className="group/unit block rounded-2xl border border-white/70 bg-white/40 p-3 backdrop-blur-xl transition hover:bg-white/70 dark:border-white/10 dark:bg-white/[0.04] dark:hover:bg-white/[0.08]"
               >
                 <div className="relative h-36 overflow-hidden rounded-xl">
-                  {/* The first photo of the unit is its cover, stock image otherwise. */}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={a.photos?.[0]?.src ?? UNIT_PHOTOS[i % UNIT_PHOTOS.length]}
-                    alt={a.label}
-                    className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover/unit:scale-105"
-                  />
+                  {/* The unit's own first photo, a placeholder until it has one. */}
+                  {a.photos?.[0]?.src ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={a.photos[0].src}
+                      alt={a.label}
+                      className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover/unit:scale-105"
+                    />
+                  ) : (
+                    <PhotoPlaceholder className="absolute inset-0 h-full w-full" />
+                  )}
                   <span
                     className={`absolute left-3 top-3 rounded-full px-3 py-1 text-[11px] font-bold backdrop-blur-sm ${
                       !a.tenant
@@ -277,7 +278,7 @@ export default function ApartmentsPage() {
                 <div className="mt-3 flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-azure-950 group-hover/unit:text-azure-600 dark:text-white dark:group-hover/unit:text-soft-500">
-                      {ts("apartments", a.label)}
+                      {a.label}
                     </p>
                     <p className="truncate text-xs text-onyx/45 dark:text-white/40">
                       {a.tenant ? a.tenant.name : t.dash.apartments.vacantLabel} · {a.rooms}{" "}

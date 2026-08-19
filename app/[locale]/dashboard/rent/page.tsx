@@ -7,7 +7,7 @@ import { byPeriodDesc, fmt, shortRef, type RentStatus } from "@/lib/data";
 import { useBuilding } from "@/lib/building-context";
 import { useStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n/context";
-import { PageTitle, RentChip, Tabs } from "@/components/dashboard/ui";
+import { PageTitle, PhotoPlaceholder, RentChip, Tabs } from "@/components/dashboard/ui";
 import { TenantsPanel } from "@/components/dashboard/TenantsPanel";
 import { ReceiptModal, type ReceiptData } from "@/components/dashboard/ReceiptModal";
 import { Field, Modal, ModalActions, fieldCls } from "@/components/dashboard/Modal";
@@ -90,7 +90,7 @@ function RecordPaymentModal({ onClose }: { onClose: () => void }) {
               {matches.length === 0 && <option disabled>{t.dash.common.noResults}</option>}
               {matches.map((a) => (
                 <option key={a.id} value={a.id}>
-                  {a.tenant!.name} · {ts("apartments", a.label)} · {fmt(a.rent)}
+                  {a.tenant!.name} · {a.label} · {fmt(a.rent)}
                   {a.rentStatus !== "paid" ? ` · ${t.dash.status[a.rentStatus]}` : ""}
                 </option>
               ))}
@@ -193,7 +193,7 @@ export default function RentPage() {
       t.dash.rent.rent,
     ];
     const lines = rows.map((a) => [
-      ts("apartments", a.label),
+      a.label,
       a.tenant!.name,
       a.cycle === "monthly" ? t.dash.rent.monthly : t.dash.rent.yearly,
       t.dash.status[a.rentStatus],
@@ -326,16 +326,19 @@ export default function RentPage() {
                   <tr key={key} className="border-b border-azure-900/5 last:border-0 dark:border-white/5">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3.5">
-                        <Image
-                          src={building.interior}
-                          alt={a.label}
-                          width={96}
-                          height={96}
-                          className="h-12 w-12 shrink-0 rounded-xl object-cover"
-                        />
+                        {a.photos?.[0]?.src ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={a.photos[0].src}
+                            alt={a.label}
+                            className="h-12 w-12 shrink-0 rounded-xl object-cover"
+                          />
+                        ) : (
+                          <PhotoPlaceholder className="h-12 w-12 shrink-0 rounded-xl" />
+                        )}
                         <div className="min-w-0">
                           <p className="whitespace-nowrap font-bold text-azure-950 dark:text-white">
-                            {ts("apartments", a.label)}
+                            {a.label}
                           </p>
                           <p className="whitespace-nowrap text-xs text-onyx/45 dark:text-white/45">
                             {a.rooms} {a.rooms === 1 ? t.dash.common.room : t.dash.common.rooms} · {a.sqm} m²
@@ -377,9 +380,9 @@ export default function RentPage() {
                               setReceipt({
                                 tenant: a.tenant!.name,
                                 tenantPhone: a.tenant!.phone,
-                                apartment: ts("apartments", a.label),
+                                apartment: a.label,
                                 building: building.name,
-                                address: `${building.address}, ${ts("cities", building.city)}`,
+                                address: `${building.address}, ${building.city}`,
                                 amount: a.rent,
                                 period: latestPaidPeriod(a),
                                 paidOn: "2026-08-02",

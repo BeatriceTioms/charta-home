@@ -1,13 +1,12 @@
 "use client";
 
-import Image from "next/image";
 import { useState } from "react";
 import { useStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n/context";
 import type { ApartmentPhoto } from "@/lib/data";
 import { Card } from "./ui";
 import { Field, Modal, ModalActions, fieldCls } from "./Modal";
-import { PHOTO_LIBRARY, UploadButton, readFiles } from "./PhotoPicker";
+import { UploadButton, readFiles } from "./PhotoPicker";
 
 function PhotoForm({
   mode,
@@ -24,7 +23,7 @@ function PhotoForm({
   const g = t.dash.gallery;
   const m = mode === "add" ? g.addModal : g.editModal;
 
-  const [src, setSrc] = useState(photo?.src ?? PHOTO_LIBRARY[0]);
+  const [src, setSrc] = useState(photo?.src ?? "");
   const [caption, setCaption] = useState(photo?.caption ?? "");
 
   return (
@@ -32,33 +31,21 @@ function PhotoForm({
       <form
         onSubmit={(e) => {
           e.preventDefault();
+          if (!src) return;
           onSubmit(src, caption.trim());
         }}
         className="space-y-4"
       >
         <div className="relative h-44 overflow-hidden rounded-2xl border border-azure-900/10 dark:border-white/10">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={src} alt="" className="h-full w-full object-cover" />
+          {src ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={src} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <div className="grid h-full w-full place-items-center bg-azure-900/5 text-sm text-onyx/40 dark:bg-white/5 dark:text-white/40">
+              {g.addModal.noneChosen}
+            </div>
+          )}
         </div>
-
-        <Field label={g.addModal.source}>
-          <div className="flex flex-wrap gap-2">
-            {PHOTO_LIBRARY.map((option) => (
-              <button
-                key={option}
-                type="button"
-                onClick={() => setSrc(option)}
-                className={`h-14 w-20 overflow-hidden rounded-xl border-2 transition ${
-                  src === option
-                    ? "border-azure-800 dark:border-soft-500"
-                    : "border-transparent opacity-70 hover:opacity-100"
-                }`}
-              >
-                <Image src={option} alt="" width={160} height={112} className="h-full w-full object-cover" />
-              </button>
-            ))}
-          </div>
-        </Field>
 
         <UploadButton
           label={g.addModal.upload}

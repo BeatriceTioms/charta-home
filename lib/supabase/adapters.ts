@@ -1,5 +1,4 @@
 import type { ActivityItem, Building, Payment, RentStatus, Technician, Ticket } from "@/lib/data";
-import { seedPhotos } from "@/lib/data";
 import { isSupabaseConfigured } from "./config";
 import { createClient } from "./server";
 
@@ -40,12 +39,6 @@ const daysBetween = (from: string, to: string) =>
 /** Postgres spells it in_progress, the interface in-progress. */
 const ticketStatus = (raw: string): Ticket["status"] =>
   raw === "in_progress" ? "in-progress" : (raw as Ticket["status"]);
-
-/** Buildings carry no image yet, so fall back to the bundled photography. */
-const stockPhoto = (i: number) =>
-  ["/photos/building-1.jpg", "/photos/building-4.jpg", "/photos/building-2.jpg"][i % 3];
-const stockInterior = (i: number) =>
-  ["/photos/interior-2.jpg", "/photos/interior-4.jpg", "/photos/interior-3.jpg"][i % 3];
 
 export type Portfolio = {
   /** The signed in user's agency, which every insert must carry. */
@@ -151,7 +144,7 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
 
   const perfByBuilding = new Map((performance ?? []).map((p) => [p.building_id, p]));
 
-  const buildings: Building[] = buildingRows.map((b, i) => {
+  const buildings: Building[] = buildingRows.map((b) => {
     const perf = perfByBuilding.get(b.id);
     const units = (states ?? []).filter((s) => s.building_id === b.id);
 
@@ -160,13 +153,15 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
       name: b.name,
       address: b.address,
       city: b.city,
-      photo: b.photo_path ?? stockPhoto(i),
-      interior: b.interior_path ?? stockInterior(i),
+      // Empty until the agency uploads one; the interface draws a monogram
+      // tile rather than borrowing somebody else's photograph.
+      photo: b.photo_path ?? "",
+      interior: b.interior_path ?? "",
       amenities: b.amenities ?? [],
       incomeYtd: Number(perf?.income_ytd ?? 0),
       expensesYtd: Number(perf?.expenses_ytd ?? 0),
       netYield: Number(perf?.net_yield_pct ?? 0),
-      apartments: units.map((u, n) => ({
+      apartments: units.map((u) => ({
         id: u.apartment_id,
         leaseId: u.lease_id ?? undefined,
         label: u.label,
@@ -189,16 +184,8 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
         // Yield is measured per building, so a unit reports its building's.
         netYield: Number(perf?.net_yield_pct ?? 0),
         payments: u.lease_id ? paymentsByLease.get(u.lease_id) ?? [] : [],
-        // The unit's own gallery when it has one, a distinct stock cover
-        // otherwise so the grid does not repeat a single image.
-        photos:
-          photosByApartment.get(u.apartment_id) ??
-          [
-            {
-              id: `${u.apartment_id}-cover`,
-              src: seedPhotos.covers[n % seedPhotos.covers.length],
-            },
-          ],
+        // Only what the agency actually uploaded.
+        photos: photosByApartment.get(u.apartment_id) ?? [],
       })),
     } as Building;
   });
