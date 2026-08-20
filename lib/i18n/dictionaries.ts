@@ -1133,6 +1133,8 @@ export const fr = {
         errorNotOwner: "Seul un associé peut inviter un collègue.",
         errorEmailFailed:
           "Le compte est créé mais l'email n'est pas parti. Vérifiez la configuration de l'envoi.",
+        errorSiteUrl:
+          "L'adresse du site n'est pas configurée, le lien d'invitation ne mènerait nulle part. Renseignez NEXT_PUBLIC_SITE_URL.",
       },
       remove: "Retirer",
       plan: "Formule et facturation",
@@ -2285,6 +2287,8 @@ export const en: Dictionary = {
         errorNotOwner: "Only a partner can invite a colleague.",
         errorEmailFailed:
           "The account exists but the email did not go out. Check the sending configuration.",
+        errorSiteUrl:
+          "The site address is not configured, so the invitation link would lead nowhere. Set NEXT_PUBLIC_SITE_URL.",
       },
       remove: "Remove",
       plan: "Plan and billing",

@@ -106,7 +106,9 @@ function InviteModal({
             ? m.errorNotOwner
             : result.error.startsWith("invite-email-failed")
               ? m.errorEmailFailed
-              : result.error
+              : result.error === "invite-site-url-missing"
+                ? m.errorSiteUrl
+                : result.error
       );
       return;
     }

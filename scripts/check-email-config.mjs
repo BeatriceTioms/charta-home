@@ -37,9 +37,12 @@ async function loadEnv() {
 
 await loadEnv();
 
+const { siteUrl, isSiteUrlReachable } = await import("../lib/site-url.ts");
+
 const key = process.env.RESEND_API_KEY ?? "";
 const from = process.env.EMAIL_FROM ?? "";
 const site = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+const resolved = siteUrl();
 
 const show = (name, value, note = "") =>
   console.log(
@@ -59,7 +62,19 @@ function maskish(name, value) {
 console.log("\nTransactional email\n");
 show("RESEND_API_KEY", key, key && !key.startsWith("re_") ? "expected to start with re_" : "");
 show("EMAIL_FROM", from);
-show("NEXT_PUBLIC_SITE_URL", site, site ? "" : "invitation links need this");
+show("NEXT_PUBLIC_SITE_URL", site, site ? "" : "falls back to the Vercel hostname");
+console.log(`\n  Links in email will point at:  ${resolved}`);
+if (!isSiteUrlReachable()) {
+  console.log("  That is this machine, so nobody else can open it.");
+  console.log("  Set NEXT_PUBLIC_SITE_URL to your real domain, in Vercel too.");
+}
+console.log(
+  "\n  Supabase must also allow that address to be redirected to:" +
+    "\n    Authentication > URL Configuration > Site URL, and Redirect URLs" +
+    `\n    add  ${resolved}/**` +
+    "\n  Otherwise Supabase ignores the link's destination and falls back to" +
+    "\n  whatever Site URL is set there, which is localhost by default."
+);
 
 const configured = Boolean(key && from);
 console.log(
@@ -89,7 +104,7 @@ const message = invitationEmail({
   agencyName: "Charta Home",
   inviterName: "Configuration check",
   role: "manager",
-  actionLink: `${site || "http://localhost:3000"}/fr/reset-password`,
+  actionLink: `${resolved}/fr/reset-password`,
   locale: "fr",
 });
 

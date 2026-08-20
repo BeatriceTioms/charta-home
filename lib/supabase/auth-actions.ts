@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createAdminClient, createClient } from "./server";
 import { isSupabaseConfigured } from "./config";
 import { isEmailConfigured, passwordResetEmail, sendEmail, welcomeEmail } from "@/lib/email";
+import { siteUrl } from "@/lib/site-url";
 
 /**
  * `demo` means no Supabase project is configured yet, so the caller should
@@ -72,11 +73,10 @@ export async function signUp(
   // The welcome is worth sending but never worth blocking on: the agency
   // exists either way, and a mail outage should not look like a failed signup.
   if (isEmailConfigured()) {
-    const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
     const message = welcomeEmail({
       agencyName: agencyName,
       ownerName: fullName || email.split("@")[0],
-      dashboardUrl: `${site}/${locale}/dashboard`,
+      dashboardUrl: `${siteUrl()}/${locale}/dashboard`,
       locale,
     });
     const sent = await sendEmail({ to: email, ...message });
@@ -95,9 +95,7 @@ export async function requestPasswordReset(
 
   const supabase = await createClient();
   const email = String(formData.get("email") ?? "").trim();
-  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-
-  const redirectTo = `${site}/${locale}/reset-password`;
+  const redirectTo = `${siteUrl()}/${locale}/reset-password`;
 
   if (!isEmailConfigured()) {
     // No sender configured, so Supabase's own mail is the only route.

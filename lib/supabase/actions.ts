@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { invitationEmail, isEmailConfigured, sendEmail } from "@/lib/email";
 import { toE164 } from "@/lib/phone";
+import { isSiteUrlReachable, siteUrl } from "@/lib/site-url";
 import { validateImage } from "@/lib/uploads";
 import { createAdminClient, createClient } from "./server";
 import type { LeaseCycle, MemberRole, PaymentMethod, ReportChannel, TicketPriority } from "./types";
@@ -578,8 +579,18 @@ export async function inviteMember(
     .eq("user_id", user?.id ?? "")
     .maybeSingle();
 
-  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-  const redirectTo = `${site}/${locale}/reset-password`;
+  // An invitation whose link points at the reader's own machine is worse than
+  // no invitation: the account is created, the colleague cannot reach it, and
+  // nothing anywhere says why. Refuse rather than send that.
+  if (process.env.NODE_ENV === "production" && !isSiteUrlReachable()) {
+    console.error(
+      "[invite] refusing to send: no NEXT_PUBLIC_SITE_URL and no Vercel hostname, " +
+        "so the link would point at localhost."
+    );
+    return { ok: false, error: "invite-site-url-missing" };
+  }
+
+  const redirectTo = `${siteUrl()}/${locale}/reset-password`;
   let userId: string;
 
   if (isEmailConfigured()) {
