@@ -8,7 +8,7 @@
  */
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { invitationEmail, passwordResetEmail, welcomeEmail } from "../lib/email.ts";
+import { invitationEmail, isEmailConfigured, passwordResetEmail, sendEmail, welcomeEmail } from "../lib/email.ts";
 
 const results = [];
 const check = (name, pass, detail = "") => {
@@ -69,12 +69,42 @@ check(
   "query separators are escaped once, not twice"
 );
 
-// The fallback path matters: without a key nothing should claim to be sent.
-const configured = /RESEND_API_KEY && process\.env\.EMAIL_FROM/.test(source);
-check("configuration needs both a key and a from address", configured);
+/* ------------------------------------------------------- configuration --
+ * The half configured case is the one that bites: a key with no from address
+ * falls back to Supabase's own sender, the mail still arrives, and the only
+ * symptom is that it is not the message you wrote. Exercised for real rather
+ * than matched in the source, so a rewrite cannot quietly pass.
+ */
+const savedKey = process.env.RESEND_API_KEY;
+const savedFrom = process.env.EMAIL_FROM;
+const withEnv = (key, from, fn) => {
+  if (key === undefined) delete process.env.RESEND_API_KEY;
+  else process.env.RESEND_API_KEY = key;
+  if (from === undefined) delete process.env.EMAIL_FROM;
+  else process.env.EMAIL_FROM = from;
+  return fn();
+};
 
-const failsClosed = /if \(!key \|\| !from\) return \{ ok: false/.test(source);
-check("an unconfigured send reports failure rather than pretending", failsClosed);
+check("neither set is not configured",
+  withEnv(undefined, undefined, isEmailConfigured) === false);
+check("a key with no from address is not configured",
+  withEnv("re_test", undefined, isEmailConfigured) === false,
+  "this is the case that silently falls back to Supabase");
+check("a from address with no key is not configured",
+  withEnv(undefined, "Charta <a@b.com>", isEmailConfigured) === false);
+check("both set is configured",
+  withEnv("re_test", "Charta <a@b.com>", isEmailConfigured) === true);
+
+const unconfigured = await withEnv(undefined, undefined, () =>
+  sendEmail({ to: "a@b.com", subject: "s", html: "<p>h</p>", text: "t" })
+);
+check("an unconfigured send reports failure rather than pretending",
+  unconfigured.ok === false, unconfigured.error);
+
+if (savedKey === undefined) delete process.env.RESEND_API_KEY;
+else process.env.RESEND_API_KEY = savedKey;
+if (savedFrom === undefined) delete process.env.EMAIL_FROM;
+else process.env.EMAIL_FROM = savedFrom;
 
 
 /* ------------------------------------------------ the other two messages */

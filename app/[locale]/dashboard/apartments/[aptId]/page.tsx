@@ -106,8 +106,13 @@ function LeaseModal({
   const { t, f } = useI18n();
   const { building } = useBuilding();
   const { addLease, notify } = useStore();
+  const { fmt } = useMoney();
   const m = t.dash.apartment.leaseModal;
   const [error, setError] = useState<string>();
+  // The rent's label names the cycle, so a daily let does not ask for a
+  // monthly figure. It is the price agreed with this tenant, which is why it
+  // starts at the unit's asking price rather than being fixed to it.
+  const [cycle, setCycle] = useState<LeaseCycle>("monthly");
 
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -130,7 +135,7 @@ function LeaseModal({
       name,
       phone: String(data.get("phone") ?? ""),
       rent: Number(data.get("rent") ?? defaultRent),
-      cycle: (data.get("cycle") as LeaseCycle) ?? "monthly",
+      cycle,
       since,
       until,
     });
@@ -152,11 +157,16 @@ function LeaseModal({
           <input name="phone" placeholder={m.phonePlaceholder} className={fieldCls} />
         </Field>
         <div className="grid grid-cols-2 gap-3">
-          <Field label={m.rent}>
+          <Field label={f(m.rentFor, { cycle: cycleLabel(cycle, t.dash.rent) })}>
             <input name="rent" type="number" min={0} step={50} defaultValue={defaultRent} className={fieldCls} />
           </Field>
           <Field label={m.cycle}>
-            <select name="cycle" defaultValue="monthly" className={fieldCls}>
+            <select
+              name="cycle"
+              value={cycle}
+              onChange={(e) => setCycle(e.target.value as LeaseCycle)}
+              className={fieldCls}
+            >
               <option value="daily">{t.dash.rent.daily}</option>
               <option value="monthly">{t.dash.rent.monthly}</option>
               <option value="quarterly">{t.dash.rent.quarterly}</option>
@@ -164,6 +174,9 @@ function LeaseModal({
             </select>
           </Field>
         </div>
+        <p className="text-xs text-onyx/50 dark:text-white/45">
+          {f(m.rentHint, { asking: fmt(defaultRent) })}
+        </p>
         <div className="grid grid-cols-2 gap-3">
           <Field label={m.startDate}>
             <input name="start" type="date" defaultValue="2026-09-01" className={fieldCls} />
@@ -245,9 +258,12 @@ function EditTenantModal({
   apartment: Apartment;
   onClose: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, f } = useI18n();
   const { building } = useBuilding();
   const { updateTenant, notify } = useStore();
+  // Rent is renegotiated mid tenancy often enough that this has to be here,
+  // and labelled by the cycle rather than assuming a month.
+  const [cycle, setCycle] = useState<LeaseCycle>(apartment.cycle);
   const m = t.dash.apartment.tenantModal;
   const [error, setError] = useState<string>();
 
@@ -263,7 +279,7 @@ function EditTenantModal({
       name,
       phone: String(data.get("phone") ?? ""),
       rent: Number(data.get("rent") ?? apartment.rent),
-      cycle: (data.get("cycle") as LeaseCycle) ?? apartment.cycle,
+      cycle,
       until: String(data.get("end") ?? ""),
     });
     notify(m.updated);
@@ -280,11 +296,16 @@ function EditTenantModal({
           <input name="phone" defaultValue={apartment.tenant?.phone} className={fieldCls} />
         </Field>
         <div className="grid grid-cols-2 gap-3">
-          <Field label={m.rent}>
+          <Field label={f(m.rentFor, { cycle: cycleLabel(cycle, t.dash.rent) })}>
             <input name="rent" type="number" min={0} defaultValue={apartment.rent} className={fieldCls} />
           </Field>
           <Field label={m.cycle}>
-            <select name="cycle" defaultValue={apartment.cycle} className={fieldCls}>
+            <select
+              name="cycle"
+              value={cycle}
+              onChange={(e) => setCycle(e.target.value as LeaseCycle)}
+              className={fieldCls}
+            >
               <option value="daily">{t.dash.rent.daily}</option>
               <option value="monthly">{t.dash.rent.monthly}</option>
               <option value="quarterly">{t.dash.rent.quarterly}</option>

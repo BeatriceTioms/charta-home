@@ -416,6 +416,29 @@ try {
 check("list_agency_members refuses a caller outside the agency", refusedForOutsider);
 
 
+
+/* ------------------------------------------ a price agreed with a tenant --
+ * The unit carries an asking price, but what a tenant actually pays is a
+ * negotiation. The lease has to be able to disagree with the apartment, and
+ * everything downstream must follow the lease rather than the asking price.
+ */
+const [negotiated] = await asUser(userA.id, `
+  insert into apartments (agency_id, building_id, label, rooms, bathrooms, sqm, base_rent)
+  values ('${a1.id}', '${bA.id}', 'Apt 4C', 2, 1, 64, 1000000) returning id`);
+const [dealLease] = await asUser(userA.id, `
+  select public.create_lease('${negotiated.id}', 'Sekou Camara', '+224620998877', 850000, 'monthly', date '2026-08-01') as id`);
+
+const [dealCharge] = await asUser(userA.id,
+  `select amount from rent_charges where lease_id = '${dealLease.id}'`);
+check("the charge follows the agreed rent, not the asking price",
+  Number(dealCharge.amount) === 850000, `${dealCharge.amount} billed on a 1 000 000 unit`);
+
+const [dealState] = await asUser(userA.id,
+  `select base_rent, rent_amount from v_apartment_state where apartment_id = '${negotiated.id}'`);
+check("the unit keeps its asking price alongside the agreed one",
+  Number(dealState.base_rent) === 1000000 && Number(dealState.rent_amount) === 850000,
+  `asking ${dealState.base_rent}, agreed ${dealState.rent_amount}`);
+
 /* --------------------------------------- your own name, and whose agency --
  * A manager is somebody the owner invited in. They run the portfolio; they do
  * not own the business, so the agency's identity is out of their reach. Their

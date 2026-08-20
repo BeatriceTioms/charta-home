@@ -19,9 +19,26 @@
 
 const ENDPOINT = "https://api.resend.com/emails";
 
-/** Whether a real send is possible, so callers can pick a fallback. */
+/**
+ * Whether a real send is possible, so callers can pick a fallback.
+ *
+ * Both variables are required, and a half configured sender is the easy
+ * mistake: a key with no from address falls back to Supabase's own mail, which
+ * still arrives, so nothing looks broken until you notice the message is not
+ * the one you wrote. That silence is the bug, so say so once, loudly.
+ */
 export function isEmailConfigured(): boolean {
-  return Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
+  const key = process.env.RESEND_API_KEY;
+  const from = process.env.EMAIL_FROM;
+  if (key && from) return true;
+
+  if (key || from) {
+    console.warn(
+      `[email] Resend is half configured, so mail falls back to Supabase's sender. ` +
+        `Missing: ${!key ? "RESEND_API_KEY" : "EMAIL_FROM"}.`
+    );
+  }
+  return false;
 }
 
 export type EmailResult = { ok: true } | { ok: false; error: string };

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { invitationEmail, isEmailConfigured, sendEmail } from "@/lib/email";
+import { toE164 } from "@/lib/phone";
 import { validateImage } from "@/lib/uploads";
 import { createAdminClient, createClient } from "./server";
 import type { LeaseCycle, MemberRole, PaymentMethod, ReportChannel, TicketPriority } from "./types";
@@ -66,7 +67,8 @@ export async function createLease(
   const { error } = await supabase.rpc("create_lease", {
     target_apartment: input.apartmentId,
     resident_name: input.residentName,
-    resident_phone: input.residentPhone,
+    // The form shows, and suggests, a spaced number. The column wants E.164.
+    resident_phone: toE164(input.residentPhone),
     rent: input.rent,
     cycle_in: input.cycle,
     starts_on_in: input.startsOn,
@@ -211,7 +213,7 @@ export async function addTechnician(
     agency_id: input.agencyId,
     full_name: input.name,
     trade: input.trade ?? null,
-    phone_e164: input.phone ?? null,
+    phone_e164: input.phone ? toE164(input.phone) || null : null,
     is_external: input.isExternal,
   });
   if (error) return { ok: false, error: error.message };
@@ -235,7 +237,7 @@ export async function updateTechnician(
     .update({
       ...(input.name !== undefined && { full_name: input.name }),
       ...(input.trade !== undefined && { trade: input.trade }),
-      ...(input.phone !== undefined && { phone_e164: input.phone }),
+      ...(input.phone !== undefined && { phone_e164: toE164(input.phone ?? "") || null }),
       ...(input.isExternal !== undefined && { is_external: input.isExternal }),
     })
     .eq("id", input.technicianId);
@@ -711,7 +713,7 @@ export async function updateResident(
     .from("residents")
     .update({
       ...(input.fullName !== undefined && { full_name: input.fullName }),
-      ...(input.phone !== undefined && { phone_e164: input.phone }),
+      ...(input.phone !== undefined && { phone_e164: toE164(input.phone ?? "") || null }),
       ...(input.email !== undefined && { email: input.email }),
     })
     .eq("id", input.residentId);
