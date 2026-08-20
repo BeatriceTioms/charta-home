@@ -157,6 +157,7 @@ function LeaseModal({
           </Field>
           <Field label={m.cycle}>
             <select name="cycle" defaultValue="monthly" className={fieldCls}>
+              <option value="daily">{t.dash.rent.daily}</option>
               <option value="monthly">{t.dash.rent.monthly}</option>
               <option value="quarterly">{t.dash.rent.quarterly}</option>
               <option value="yearly">{t.dash.rent.yearly}</option>
@@ -167,7 +168,7 @@ function LeaseModal({
           <Field label={m.startDate}>
             <input name="start" type="date" defaultValue="2026-09-01" className={fieldCls} />
           </Field>
-          <Field label={m.endDate} hint={m.endDateHint}>
+          <Field label={m.endDate} hint={m.endDateHint} hintAfter>
             <input name="end" type="date" className={fieldCls} />
           </Field>
         </div>
@@ -284,13 +285,14 @@ function EditTenantModal({
           </Field>
           <Field label={m.cycle}>
             <select name="cycle" defaultValue={apartment.cycle} className={fieldCls}>
+              <option value="daily">{t.dash.rent.daily}</option>
               <option value="monthly">{t.dash.rent.monthly}</option>
               <option value="quarterly">{t.dash.rent.quarterly}</option>
               <option value="yearly">{t.dash.rent.yearly}</option>
             </select>
           </Field>
         </div>
-        <Field label={m.endDate} hint={m.endDateHint}>
+        <Field label={m.endDate} hint={m.endDateHint} hintAfter>
           <input name="end" type="date" className={fieldCls} />
         </Field>
         <ModalActions onCancel={onClose} submitLabel={t.dash.common.save} />

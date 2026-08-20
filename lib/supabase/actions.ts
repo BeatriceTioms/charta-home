@@ -424,6 +424,37 @@ export async function addBuilding(
 
 /* ------------------------------------------------------------- settings */
 
+/**
+ * The signed in person's own name, on their own membership.
+ *
+ * Everyone in an agency may set this, whatever their role: it is their name,
+ * not a setting of the business. The row is keyed by the caller's own id
+ * rather than one supplied by the client, so this cannot rename a colleague.
+ */
+export async function updateMyProfile(
+  locale: string,
+  input: { agencyId: string; fullName: string }
+): Promise<ActionResult> {
+  const name = input.fullName.trim();
+  if (!name) return { ok: false, error: "profile-name-required" };
+
+  const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return { ok: false, error: "not signed in" };
+
+  // Through the function rather than the table: memberships_update is owner
+  // only, and it stays that way, because a writable role column is the
+  // permission system handing itself over.
+  const { error } = await supabase.rpc("set_my_display_name", {
+    target_agency: input.agencyId,
+    new_name: name,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  revalidateDashboard(locale);
+  return { ok: true };
+}
+
 export async function updateAgencySettings(
   locale: string,
   input: {

@@ -54,8 +54,18 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { t, path, locale } = useI18n();
   const [collapsed, setCollapsed] = useState(false);
-  const { buildings } = useStore();
+  const { buildings, currentUser } = useStore();
   const hasBuildings = buildings.length > 0;
+
+  // Initials from whatever name is on the membership. One word gives one
+  // letter rather than an awkward doubled one.
+  const initials =
+    (currentUser?.name ?? "")
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() ?? "")
+      .join("") || "?";
 
   const groups = [
     {
@@ -217,15 +227,15 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
             }`}
           >
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-azure-800 text-sm font-bold text-soft-500">
-              AS
+              {initials}
             </span>
             {!collapsed && (
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-bold text-azure-950 dark:text-white">
-                  Amina Sow
+                  {currentUser?.name || t.dash.shell.yourAccount}
                 </span>
                 <span className="block text-xs text-onyx/45 dark:text-white/40">
-                  {t.dash.shell.admin}
+                  {currentUser ? t.dash.settings.inviteModal.roles[currentUser.role] : t.dash.shell.admin}
                 </span>
               </span>
             )}

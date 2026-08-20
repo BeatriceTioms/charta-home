@@ -46,6 +46,7 @@ grant all on all sequences in schema public to authenticated;
 
 const [userA] = await q(`insert into auth.users (email) values ('amina@horizon.gn') returning id`);
 const [userB] = await q(`insert into auth.users (email) values ('rival@other.gn') returning id`);
+const [manager] = await q(`insert into auth.users (email) values ('karim@horizonrealty.gn') returning id`);
 
 const asUser = async (id, sql, params) => {
   await db.exec(`set role authenticated; set request.jwt.claim.sub = '${id}';`);
@@ -413,6 +414,65 @@ try {
   refusedForOutsider = true;
 }
 check("list_agency_members refuses a caller outside the agency", refusedForOutsider);
+
+
+/* --------------------------------------- your own name, and whose agency --
+ * A manager is somebody the owner invited in. They run the portfolio; they do
+ * not own the business, so the agency's identity is out of their reach. Their
+ * own name is not: everyone sets that for themselves. The interesting case is
+ * that setting it must not become a way to set anything else.
+ */
+await asUser(userA.id, `
+  insert into memberships (user_id, agency_id, role, full_name)
+  values ('${manager.id}', '${a1.id}', 'manager', 'Karim')`);
+
+await asUser(manager.id, `select public.set_my_display_name('${a1.id}', 'Karim Diallo')`);
+const [namedSelf] = await asUser(manager.id,
+  `select full_name, role from memberships where user_id = '${manager.id}'`);
+check("a manager can set their own name",
+  namedSelf.full_name === "Karim Diallo", namedSelf.full_name);
+check("setting a name cannot change the role",
+  namedSelf.role === "manager", `role stayed ${namedSelf.role}`);
+
+// The owner's row must be untouched by the manager naming themselves.
+const [ownerMembership] = await asUser(userA.id,
+  `select full_name from memberships where user_id = '${userA.id}'`);
+check("naming yourself does not rename a colleague",
+  ownerMembership.full_name === "Amina Sow", ownerMembership.full_name);
+
+// The direct route to the same column stays shut, which is what stops a
+// manager writing role alongside it.
+let directRenameBlocked = false;
+await asUser(manager.id,
+  `update memberships set role = 'owner' where user_id = '${manager.id}'`);
+const [afterEscalation] = await asUser(manager.id,
+  `select role from memberships where user_id = '${manager.id}'`);
+directRenameBlocked = afterEscalation.role === "manager";
+check("a manager cannot promote themselves to owner",
+  directRenameBlocked, `role is ${afterEscalation.role}`);
+
+let outsiderNameBlocked = false;
+try {
+  await asUser(userB.id, `select public.set_my_display_name('${a1.id}', 'Intruder')`);
+} catch {
+  outsiderNameBlocked = true;
+}
+check("set_my_display_name refuses a caller outside the agency", outsiderNameBlocked);
+
+await asUser(manager.id, `update agencies set name = 'Karim Immo' where id = '${a1.id}'`);
+const [agencyNameAfter] = await asUser(userA.id, `select name, whatsapp_number from agencies where id = '${a1.id}'`);
+check("a manager cannot rename the agency",
+  agencyNameAfter.name === "Horizon Realty", agencyNameAfter.name);
+
+await asUser(manager.id, `update agencies set whatsapp_number = '+224000000000' where id = '${a1.id}'`);
+const [agencyWaAfter] = await asUser(userA.id, `select whatsapp_number from agencies where id = '${a1.id}'`);
+check("a manager cannot change the agency WhatsApp number",
+  agencyWaAfter.whatsapp_number !== "+224000000000", String(agencyWaAfter.whatsapp_number));
+
+await asUser(userA.id, `update agencies set name = 'Horizon Realty Group' where id = '${a1.id}'`);
+const [agencyOwnerEdit] = await asUser(userA.id, `select name from agencies where id = '${a1.id}'`);
+check("the owner can still rename the agency",
+  agencyOwnerEdit.name === "Horizon Realty Group", agencyOwnerEdit.name);
 
 await db.close();
 

@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClient } from "./server";
+import { createAdminClient, createClient } from "./server";
 import { isSupabaseConfigured } from "./config";
+import { isEmailConfigured, passwordResetEmail, sendEmail, welcomeEmail } from "@/lib/email";
 
 /**
  * `demo` means no Supabase project is configured yet, so the caller should
@@ -68,6 +69,20 @@ export async function signUp(
   });
   if (rpcError) return { error: rpcError.message };
 
+  // The welcome is worth sending but never worth blocking on: the agency
+  // exists either way, and a mail outage should not look like a failed signup.
+  if (isEmailConfigured()) {
+    const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+    const message = welcomeEmail({
+      agencyName: agencyName,
+      ownerName: fullName || email.split("@")[0],
+      dashboardUrl: `${site}/${locale}/dashboard`,
+      locale,
+    });
+    const sent = await sendEmail({ to: email, ...message });
+    if (!sent.ok) console.error("welcome email failed:", sent.error);
+  }
+
   revalidatePath(`/${locale}/dashboard`, "layout");
   redirect(`/${locale}/dashboard`);
 }
@@ -82,10 +97,36 @@ export async function requestPasswordReset(
   const email = String(formData.get("email") ?? "").trim();
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${site}/${locale}/reset-password`,
+  const redirectTo = `${site}/${locale}/reset-password`;
+
+  if (!isEmailConfigured()) {
+    // No sender configured, so Supabase's own mail is the only route.
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    if (error) return { error: error.message };
+    return;
+  }
+
+  // generateLink mints the recovery link without Supabase mailing its own
+  // copy, which puts the delivery on Resend and the wording on us.
+  const admin = createAdminClient();
+  const { data: link, error } = await admin.auth.admin.generateLink({
+    type: "recovery",
+    email,
+    options: { redirectTo },
   });
-  if (error) return { error: error.message };
+
+  // An address with no account must look exactly like one that has an account,
+  // or this page becomes a way to ask whether somebody is a customer.
+  if (error || !link?.properties?.action_link) {
+    console.error("reset link failed:", error?.message ?? "no action link");
+    return;
+  }
+
+  const sent = await sendEmail({
+    to: email,
+    ...passwordResetEmail({ resetLink: link.properties.action_link, locale }),
+  });
+  if (!sent.ok) console.error("reset email failed:", sent.error);
 }
 
 export async function updatePassword(

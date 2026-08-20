@@ -68,6 +68,7 @@ function AddApartmentModal({ onClose }: { onClose: () => void }) {
           </Field>
           <Field label={m.cycle}>
             <select name="cycle" defaultValue="monthly" className={fieldCls}>
+              <option value="daily">{m.daily}</option>
               <option value="monthly">{m.monthly}</option>
               <option value="quarterly">{m.quarterly}</option>
               <option value="yearly">{m.yearly}</option>

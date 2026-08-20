@@ -1,6 +1,7 @@
 import type { ActivityItem, Building, LeaseCycle, Payment, RentStatus, Technician, Ticket } from "@/lib/data";
 import { isSupabaseConfigured } from "./config";
 import { createClient } from "./server";
+import type { MemberRole } from "./types";
 
 /**
  * Turns live rows into the shapes the dashboard already renders.
@@ -44,6 +45,8 @@ export type Portfolio = {
   /** The signed in user's agency, which every insert must carry. */
   agencyId: string;
   agencyInfo: { name: string; city: string; country: string; whatsapp: string; currency: string };
+  /** The signed in person, not the agency. Drives the greeting and the roles. */
+  currentUser: { name: string; email: string; role: MemberRole };
   buildings: Building[];
   tickets: Ticket[];
   technicians: Technician[];
@@ -69,6 +72,25 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
     .maybeSingle();
   if (!agencyRow) return null;
   const agencyId = agencyRow.id;
+
+  // Who is reading this. An agency has as many people in it as it hires, and
+  // each one signs in as themselves, so the name on screen and the permissions
+  // behind it both come from this row rather than from the agency.
+  const { data: auth } = await supabase.auth.getUser();
+  const { data: membership } = await supabase
+    .from("memberships")
+    .select("full_name, role")
+    .eq("agency_id", agencyId)
+    .eq("user_id", auth.user?.id ?? "")
+    .maybeSingle();
+
+  const currentUser = {
+    // Falling back to the local part of the address is better than a blank
+    // greeting for someone who has not filled their name in yet.
+    name: membership?.full_name?.trim() || auth.user?.email?.split("@")[0] || "",
+    email: auth.user?.email ?? "",
+    role: (membership?.role ?? "manager") as MemberRole,
+  };
 
   const [
     { data: buildingRows },
@@ -270,5 +292,5 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
     currency: agencyRow.currency ?? "GNF",
   };
 
-  return { agencyId, agencyInfo, buildings, tickets, technicians, activity };
+  return { agencyId, agencyInfo, currentUser, buildings, tickets, technicians, activity };
 }

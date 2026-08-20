@@ -236,15 +236,18 @@ function MessageModal({
 
 export function SettingsForm({ data }: { data: SettingsData }) {
   const { t, f, locale } = useI18n();
-  const { notify } = useStore();
+  const { notify, currentUser } = useStore();
   const router = useRouter();
   const s = t.dash.settings;
 
   const live = data !== null;
   const agencyId = data?.agency.id ?? "";
-  // The owner and manager roles are the only ones RLS lets update the agency
-  // row, so a caretaker or accountant sees the same form read only.
-  const canEdit = !live || data?.myRole === "owner" || data?.myRole === "manager";
+  // The agency's name, its number and its currency belong to whoever owns the
+  // business. Someone invited in to help run the portfolio keeps every other
+  // permission and sees these read only, which is what RLS now enforces too.
+  const canEdit = !live || data?.myRole === "owner";
+  // Your own name is yours whatever your role, so this is never locked.
+  const canEditProfile = true;
 
   const [agencyName, setAgencyName] = useState(data?.agency.name ?? "Horizon Realty");
   const [whatsapp, setWhatsapp] = useState(data?.agency.whatsapp_number ?? "+224 620 00 00 00");
@@ -302,6 +305,26 @@ export function SettingsForm({ data }: { data: SettingsData }) {
   const [inviting, setInviting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [myName, setMyName] = useState(currentUser?.name ?? "");
+  const [savingName, setSavingName] = useState(false);
+
+  const saveMyName = async () => {
+    const next = myName.trim();
+    if (!next || next === currentUser?.name) return;
+    setSavingName(true);
+    if (live) {
+      const result = await sb.updateMyProfile(locale, { agencyId, fullName: next });
+      setSavingName(false);
+      if (!result.ok) {
+        notify(t.dash.common.saveFailed);
+        return;
+      }
+      router.refresh();
+    } else {
+      setSavingName(false);
+    }
+    notify(s.profile.saved);
+  };
 
   const save = async () => {
     setSaving(true);
@@ -393,10 +416,50 @@ export function SettingsForm({ data }: { data: SettingsData }) {
       />
 
       <div className="grid gap-6 xl:grid-cols-2">
+        {/* the person, not the business */}
+        <Card>
+          <CardTitle>{s.profile.title}</CardTitle>
+          <div className="space-y-4">
+            <Field label={s.profile.name} hint={s.profile.nameHint} hintAfter>
+              <input
+                value={myName}
+                disabled={!canEditProfile}
+                onChange={(e) => setMyName(e.target.value)}
+                onBlur={saveMyName}
+                placeholder={s.profile.namePlaceholder}
+                className={fieldCls}
+              />
+            </Field>
+            {currentUser?.email && (
+              <Field label={s.profile.email}>
+                <input value={currentUser.email} disabled readOnly className={fieldCls} />
+              </Field>
+            )}
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs text-onyx/50 dark:text-white/45">
+                {currentUser ? s.inviteModal.roles[currentUser.role] : ""}
+              </span>
+              <button
+                type="button"
+                onClick={saveMyName}
+                disabled={savingName || !myName.trim() || myName.trim() === currentUser?.name}
+                className="rounded-full bg-onyx px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-azure-900 disabled:opacity-40 dark:bg-soft-500 dark:text-azure-950 dark:hover:bg-soft-400"
+              >
+                {savingName ? t.dash.common.saving : t.dash.common.save}
+              </button>
+            </div>
+          </div>
+        </Card>
+
         {/* agency */}
         <Card>
           <CardTitle>{s.agency}</CardTitle>
           <div className="space-y-4">
+            {!canEdit && (
+              <p className="rounded-2xl bg-soft-200/60 px-4 py-3 text-xs leading-relaxed text-azure-900 dark:bg-white/10 dark:text-white/70">
+                {s.agencyOwnerOnly}
+              </p>
+            )}
             <Field label={s.agencyName}>
               <input
                 value={agencyName}
@@ -447,7 +510,8 @@ export function SettingsForm({ data }: { data: SettingsData }) {
                   <option value="GNF">GNF · Franc guinéen</option>
                   <option value="USD">USD</option>
                   <option value="EUR">EUR</option>
-                  <option value="XOF">XOF</option>
+                  <option value="XOF">XOF · Franc CFA (UEMOA)</option>
+                  <option value="XAF">XAF · Franc CFA (CEMAC)</option>
                 </select>
               </Field>
               <Field label={s.language}>

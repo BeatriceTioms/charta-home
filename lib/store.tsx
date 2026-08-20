@@ -22,7 +22,7 @@ import {
 } from "react";
 import { useI18n } from "@/lib/i18n/context";
 import * as sb from "@/lib/supabase/actions";
-import type { PaymentMethod } from "@/lib/supabase/types";
+import type { MemberRole, PaymentMethod } from "@/lib/supabase/types";
 import {
   type ActivityItem,
   type Apartment,
@@ -42,6 +42,8 @@ type StoreValue = {
   tickets: Ticket[];
   activity: ActivityItem[];
   agencyInfo: { name: string; city: string; country: string; whatsapp: string; currency: string } | null;
+  /** The signed in person. Their own name, and what their role lets them do. */
+  currentUser: { name: string; email: string; role: MemberRole } | null;
   toasts: Toast[];
   /** The signed in agency, empty string on the mock. */
   agencyId: string;
@@ -143,6 +145,7 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 export type StoreSeed = {
   agencyId: string;
   agencyInfo?: { name: string; city: string; country: string; whatsapp: string; currency: string };
+  currentUser?: { name: string; email: string; role: MemberRole };
   buildings: Building[];
   tickets: Ticket[];
   technicians: Technician[];
@@ -192,6 +195,7 @@ export function StoreProvider({
   const live = Boolean(seed.agencyId);
   const agencyId = seed.agencyId;
   const agencyInfo = seed.agencyInfo ?? null;
+  const currentUser = seed.currentUser ?? null;
 
   const notify = useCallback((message: string) => {
     const id = toastId++;
@@ -828,6 +832,7 @@ export function StoreProvider({
       tickets,
       activity,
       agencyInfo,
+      currentUser,
       toasts,
       agencyId,
       addBuilding,
@@ -859,7 +864,7 @@ export function StoreProvider({
       remindedKeys,
     }),
     [
-      buildings, tickets, activity, agencyInfo, toasts, agencyId, addBuilding, notify, dismissToast, addApartment, updateApartment2, deleteApartment, updateTenant, endLease,
+      buildings, tickets, activity, agencyInfo, currentUser, toasts, agencyId, addBuilding, notify, dismissToast, addApartment, updateApartment2, deleteApartment, updateTenant, endLease,
       setBuildingPhoto, removeBuildingPhoto, addLease,
       recordPayment, markReminded, addTicket, updateTicket, deleteTicket, assignTicket,
       resolveTicket, photosFor, addPhoto, updatePhoto, deletePhoto, technicians,

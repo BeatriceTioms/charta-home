@@ -218,30 +218,71 @@ export function ProgressBar({ pct, className = "" }: { pct: number; className?: 
   );
 }
 
+const PLACEHOLDER_ICONS = {
+  // A building seen from the street, with its windows.
+  building: (
+    <>
+      <path d="M3 21h18M5 21V5a1 1 0 011-1h8a1 1 0 011 1v16M15 21V9h3a1 1 0 011 1v11" />
+      <path d="M8 8h2M8 12h2M8 16h2" />
+    </>
+  ),
+  // A door with its handle, which is what a unit is from the doorway.
+  apartment: (
+    <>
+      <path d="M4 21h16M6 21V4a1 1 0 011-1h10a1 1 0 011 1v17" />
+      <path d="M14 12h.01" />
+    </>
+  ),
+} as const;
+
 /**
- * Stands in for a photo an agency has not uploaded yet. Brand tones and a
- * quiet outline of a home, so an empty gallery still looks deliberate rather
- * than broken, and nobody mistakes stock photography for their own unit.
- */
-/**
- * Stands in for a photograph that has not been uploaded yet.
+ * What sits where a photograph would.
  *
- * Deliberately neutral grey rather than brand blue: a missing photo is an
- * empty slot, not a feature, and colouring it made vacant units read as though
- * they carried an image. The paperclip says what the slot wants.
+ * Bare glass read as something failing to load rather than something not yet
+ * added, so the empty slot now says what belongs in it: a soft tinted panel,
+ * a faint diagonal weave for texture, and the outline of a building or a door
+ * on a raised chip. Still quiet, and still unmistakably not a photograph, but
+ * it now looks composed rather than broken.
+ *
+ * The icon follows the subject: a building where a building's picture goes, a
+ * door where a unit's does.
  */
-/**
- * What sits where a photograph would. Left as bare glass rather than an icon:
- * a unit without a picture is a gap to fill, and an empty pane says that
- * quietly, where a symbol repeated down a grid of cards starts to read as
- * clutter. The controls that add a photo live on the surface that owns it.
- */
-export function PhotoPlaceholder({ className = "" }: { className?: string }) {
+export function PhotoPlaceholder({
+  className = "",
+  icon = "apartment",
+}: {
+  className?: string;
+  icon?: keyof typeof PLACEHOLDER_ICONS | "none";
+}) {
   return (
     <div
-      className={`border border-white/50 bg-white/40 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06] ${className}`}
+      className={`relative grid place-items-center overflow-hidden border border-white/60 bg-gradient-to-br from-white/70 via-soft-100/50 to-soft-200/40 backdrop-blur-xl dark:border-white/10 dark:from-white/[0.07] dark:via-white/[0.04] dark:to-white/[0.02] ${className}`}
       aria-hidden="true"
-    />
+    >
+      {/* A weave rather than a flat fill, so the panel has a surface to it. */}
+      <span
+        className="pointer-events-none absolute inset-0 opacity-[0.5] dark:opacity-[0.35]"
+        style={{
+          backgroundImage:
+            "repeating-linear-gradient(135deg, rgba(0,49,82,0.045) 0 1px, transparent 1px 9px)",
+        }}
+      />
+      {icon !== "none" && (
+        <span className="relative grid aspect-square w-[38%] max-w-14 min-w-8 place-items-center rounded-[28%] border border-white/70 bg-white/60 shadow-sm dark:border-white/10 dark:bg-white/10 dark:shadow-none">
+          <svg
+            viewBox="0 0 24 24"
+            className="h-[58%] w-[58%] text-azure-900/35 dark:text-white/40"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            {PLACEHOLDER_ICONS[icon]}
+          </svg>
+        </span>
+      )}
+    </div>
   );
 }
 

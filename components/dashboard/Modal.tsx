@@ -77,25 +77,39 @@ export function Field({
   children,
   error,
   hint,
+  hintAfter,
   plain,
 }: {
   label: string;
   children: React.ReactNode;
   error?: string;
   hint?: string;
+  /**
+   * Puts the hint below the control instead of above it. A note that explains
+   * what leaving a field alone will do only makes sense once the reader has
+   * seen the field, so it reads better after the date picker than before it.
+   */
+  hintAfter?: boolean;
   /** Renders a div rather than a label, for fields built from buttons. */
   plain?: boolean;
 }) {
   const Wrapper = plain ? "div" : "label";
+  const hintEl = hint ? (
+    <span
+      className={`block text-xs text-onyx/50 dark:text-white/45 ${hintAfter ? "mt-2" : "mb-2.5"}`}
+    >
+      {hint}
+    </span>
+  ) : null;
+
   return (
     <Wrapper className="block">
       <span className="mb-1.5 block text-sm font-semibold text-azure-800 dark:text-soft-500">
         {label}
       </span>
-      {hint && (
-        <span className="mb-2.5 block text-xs text-onyx/50 dark:text-white/45">{hint}</span>
-      )}
+      {!hintAfter && hintEl}
       {children}
+      {hintAfter && hintEl}
       {error && <span className="mt-1 block text-xs font-medium text-red-600">{error}</span>}
     </Wrapper>
   );

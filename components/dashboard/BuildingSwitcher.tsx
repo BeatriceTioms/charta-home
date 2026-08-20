@@ -48,7 +48,7 @@ export function BuildingSwitcher({ align = "left" }: { align?: "left" | "right" 
             className="h-9 w-9 shrink-0 rounded-xl object-cover"
           />
         ) : (
-          <PhotoPlaceholder className="h-9 w-9 shrink-0 rounded-xl" />
+          <PhotoPlaceholder icon="building" className="h-9 w-9 shrink-0 rounded-xl" />
         )}
         <span className="hidden text-left sm:block">
           <span className="block max-w-[11rem] truncate text-sm font-bold leading-tight text-azure-950 dark:text-white">

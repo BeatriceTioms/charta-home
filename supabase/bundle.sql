@@ -22,7 +22,7 @@ begin
     select p.oid::regprocedure as sig
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public'
-      and p.proname = any (array['assign_technician', 'block_delete_occupied_apartment', 'create_agency_for_current_user', 'create_lease', 'current_agency_ids', 'enforce_building_limit', 'ensure_rent_charge', 'has_role', 'is_member', 'list_agency_members', 'record_payment', 'reorder_apartment_photos', 'resolve_ticket', 'take_rate_limit', 'touch_updated_at', 'write_audit'])
+      and p.proname = any (array['assign_technician', 'block_delete_occupied_apartment', 'create_agency_for_current_user', 'create_lease', 'current_agency_ids', 'enforce_building_limit', 'ensure_rent_charge', 'has_role', 'is_member', 'list_agency_members', 'record_payment', 'reorder_apartment_photos', 'resolve_ticket', 'set_my_display_name', 'take_rate_limit', 'touch_updated_at', 'write_audit'])
   loop
     execute format('drop function if exists %s cascade', f.sig);
   end loop;
@@ -1791,4 +1791,155 @@ end;
 $$;
 
 grant execute on function public.ensure_rent_charge to authenticated;
+
+-- ======================================================================
+-- 20260808121200_daily_lease_cycle.sql
+-- ======================================================================
+
+-- Charta Home · daily leases
+--
+-- Short stay letting is ordinary business for an agency in Conakry: a
+-- furnished flat taken for a week, a room let by the night. Recording that as
+-- a monthly lease meant one charge covering a stay that had already ended.
+--
+-- A daily charge covers exactly the day it is raised. The due day, which for a
+-- monthly lease says which day of the month rent falls on, has nothing to
+-- describe here, so a daily charge is due on the day itself.
+
+alter type lease_cycle add value if not exists 'daily';
+
+-- --------------------------------------------------------- charge generation
+-- One day, one month, one quarter, or one year. Anything unrecognised still
+-- falls back to monthly, which under bills rather than over bills if a cycle
+-- is ever added without this function being taught about it.
+create or replace function public.ensure_rent_charge(
+  target_lease uuid,
+  period date
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  l record;
+  start_on date;
+  end_on date;
+  due date;
+  charge_id uuid;
+begin
+  select * into l from public.leases where id = target_lease;
+  if not found then
+    raise exception 'lease % not found', target_lease;
+  end if;
+  if not public.is_member(l.agency_id) then
+    raise exception 'not a member of this agency';
+  end if;
+
+  if l.cycle::text = 'yearly' then
+    start_on := date_trunc('year', period)::date;
+    end_on := (date_trunc('year', period) + interval '1 year - 1 day')::date;
+  elsif l.cycle::text = 'quarterly' then
+    start_on := date_trunc('quarter', period)::date;
+    end_on := (date_trunc('quarter', period) + interval '3 months - 1 day')::date;
+  elsif l.cycle::text = 'daily' then
+    start_on := period;
+    end_on := period;
+  else
+    start_on := date_trunc('month', period)::date;
+    end_on := (date_trunc('month', period) + interval '1 month - 1 day')::date;
+  end if;
+
+  -- A day long charge is due that day. Offsetting by due_day would push it
+  -- past the end of the period it bills for.
+  if l.cycle::text = 'daily' then
+    due := start_on;
+  else
+    due := (start_on + (l.due_day - 1) * interval '1 day')::date;
+  end if;
+
+  insert into public.rent_charges (agency_id, lease_id, period_start, period_end, amount, due_on)
+  values (l.agency_id, l.id, start_on, end_on, l.rent_amount, due)
+  on conflict (lease_id, period_start) do nothing
+  returning id into charge_id;
+
+  if charge_id is null then
+    select id into charge_id
+    from public.rent_charges
+    where lease_id = l.id and period_start = start_on;
+  end if;
+
+  return charge_id;
+end;
+$$;
+
+grant execute on function public.ensure_rent_charge to authenticated;
+
+-- ======================================================================
+-- 20260808121300_own_name_and_agency_owner.sql
+-- ======================================================================
+
+-- Charta Home · your own name, and whose agency it is
+--
+-- Two rules that were wrong in opposite directions. Nobody but the owner could
+-- change a name, including their own, and anyone the owner made a manager
+-- could rename the agency and change the number tenants reply to.
+
+-- ------------------------------------------------------ setting your own name
+-- Opening memberships_update to `user_id = auth.uid()` would have let a manager
+-- set their own role to owner, which is the whole of the permission system
+-- given away for the sake of a text field. The name is changed through a
+-- function instead, which can touch that one column and nothing else.
+
+create or replace function public.set_my_display_name(
+  target_agency uuid,
+  new_name text
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  trimmed text := btrim(new_name);
+begin
+  if trimmed = '' then
+    raise exception 'a name cannot be empty'
+      using errcode = 'check_violation';
+  end if;
+  if length(trimmed) > 120 then
+    raise exception 'that name is too long'
+      using errcode = 'check_violation';
+  end if;
+
+  -- Membership in the agency is the whole of the authorisation: you are
+  -- setting your own name, on your own row.
+  if not public.is_member(target_agency) then
+    raise exception 'not a member of this agency';
+  end if;
+
+  update public.memberships
+     set full_name = trimmed
+   where agency_id = target_agency
+     and user_id = auth.uid();
+end;
+$$;
+
+revoke all on function public.set_my_display_name from public;
+grant execute on function public.set_my_display_name to authenticated;
+
+comment on function public.set_my_display_name is
+  'Sets the caller''s own display name. Cannot reach role, or anyone else''s row.';
+
+-- ------------------------------------------------- who owns the agency record
+-- The agency's name and its WhatsApp number are its identity: the name on a
+-- receipt, and the number a tenant replies to. Someone invited to help manage
+-- the portfolio has no business changing either. Managers keep every other
+-- permission they had; this narrows one table.
+
+drop policy if exists agencies_update on agencies;
+drop policy if exists agencies_update on agencies;
+create policy agencies_update on agencies for update
+  using (public.has_role(id, array['owner']::member_role[]))
+  with check (public.has_role(id, array['owner']::member_role[]));
 

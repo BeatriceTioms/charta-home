@@ -166,8 +166,11 @@ export default function DashboardPage() {
     progress: bTickets.filter((x) => x.status === "in-progress").length,
     resolved: bTickets.filter((x) => x.status === "resolved").length,
   };
-  const { activity } = useStore();
+  const { activity, currentUser } = useStore();
   const { fmt } = useMoney();
+  // The greeting is to one person, so it takes the name they go by rather
+  // than the whole of what they signed up with.
+  const firstName = (currentUser?.name ?? "").split(" ")[0];
   const schedule = activity.filter((a) => a.buildingId === building.id);
   const viewings = schedule.filter((a) => a.kind === "viewing").length;
 
@@ -250,7 +253,7 @@ export default function DashboardPage() {
     <>
       <h1 className="font-serif text-3xl font-medium tracking-tight sm:text-4xl">
         <span className="text-onyx/50 dark:text-white/50">{t.dash.overview.greeting}</span>{" "}
-        <span className="text-azure-950 dark:text-white">Amina</span>
+        <span className="text-azure-950 dark:text-white">{firstName}</span>
       </h1>
       <p className="mt-1.5 text-[15px] text-onyx/40 dark:text-white/40">
         {f(t.dash.overview.subtitle, { building: building.name, date: today })}
@@ -269,7 +272,7 @@ export default function DashboardPage() {
                 className="h-[360px] w-full object-cover"
               />
             ) : (
-              <PhotoPlaceholder className="h-[360px] w-full" />
+              <PhotoPlaceholder icon="building" className="h-[360px] w-full" />
             )}
             <div className="absolute inset-0 bg-gradient-to-r from-onyx/85 via-onyx/45 to-onyx/10" />
             <div className="absolute inset-0 flex flex-col justify-between p-8">

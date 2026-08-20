@@ -5,7 +5,7 @@
  */
 
 export type MemberRole = "owner" | "manager" | "accountant" | "caretaker";
-export type LeaseCycle = "monthly" | "quarterly" | "yearly";
+export type LeaseCycle = "daily" | "monthly" | "quarterly" | "yearly";
 export type LeaseStatus = "upcoming" | "active" | "ended";
 export type ChargeStatus = "open" | "paid" | "void";
 export type ChargeState = "paid" | "pending" | "overdue" | "void";
@@ -454,6 +454,10 @@ export type Database = {
       ensure_rent_charge: {
         Args: { target_lease: string; period: string };
         Returns: string;
+      };
+      set_my_display_name: {
+        Args: { target_agency: string; new_name: string };
+        Returns: void;
       };
     };
     Enums: {

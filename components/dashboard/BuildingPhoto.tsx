@@ -35,7 +35,7 @@ export function BuildingPhoto({
       {photo ? (
         <Image src={photo} alt={name} fill className="object-cover" />
       ) : (
-        <PhotoPlaceholder className="absolute inset-0 h-full w-full" />
+        <PhotoPlaceholder icon="building" className="absolute inset-0 h-full w-full" />
       )}
 
       <div className="absolute inset-0 flex items-center justify-center gap-2 bg-onyx/55 opacity-0 backdrop-blur-sm transition group-hover/bphoto:opacity-100">

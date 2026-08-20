@@ -8,7 +8,7 @@
  */
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { invitationEmail } from "../lib/email.ts";
+import { invitationEmail, passwordResetEmail, welcomeEmail } from "../lib/email.ts";
 
 const results = [];
 const check = (name, pass, detail = "") => {
@@ -75,6 +75,64 @@ check("configuration needs both a key and a from address", configured);
 
 const failsClosed = /if \(!key \|\| !from\) return \{ ok: false/.test(source);
 check("an unconfigured send reports failure rather than pretending", failsClosed);
+
+
+/* ------------------------------------------------ the other two messages */
+
+const welcome = welcomeEmail({
+  agencyName: '<img src=x onerror=alert(1)>',
+  ownerName: "Amina Sow",
+  dashboardUrl: "https://chartahome.com/fr/dashboard",
+  locale: "fr",
+});
+check(
+  "the welcome escapes the agency name",
+  !welcome.html.includes("<img src=x") && welcome.html.includes("&lt;img"),
+  "agency names come from a signup form"
+);
+check(
+  "the welcome greets by first name only",
+  welcome.subject.includes("Amina") && !welcome.subject.includes("Sow"),
+  welcome.subject
+);
+check(
+  "the welcome lists concrete first steps",
+  welcome.text.includes("1.") && welcome.text.includes("2.") && welcome.text.includes("3."),
+  "three numbered steps"
+);
+
+const reset = passwordResetEmail({
+  resetLink: "https://example.supabase.co/auth/v1/verify?token=xyz&type=recovery",
+  locale: "en",
+});
+check(
+  "the reset says what to do if it was not you",
+  /did not ask/i.test(reset.text),
+  "an unrequested reset needs an explicit reassurance"
+);
+check(
+  "the reset link survives escaping intact",
+  reset.html.includes("&amp;type=recovery"),
+  "one round of escaping, not two"
+);
+
+// All three share one shell, so a change to the frame cannot drift apart.
+const family = [mail, welcome, reset];
+check(
+  "every message carries the brand header",
+  family.every((m) => m.html.includes("Charta&nbsp;")),
+  `${family.length} messages`
+);
+check(
+  "every message has a plain text alternative",
+  family.every((m) => m.text.trim().length > 40),
+  "a message with no text part is a spam signal"
+);
+check(
+  "every message hides its preheader from the body",
+  family.every((m) => m.html.includes("display:none;max-height:0")),
+  "the line clients show beside the subject"
+);
 
 const failed = results.filter((r) => !r.pass);
 console.log(`\n${results.length - failed.length}/${results.length} checks passed`);
