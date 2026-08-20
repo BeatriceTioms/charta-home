@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getDictionary, isLocale, locales } from "@/lib/i18n";
 import { I18nProvider } from "@/lib/i18n/context";
+import { RecoveryRedirect } from "@/components/auth/RecoveryRedirect";
 
 const siteUrl = "https://chartahome.com";
 
@@ -174,7 +175,11 @@ export default async function LocaleLayout({
         />
       </head>
       <body>
-        <I18nProvider locale={locale}>{children}</I18nProvider>
+        <I18nProvider locale={locale}>
+          {/* An invitation token can land on any page; this carries it home. */}
+          <RecoveryRedirect />
+          {children}
+        </I18nProvider>
       </body>
     </html>
   );

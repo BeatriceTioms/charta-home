@@ -503,6 +503,18 @@ export const fr = {
       successTitle: "Mot de passe mis à jour",
       successBody: "Votre mot de passe a été modifié. Vous pouvez maintenant vous connecter avec celui ci.",
       goToLogin: "Aller à la connexion",
+      checking: "Vérification de votre lien…",
+      linkInvalidTitle: "Ce lien n'est plus valable",
+      linkInvalid:
+        "Le lien a expiré ou a déjà servi. Demandez en un nouveau, il arrive en quelques secondes.",
+      requestAnother: "Demander un nouveau lien",
+      linkMissing:
+        "Ouvrez cette page depuis le lien reçu par email. C'est ce lien qui indique de quel compte il s'agit.",
+      sessionChanged:
+        "La session a changé pendant que vous remplissiez le formulaire. Rouvrez le lien reçu par email.",
+      inviteTitle: "Choisissez votre mot de passe",
+      inviteSubtitle:
+        "Encore une étape et vous rejoignez votre agence sur Charta Home.",
     },
     showPassword: "Afficher le mot de passe",
     hidePassword: "Masquer le mot de passe",
@@ -1657,7 +1669,18 @@ export const en: Dictionary = {
       mismatch: "Passwords do not match.",
       successTitle: "Password updated",
       successBody: "Your password has been changed. You can now log in with it.",
-      goToLogin: "Go to login",
+      goToLogin: "Go to sign in",
+      checking: "Checking your link…",
+      linkInvalidTitle: "This link is no longer valid",
+      linkInvalid:
+        "The link has expired or has already been used. Ask for another one, it arrives in seconds.",
+      requestAnother: "Request a new link",
+      linkMissing:
+        "Open this page from the link in your email. That link is what says which account this is for.",
+      sessionChanged:
+        "The session changed while you were filling this in. Open the link from your email again.",
+      inviteTitle: "Choose your password",
+      inviteSubtitle: "One more step and you are in your agency on Charta Home.",
     },
     showPassword: "Show password",
     hidePassword: "Hide password",
