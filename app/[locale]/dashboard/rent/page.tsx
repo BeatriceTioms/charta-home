@@ -12,6 +12,7 @@ import { PageTitle, PhotoPlaceholder, RentChip, Tabs } from "@/components/dashbo
 import { TenantsPanel } from "@/components/dashboard/TenantsPanel";
 import { ReceiptModal, type ReceiptData } from "@/components/dashboard/ReceiptModal";
 import { Field, Modal, ModalActions, fieldCls } from "@/components/dashboard/Modal";
+import { ReminderModal } from "@/components/dashboard/ReminderModal";
 
 type Tab = "leases" | "tenants";
 type StatusFilter = "all" | RentStatus;
@@ -143,6 +144,17 @@ export default function RentPage() {
   const [search, setSearch] = useState("");
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
   const [recording, setRecording] = useState(false);
+  // Chasing rent from the table now opens the same composer as the unit page,
+  // rather than only colouring the button in.
+  const [reminding, setReminding] = useState<{
+    name: string;
+    phone: string;
+    apartment: string;
+    amount: number;
+    key: string;
+    buildingId: string;
+    apartmentId: string;
+  } | null>(null);
 
   const leased = building.apartments.filter((a) => a.tenant);
   const due = leased.reduce((s, a) => s + a.rent, 0);
@@ -398,12 +410,17 @@ export default function RentPage() {
                           </button>
                         ) : (
                           <button
-                            onClick={() => {
-                              markReminded(building.id, a.id);
-                              notify(
-                                f(t.dash.apartment.reminderModal.sent, { name: a.tenant!.name })
-                              );
-                            }}
+                            onClick={() =>
+                              setReminding({
+                                name: a.tenant!.name,
+                                phone: a.tenant!.phone,
+                                apartment: a.label,
+                                amount: a.rent,
+                                key,
+                                buildingId: building.id,
+                                apartmentId: a.id,
+                              })
+                            }
                             disabled={wasReminded}
                             className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
                               wasReminded
@@ -426,6 +443,17 @@ export default function RentPage() {
       )}
 
       {receipt && <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />}
+
+      {reminding && (
+        <ReminderModal
+          name={reminding.name}
+          amount={reminding.amount}
+          apartment={reminding.apartment}
+          phone={reminding.phone}
+          onClose={() => setReminding(null)}
+          onSent={() => markReminded(reminding.buildingId, reminding.apartmentId)}
+        />
+      )}
       {recording && <RecordPaymentModal onClose={() => setRecording(false)} />}
     </>
   );

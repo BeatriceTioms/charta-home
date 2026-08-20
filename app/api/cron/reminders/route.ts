@@ -6,7 +6,20 @@ import {
   renderMessage,
   sendTemplate,
   sendText,
+  toWaNumber,
 } from "@/lib/whatsapp";
+import { isEmailConfigured, reminderDigestEmail, sendEmail } from "@/lib/email";
+import { siteUrl } from "@/lib/site-url";
+
+/** One line of the hand over list an agency receives. */
+type DigestItem = {
+  tenantName: string;
+  apartmentLabel: string;
+  amount: string;
+  dueLabel: string;
+  isOverdue: boolean;
+  whatsappUrl: string;
+};
 
 export const dynamic = "force-dynamic";
 
@@ -69,6 +82,11 @@ export async function GET(request: Request) {
   let sent = 0;
   let failed = 0;
   let skipped = 0;
+  let handedOver = 0;
+
+  // Collected per agency while the loop runs, so each agency receives one
+  // message listing its day rather than one per tenant.
+  const digest = new Map<string, { agencyName: string; items: DigestItem[] }>();
 
   for (const charge of charges ?? []) {
     const due = new Date(charge.due_on);
@@ -97,18 +115,6 @@ export async function GET(request: Request) {
       });
       if (claimError) continue;
 
-      // Nothing to send through yet: keep the claim so the run is idempotent,
-      // but say plainly that it did not go out.
-      if (!configured) {
-        await supabase
-          .from("reminder_events")
-          .update({ status: "unconfigured" })
-          .eq("rent_charge_id", charge.rent_charge_id)
-          .eq("rule_id", rule.id);
-        skipped++;
-        continue;
-      }
-
       const body = renderMessage(rule.message_body ?? "", {
         tenant: target.resident_name ?? "",
         amount: formatMoney(Number(charge.amount), target.currency),
@@ -117,6 +123,33 @@ export async function GET(request: Request) {
         agency: target.agency_name ?? "",
         apartment: target.apartment_label ?? "",
       });
+
+      // Nothing can reach the tenant automatically yet, so the reminder is
+      // gathered for the agency to send by hand and the claim is kept, which
+      // is what stops the same tenant appearing in tomorrow's list as well.
+      if (!configured) {
+        await supabase
+          .from("reminder_events")
+          .update({ status: "handed_over" })
+          .eq("rent_charge_id", charge.rent_charge_id)
+          .eq("rule_id", rule.id);
+
+        const forAgency = digest.get(charge.agency_id) ?? {
+          agencyName: target.agency_name ?? "",
+          items: [] as DigestItem[],
+        };
+        forAgency.items.push({
+          tenantName: target.resident_name ?? "",
+          apartmentLabel: target.apartment_label ?? "",
+          amount: formatMoney(Number(charge.amount), target.currency),
+          dueLabel: new Date(charge.due_on).toLocaleDateString("fr-FR"),
+          isOverdue: daysFromDue > 0,
+          whatsappUrl: `https://wa.me/${toWaNumber(target.resident_phone)}?text=${encodeURIComponent(body)}`,
+        });
+        digest.set(charge.agency_id, forAgency);
+        handedOver++;
+        continue;
+      }
 
       // A template is required outside the 24 hour window, which a proactive
       // reminder always is. Free text only works for a tenant who wrote first.
@@ -150,11 +183,61 @@ export async function GET(request: Request) {
     }
   }
 
+  // One message per agency, with every reminder it needs to send by hand.
+  let digestsSent = 0;
+  if (digest.size > 0 && isEmailConfigured()) {
+    for (const [agencyId, group] of digest) {
+      const recipients = await ownerEmails(supabase, agencyId);
+      if (recipients.length === 0) {
+        console.error(`no owner email for agency ${agencyId}, digest not sent`);
+        continue;
+      }
+      const message = reminderDigestEmail({
+        agencyName: group.agencyName,
+        locale: "fr",
+        dashboardUrl: `${siteUrl()}/fr/dashboard/rent`,
+        items: group.items,
+      });
+      for (const to of recipients) {
+        const result = await sendEmail({ to, ...message });
+        if (result.ok) digestsSent++;
+        else console.error(`digest to ${to} failed: ${result.error}`);
+      }
+    }
+  } else if (digest.size > 0) {
+    console.error("reminders were handed over but no email sender is configured");
+  }
+
   return NextResponse.json({
     considered: charges?.length ?? 0,
     sent,
     failed,
     skipped,
+    handedOver,
+    digestsSent,
     whatsapp: configured ? "configured" : "not configured",
   });
+}
+
+/**
+ * Who to hand the day's list to. The owners rather than every member: a
+ * caretaker has no business chasing rent, and a list of debts is not something
+ * to broadcast across the staff.
+ */
+async function ownerEmails(
+  supabase: ReturnType<typeof createAdminClient>,
+  agencyId: string
+): Promise<string[]> {
+  const { data: owners } = await supabase
+    .from("memberships")
+    .select("user_id")
+    .eq("agency_id", agencyId)
+    .eq("role", "owner");
+  if (!owners || owners.length === 0) return [];
+
+  const { data: users } = await supabase.auth.admin.listUsers();
+  const wanted = new Set(owners.map((o) => o.user_id));
+  return (users?.users ?? [])
+    .filter((u) => wanted.has(u.id) && u.email)
+    .map((u) => u.email as string);
 }

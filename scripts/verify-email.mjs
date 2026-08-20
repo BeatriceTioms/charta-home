@@ -8,7 +8,7 @@
  */
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { invitationEmail, isEmailConfigured, passwordResetEmail, sendEmail, welcomeEmail } from "../lib/email.ts";
+import { invitationEmail, isEmailConfigured, passwordResetEmail, reminderDigestEmail, sendEmail, welcomeEmail } from "../lib/email.ts";
 
 const results = [];
 const check = (name, pass, detail = "") => {
@@ -163,6 +163,64 @@ check(
   family.every((m) => m.html.includes("display:none;max-height:0")),
   "the line clients show beside the subject"
 );
+
+
+/* ------------------------------------------------ the hand over digest --
+ * What an agency receives while WhatsApp is still unapproved. The wa.me link
+ * is the whole point of it, so the message has to survive being put in a URL.
+ */
+const digest = reminderDigestEmail({
+  agencyName: "Horizon Realty",
+  locale: "fr",
+  dashboardUrl: "https://chartahome.com/fr/dashboard/rent",
+  items: [
+    {
+      tenantName: "Sofia Benali",
+      apartmentLabel: "Apt 2A",
+      amount: "1 500 000 GNF",
+      dueLabel: "01/09/2026",
+      isOverdue: false,
+      whatsappUrl:
+        "https://wa.me/224620167719?text=" +
+        encodeURIComponent("Bonjour Sofia, votre loyer de 1 500 000 GNF est à régler. Merci."),
+    },
+    {
+      tenantName: "Jonas Petit",
+      apartmentLabel: "Apt 2B",
+      amount: "780 000 GNF",
+      dueLabel: "01/08/2026",
+      isOverdue: true,
+      whatsappUrl: "https://wa.me/224620167720?text=" + encodeURIComponent("Bonjour Jonas"),
+    },
+  ],
+});
+
+check("the digest counts what is waiting",
+  digest.subject.includes("2 rappels"), digest.subject);
+check("every tenant gets their own send link",
+  (digest.html.match(/https:\/\/wa\.me\//g) || []).length === 2,
+  "one wa.me link per row");
+check("an overdue row is marked as overdue",
+  digest.html.includes("En retard"), "so the urgent one is visible at a glance");
+check("the pre-written message survives the URL",
+  digest.html.includes("Bonjour%20Sofia"),
+  "percent encoded, not mangled by html escaping");
+check("the plain text part carries the links too",
+  digest.text.includes("wa.me/224620167719"), "for a client that strips html");
+check("one tenant reads as singular",
+  reminderDigestEmail({ ...{ agencyName: "A", locale: "fr", dashboardUrl: "https://x.test",
+    items: [{ tenantName: "T", apartmentLabel: "1", amount: "1 GNF", dueLabel: "01/09/2026",
+      isOverdue: false, whatsappUrl: "https://wa.me/1?text=x" }] } }).subject.includes("1 rappel de"),
+  "counts are read by people");
+
+const enDigest = reminderDigestEmail({
+  agencyName: "Horizon", locale: "en", dashboardUrl: "https://x.test",
+  items: [{ tenantName: "T", apartmentLabel: "1", amount: "1 GNF", dueLabel: "01/09/2026",
+    isOverdue: true, whatsappUrl: "https://wa.me/1?text=x" }],
+});
+check("the digest renders in English too",
+  enDigest.subject.includes("rent reminder") && enDigest.html.includes("Overdue"),
+  enDigest.subject);
 
 const failed = results.filter((r) => !r.pass);
 console.log(`\n${results.length - failed.length}/${results.length} checks passed`);

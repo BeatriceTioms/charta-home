@@ -323,3 +323,104 @@ function roleName(role: string, locale: string): string {
   const pair = labels[role];
   return pair ? (fr ? pair[0] : pair[1]) : role;
 }
+
+/**
+ * The day's rent reminders, sent to the agency rather than the tenant.
+ *
+ * Until the WhatsApp Business API is approved, nothing may message a tenant
+ * automatically: Meta refuses free text outside a 24 hour window and an
+ * approved template needs a verified business behind it. Waiting for that
+ * would mean the reminder feature does nothing at all for weeks.
+ *
+ * So the job still runs, and what it produces is a list the agency can act on
+ * in one tap each. Every row carries a wa.me link with the message already
+ * written, which opens WhatsApp on a phone with the text in the box. It is one
+ * press instead of none, and it has the side effect of putting a person
+ * between the schedule and the tenant, which for a late payment is not the
+ * worst thing.
+ */
+export function reminderDigestEmail(input: {
+  agencyName: string;
+  locale: string;
+  dashboardUrl: string;
+  items: {
+    tenantName: string;
+    apartmentLabel: string;
+    amount: string;
+    dueLabel: string;
+    isOverdue: boolean;
+    /** Already built by the caller, message included. */
+    whatsappUrl: string;
+  }[];
+}): Message {
+  const fr = input.locale === "fr";
+  const n = input.items.length;
+
+  const subject = fr
+    ? n === 1
+      ? "1 rappel de loyer à envoyer aujourd'hui"
+      : `${n} rappels de loyer à envoyer aujourd'hui`
+    : n === 1
+      ? "1 rent reminder to send today"
+      : `${n} rent reminders to send today`;
+
+  const heading = fr ? "Vos rappels du jour" : "Your reminders for today";
+
+  const intro = fr
+    ? `<p style="margin:0 0 18px;">Voici les loyers à relancer pour <strong>${esc(input.agencyName)}</strong>. Chaque bouton ouvre WhatsApp avec le message déjà écrit : il ne reste qu'à envoyer.</p>`
+    : `<p style="margin:0 0 18px;">Here are the rents to chase for <strong>${esc(input.agencyName)}</strong>. Each button opens WhatsApp with the message already written: all that is left is to send it.</p>`;
+
+  const send = fr ? "Envoyer sur WhatsApp" : "Send on WhatsApp";
+  const overdue = fr ? "En retard" : "Overdue";
+
+  const rows = input.items
+    .map(
+      (item) => `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 10px;border:1px solid #e7eef0;border-radius:14px;">
+        <tr>
+          <td style="padding:14px 16px;">
+            <p style="margin:0 0 2px;font-size:15px;font-weight:700;color:#020202;">
+              ${esc(item.apartmentLabel)} · ${esc(item.tenantName)}
+            </p>
+            <p style="margin:0 0 12px;font-size:13px;color:#7b858c;">
+              ${esc(item.amount)} · ${esc(item.dueLabel)}${
+                item.isOverdue
+                  ? ` <span style="color:#b42318;font-weight:600;">${overdue}</span>`
+                  : ""
+              }
+            </p>
+            <a href="${esc(item.whatsappUrl)}" style="display:inline-block;background:#25D366;color:#ffffff;text-decoration:none;font-size:13px;font-weight:600;padding:9px 18px;border-radius:999px;">${send}</a>
+          </td>
+        </tr>
+      </table>`
+    )
+    .join("");
+
+  const footer = fr
+    ? "Ces rappels partiront automatiquement dès que votre compte WhatsApp Business sera approuvé."
+    : "These reminders will go out automatically as soon as your WhatsApp Business account is approved.";
+
+  const text = [
+    fr ? `Rappels du jour pour ${input.agencyName} :` : `Today's reminders for ${input.agencyName}:`,
+    "",
+    ...input.items.map(
+      (i) =>
+        `${i.apartmentLabel} · ${i.tenantName} — ${i.amount} — ${i.dueLabel}\n${i.whatsappUrl}`
+    ),
+    "",
+    footer,
+  ].join("\n");
+
+  return {
+    subject,
+    html: layout({
+      locale: input.locale,
+      preheader: subject,
+      heading,
+      body: intro + rows,
+      cta: { label: fr ? "Ouvrir le tableau de bord" : "Open the dashboard", href: input.dashboardUrl },
+      footer,
+    }),
+    text,
+  };
+}

@@ -12,6 +12,7 @@ import { useI18n } from "@/lib/i18n/context";
 import { Card, CardTitle, PageTitle, PhotoPlaceholder, RentChip, StatCard, TicketChip } from "@/components/dashboard/ui";
 import { Field, Modal, ModalActions, fieldCls } from "@/components/dashboard/Modal";
 import { PhotoGallery } from "@/components/dashboard/PhotoGallery";
+import { ReminderModal } from "@/components/dashboard/ReminderModal";
 
 const WEEK = [
   { day: 5, key: "wed" },
@@ -22,75 +23,6 @@ const WEEK = [
   { day: 10, key: "mon" },
   { day: 11, key: "tue" },
 ];
-
-function ReminderModal({
-  name,
-  amount,
-  apartment,
-  phone,
-  onClose,
-}: {
-  name: string;
-  amount: number;
-  apartment: string;
-  phone: string;
-  onClose: () => void;
-}) {
-  const { t, f } = useI18n();
-  const { notify } = useStore();
-  const { fmt } = useMoney();
-  const m = t.dash.apartment.reminderModal;
-  const [channel, setChannel] = useState("whatsapp");
-
-  // The standard wording is a starting point, not the final word. A late
-  // payment is a conversation between people who know each other, and the one
-  // sending it is the one who knows whether this month calls for a nudge or a
-  // firmer note.
-  const [message, setMessage] = useState(() =>
-    f(m.message, { name, amount: fmt(amount), apartment })
-  );
-
-  const submit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (channel === "whatsapp") {
-      window.open(
-        `https://wa.me/${phone.replace(/\D/g, "")}?text=${encodeURIComponent(message)}`,
-        "_blank",
-        "noopener"
-      );
-    } else if (channel === "sms") {
-      window.location.href = `sms:${phone.replace(/\s/g, "")}?body=${encodeURIComponent(message)}`;
-    } else {
-      window.location.href = `mailto:?subject=${encodeURIComponent(m.title)}&body=${encodeURIComponent(message)}`;
-    }
-    notify(f(m.sent, { name }));
-    onClose();
-  };
-
-  return (
-    <Modal title={m.title} subtitle={f(m.subtitle, { name })} onClose={onClose}>
-      <form onSubmit={submit} className="space-y-4">
-        <Field label={m.channel}>
-          <select value={channel} onChange={(e) => setChannel(e.target.value)} className={fieldCls}>
-            <option value="whatsapp">{m.whatsapp}</option>
-            <option value="sms">{m.sms}</option>
-            <option value="email">{m.email}</option>
-          </select>
-        </Field>
-        <Field label={m.preview} hint={m.previewHint}>
-          <textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            rows={5}
-            required
-            className={`${fieldCls} resize-none leading-relaxed`}
-          />
-        </Field>
-        <ModalActions onCancel={onClose} submitLabel={m.submit} disabled={!message.trim()} />
-      </form>
-    </Modal>
-  );
-}
 
 function LeaseModal({
   apartmentId,
