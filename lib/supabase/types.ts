@@ -461,6 +461,28 @@ export type Database = {
         Args: { from_period: string; cycle_in: LeaseCycle };
         Returns: string;
       };
+      wa_route_inbound: {
+        Args: { from_phone: string; body: string };
+        Returns: {
+          conversation_id: string | null;
+          agency: string | null;
+          resident: string | null;
+          resident_name: string | null;
+          decision: "attach" | "ask" | "answer" | "open" | "unknown";
+          ticket_id: string | null;
+          report: string | null;
+          lease_count: number;
+        }[];
+      };
+      wa_set_state: {
+        Args: {
+          conversation: string;
+          new_state: "idle" | "awaiting_apartment";
+          report?: string | null;
+          ticket?: string | null;
+        };
+        Returns: void;
+      };
       set_my_display_name: {
         Args: { target_agency: string; new_name: string };
         Returns: void;

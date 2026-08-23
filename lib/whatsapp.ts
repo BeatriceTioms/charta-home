@@ -117,3 +117,44 @@ export function renderMessage(
     key in values ? values[key] : whole
   );
 }
+
+/**
+ * Fetches a photograph a tenant sent.
+ *
+ * Meta does not put the image in the webhook, only an id. Retrieving it is two
+ * calls: the id gives a short lived URL, and that URL needs the access token
+ * as well, which is easy to miss because it looks like an ordinary CDN link.
+ *
+ * A photograph of the leak is often worth more than the sentence describing
+ * it, so this is not optional decoration: it is how a caretaker knows whether
+ * to bring a wrench or a plumber.
+ */
+export async function downloadMedia(
+  mediaId: string
+): Promise<{ ok: true; bytes: Uint8Array; mime: string } | { ok: false; error: string }> {
+  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  if (!token) return { ok: false, error: "whatsapp is not configured" };
+
+  try {
+    const lookup = await fetch(`https://graph.facebook.com/${API_VERSION}/${mediaId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!lookup.ok) {
+      return { ok: false, error: `media lookup ${lookup.status}` };
+    }
+    const meta = (await lookup.json()) as { url?: string; mime_type?: string };
+    if (!meta.url) return { ok: false, error: "media has no url" };
+
+    // The URL is on a Meta host and still requires the token.
+    const file = await fetch(meta.url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!file.ok) return { ok: false, error: `media fetch ${file.status}` };
+
+    return {
+      ok: true,
+      bytes: new Uint8Array(await file.arrayBuffer()),
+      mime: meta.mime_type ?? "application/octet-stream",
+    };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "media download failed" };
+  }
+}
