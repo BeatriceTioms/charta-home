@@ -497,6 +497,74 @@ const [agencyOwnerEdit] = await asUser(userA.id, `select name from agencies wher
 check("the owner can still rename the agency",
   agencyOwnerEdit.name === "Horizon Realty Group", agencyOwnerEdit.name);
 
+
+/* ------------------------------------------- what a colleague is shown --
+ * Navigation, not security: RLS still decides what the data gives up. But the
+ * middleware closes routes using this column, so it has to be right, and the
+ * one function an owner uses to tidy a menu must never be a way to promote
+ * somebody or to lock the last owner out of their own agency.
+ */
+const caretaker = await q(`insert into auth.users (email) values ('fatou@horizonrealty.gn') returning id`);
+await asUser(userA.id, `
+  insert into memberships (user_id, agency_id, role, full_name)
+  values ('${caretaker[0].id}', '${a1.id}', 'caretaker', 'Fatou')`);
+
+const [caretakerPages] = await asUser(userA.id,
+  `select allowed_pages from memberships where user_id = '${caretaker[0].id}'`);
+check("a caretaker starts on the jobs, not the money",
+  caretakerPages.allowed_pages.includes("maintenance") &&
+  !caretakerPages.allowed_pages.includes("rent"),
+  caretakerPages.allowed_pages.join(", "));
+
+const [ownerPages] = await asUser(userA.id,
+  `select allowed_pages from memberships where user_id = '${userA.id}'`);
+check("an owner starts with everything",
+  ownerPages.allowed_pages.length === 4, ownerPages.allowed_pages.join(", "));
+
+await asUser(userA.id,
+  `select public.set_member_pages('${a1.id}', '${caretaker[0].id}', array['dashboard','apartments'])`);
+const [narrowed] = await asUser(userA.id,
+  `select allowed_pages, role from memberships where user_id = '${caretaker[0].id}'`);
+check("an owner can change what a colleague sees",
+  narrowed.allowed_pages.join(",") === "dashboard,apartments", narrowed.allowed_pages.join(","));
+check("changing pages cannot change the role",
+  narrowed.role === "caretaker", `role stayed ${narrowed.role}`);
+
+let caretakerBlocked = false;
+try {
+  await asUser(caretaker[0].id,
+    `select public.set_member_pages('${a1.id}', '${manager.id}', array['dashboard'])`);
+} catch {
+  caretakerBlocked = true;
+}
+check("a caretaker cannot rewrite anybody's menu", caretakerBlocked);
+
+let selfBlocked = false;
+try {
+  await asUser(userA.id,
+    `select public.set_member_pages('${a1.id}', '${userA.id}', array['dashboard'])`);
+} catch {
+  selfBlocked = true;
+}
+check("an owner cannot narrow their own access", selfBlocked,
+  "otherwise the last owner could lock themselves out");
+
+let unknownPageBlocked = false;
+try {
+  await asUser(userA.id,
+    `select public.set_member_pages('${a1.id}', '${caretaker[0].id}', array['payroll'])`);
+} catch {
+  unknownPageBlocked = true;
+}
+check("a page that does not exist is refused", unknownPageBlocked,
+  "a typo would silently hide a link instead");
+
+// The roster the settings page reads has to carry it, or the interface cannot
+// show what it is about to change.
+const roster = await asUser(userA.id, `select * from list_agency_members('${a1.id}')`);
+check("the roster carries each colleague's pages",
+  roster.every((m) => Array.isArray(m.allowed_pages)), `${roster.length} member(s)`);
+
 await db.close();
 
 const failed = results.filter((r) => !r.pass);

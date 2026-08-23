@@ -36,6 +36,7 @@ export type AgencyMember = {
   full_name: string | null;
   role: MemberRole;
   email: string;
+  allowed_pages: string[];
   created_at: string;
 };
 
@@ -44,6 +45,8 @@ export type Membership = {
   agency_id: string;
   role: MemberRole;
   full_name: string | null;
+  /** Sidebar pages this member may open. Navigation, not the data guard. */
+  allowed_pages: string[];
   created_at: string;
 };
 
@@ -460,6 +463,10 @@ export type Database = {
       next_period_start: {
         Args: { from_period: string; cycle_in: LeaseCycle };
         Returns: string;
+      };
+      set_member_pages: {
+        Args: { target_agency: string; target_user: string; pages: string[] };
+        Returns: void;
       };
       wa_route_inbound: {
         Args: { from_phone: string; body: string };

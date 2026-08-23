@@ -27,6 +27,60 @@ type ReminderKey = "before" | keyof typeof FIXED_OFFSETS;
 const LEAD_DAYS = [1, 2, 3, 5, 7, 10, 14];
 const DEFAULT_LEAD = 3;
 
+/**
+ * The sidebar pages an owner can grant. Settings is absent on purpose: it is
+ * where a person sets their own name, and its agency fields are owner only
+ * already, so withholding it would only strand somebody with a typo in it.
+ */
+const PAGES = ["dashboard", "apartments", "rent", "maintenance"] as const;
+
+/** What each role gets ticked by default, matching default_pages_for_role. */
+const PAGES_BY_ROLE: Record<string, string[]> = {
+  owner: ["dashboard", "apartments", "rent", "maintenance"],
+  manager: ["dashboard", "apartments", "rent", "maintenance"],
+  accountant: ["dashboard", "rent"],
+  caretaker: ["dashboard", "maintenance"],
+};
+
+/** Tick boxes for the sidebar, used when inviting and when correcting later. */
+function PageChoices({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string[];
+  onChange: (next: string[]) => void;
+  disabled?: boolean;
+}) {
+  const { t } = useI18n();
+  const labels = t.dash.nav;
+  return (
+    <div className="flex flex-wrap gap-2">
+      {PAGES.map((page) => {
+        const on = value.includes(page);
+        return (
+          <button
+            key={page}
+            type="button"
+            disabled={disabled}
+            aria-pressed={on}
+            onClick={() =>
+              onChange(on ? value.filter((p) => p !== page) : [...value, page])
+            }
+            className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold transition disabled:opacity-50 ${
+              on
+                ? "border-onyx bg-onyx text-white dark:border-soft-500 dark:bg-soft-500 dark:text-azure-950"
+                : "border-azure-900/15 text-onyx/60 hover:bg-azure-900/5 dark:border-white/15 dark:text-white/60 dark:hover:bg-white/10"
+            }`}
+          >
+            {labels[page === "dashboard" ? "dashboard" : page === "apartments" ? "apartments" : page === "rent" ? "rent" : "maintenance"]}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 /** What the dispatcher will substitute when the reminder goes out. */
 const PLACEHOLDERS = ["tenant", "amount", "period", "days", "agency", "apartment"];
 
@@ -76,12 +130,13 @@ function InviteModal({
   const m = t.dash.settings.inviteModal;
   const [error, setError] = useState<string>();
   const [sending, setSending] = useState(false);
+  const [role, setRole] = useState<MemberRole>("manager");
+  const [pages, setPages] = useState<string[]>(PAGES_BY_ROLE.manager);
 
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const data = new FormData(e.currentTarget);
     const email = String(data.get("email") ?? "").trim();
-    const role = String(data.get("role") ?? "manager") as MemberRole;
     if (!/^\S+@\S+\.\S+$/.test(email)) {
       setError(t.contactPage.form.errorEmail);
       return;
@@ -96,7 +151,7 @@ function InviteModal({
     setSending(true);
     // The locale decides which language the invitation is written in, so it
     // has to be the one the sender is working in, not a fixed French.
-    const result = await sb.inviteMember(locale, { agencyId, email, role });
+    const result = await sb.inviteMember(locale, { agencyId, email, role, pages });
     setSending(false);
     if (!result.ok) {
       setError(
@@ -123,13 +178,27 @@ function InviteModal({
         <Field label={m.email} hint={m.emailHint} error={error}>
           <input name="email" type="email" placeholder="collegue@agence.com" className={fieldCls} />
         </Field>
-        <Field label={m.role}>
-          <select name="role" defaultValue="manager" className={fieldCls}>
+        <Field label={m.role} hint={m.roleHint} hintAfter>
+          <select
+            name="role"
+            value={role}
+            onChange={(e) => {
+              const next = e.target.value as MemberRole;
+              setRole(next);
+              // The role suggests the pages; the owner can still adjust them.
+              setPages(PAGES_BY_ROLE[next] ?? ["dashboard"]);
+            }}
+            className={fieldCls}
+          >
             <option value="owner">{m.roles.owner}</option>
             <option value="manager">{m.roles.manager}</option>
             <option value="accountant">{m.roles.accountant}</option>
             <option value="caretaker">{m.roles.caretaker}</option>
           </select>
+        </Field>
+
+        <Field label={m.pages} hint={m.pagesHint} hintAfter plain>
+          <PageChoices value={pages} onChange={setPages} />
         </Field>
         <ModalActions onCancel={onClose} submitLabel={sending ? t.dash.common.saving : m.submit} />
       </form>
@@ -288,7 +357,7 @@ export function SettingsForm({ data }: { data: SettingsData }) {
   const [channels, setChannels] = useState({ whatsapp: true, sms: false, email: true });
 
   const [members, setMembers] = useState<
-    { userId?: string; name: string; role: string; email: string }[]
+    { userId?: string; name: string; role: string; email: string; pages: string[] }[]
   >(
     data?.members.length
       ? data.members.map((m: AgencyMember) => ({
@@ -296,13 +365,27 @@ export function SettingsForm({ data }: { data: SettingsData }) {
           name: m.full_name ?? m.email.split("@")[0],
           role: s.inviteModal.roles[m.role],
           email: m.email,
+          pages: m.allowed_pages ?? PAGES_BY_ROLE[m.role] ?? ["dashboard"],
         }))
       : [
-          { name: "Amina Sow", role: s.inviteModal.roles.owner, email: "amina@horizonrealty.com" },
-          { name: "Karim Diallo", role: s.inviteModal.roles.manager, email: "karim@horizonrealty.com" },
-          { name: "Fatou Ba", role: s.inviteModal.roles.caretaker, email: "fatou@horizonrealty.com" },
+          { name: "Amina Sow", role: s.inviteModal.roles.owner, email: "amina@horizonrealty.com", pages: [...PAGES] },
+          { name: "Karim Diallo", role: s.inviteModal.roles.manager, email: "karim@horizonrealty.com", pages: PAGES_BY_ROLE.manager },
+          { name: "Fatou Ba", role: s.inviteModal.roles.caretaker, email: "fatou@horizonrealty.com", pages: PAGES_BY_ROLE.caretaker },
         ]
   );
+
+  /** Correcting what a colleague sees, after they have already been invited. */
+  const saveMemberPages = async (userId: string | undefined, next: string[]) => {
+    setMembers((list) =>
+      list.map((m) => (m.userId === userId ? { ...m, pages: next } : m))
+    );
+    if (!live || !userId) return;
+    const result = await sb.setMemberPages(locale, { agencyId, userId, pages: next });
+    if (!result.ok) {
+      notify(t.dash.common.saveFailed);
+      router.refresh();
+    }
+  };
 
   const [inviting, setInviting] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -630,29 +713,47 @@ export function SettingsForm({ data }: { data: SettingsData }) {
         <Card>
           <CardTitle>{s.team}</CardTitle>
           <div className="divide-y divide-azure-900/8 dark:divide-white/8">
-            {members.map((m) => (
-              <div key={m.email} className="flex items-center justify-between gap-4 py-3.5">
-                <div className="flex min-w-0 items-center gap-3">
-                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-azure-800 text-xs font-bold text-soft-500">
-                    {m.name.split(" ").map((w) => w[0]).join("")}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-bold text-azure-950 dark:text-white">{m.name}</p>
-                    <p className="truncate text-xs text-onyx/45 dark:text-white/45">
-                      {m.role} · {m.email}
-                    </p>
+            {members.map((m) => {
+              // An owner may not narrow their own view, which would be a way
+              // to lock the last owner out of the agency's own settings.
+              const isSelf = Boolean(m.userId) && m.userId === data?.myUserId;
+              return (
+                <div key={m.email} className="py-3.5">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-azure-800 text-xs font-bold text-soft-500">
+                        {m.name.split(" ").map((w) => w[0]).join("")}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-bold text-azure-950 dark:text-white">{m.name}</p>
+                        <p className="truncate text-xs text-onyx/45 dark:text-white/45">
+                          {m.role} · {m.email}
+                        </p>
+                      </div>
+                    </div>
+                    {canEdit && !isSelf && (
+                      <button
+                        onClick={() => removeMember(m)}
+                        className="shrink-0 rounded-full border border-azure-900/15 px-3.5 py-1.5 text-xs font-semibold text-onyx/55 transition hover:bg-azure-900/5 dark:border-white/15 dark:text-white/55 dark:hover:bg-white/10"
+                      >
+                        {s.remove}
+                      </button>
+                    )}
                   </div>
+                  {canEdit && !isSelf && (
+                    <div className="mt-3 pl-13">
+                      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-onyx/40 dark:text-white/40">
+                        {s.inviteModal.pages}
+                      </p>
+                      <PageChoices
+                        value={m.pages}
+                        onChange={(next) => saveMemberPages(m.userId, next)}
+                      />
+                    </div>
+                  )}
                 </div>
-                {canEdit && (
-                  <button
-                    onClick={() => removeMember(m)}
-                    className="shrink-0 rounded-full border border-azure-900/15 px-3.5 py-1.5 text-xs font-semibold text-onyx/55 transition hover:bg-azure-900/5 dark:border-white/15 dark:text-white/55 dark:hover:bg-white/10"
-                  >
-                    {s.remove}
-                  </button>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
           {canEdit && (
             <button

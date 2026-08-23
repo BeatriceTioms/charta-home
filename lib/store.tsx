@@ -43,7 +43,7 @@ type StoreValue = {
   activity: ActivityItem[];
   agencyInfo: { name: string; city: string; country: string; whatsapp: string; currency: string } | null;
   /** The signed in person. Their own name, and what their role lets them do. */
-  currentUser: { name: string; email: string; role: MemberRole } | null;
+  currentUser: { name: string; email: string; role: MemberRole; allowedPages: string[] } | null;
   toasts: Toast[];
   /** The signed in agency, empty string on the mock. */
   agencyId: string;
@@ -154,7 +154,7 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 export type StoreSeed = {
   agencyId: string;
   agencyInfo?: { name: string; city: string; country: string; whatsapp: string; currency: string };
-  currentUser?: { name: string; email: string; role: MemberRole };
+  currentUser?: { name: string; email: string; role: MemberRole; allowedPages: string[] };
   buildings: Building[];
   tickets: Ticket[];
   technicians: Technician[];

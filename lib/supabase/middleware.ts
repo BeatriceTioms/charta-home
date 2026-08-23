@@ -31,5 +31,33 @@ export async function refreshSession(request: NextRequest, response: NextRespons
     data: { user },
   } = await supabase.auth.getUser();
 
-  return { response, user, configured: true };
+  return { response, user, configured: true, supabase };
+}
+
+/**
+ * The dashboard pages this user may open.
+ *
+ * Read here rather than trusted from the interface, because hiding a link is
+ * not the same as closing a route: a caretaker who has been given the address
+ * of the rent page would otherwise simply type it. What is behind these pages
+ * is still guarded by row level security, so this decides what somebody is
+ * shown, not what they could reach if this were wrong.
+ */
+export async function allowedPagesFor(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string
+): Promise<string[] | null> {
+  const { data, error } = await supabase
+    .from("memberships")
+    .select("allowed_pages")
+    .eq("user_id", userId)
+    .limit(1)
+    .maybeSingle();
+
+  // A failure here must not lock somebody out of their own dashboard, so an
+  // error reads as "no opinion" and the request carries on. That covers the
+  // window between a deployment and its migration, when the column does not
+  // exist yet and every dashboard route would otherwise redirect.
+  if (error || !data) return null;
+  return (data.allowed_pages as string[] | null) ?? null;
 }

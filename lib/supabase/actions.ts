@@ -584,7 +584,7 @@ export async function upsertReminderRules(
  */
 export async function inviteMember(
   locale: string,
-  input: { agencyId: string; email: string; role: MemberRole }
+  input: { agencyId: string; email: string; role: MemberRole; pages?: string[] }
 ): Promise<ActionResult> {
   const caller = await createClient();
   const { data: allowed } = await caller.rpc("has_role", {
@@ -674,9 +674,33 @@ export async function inviteMember(
       agency_id: input.agencyId,
       role: input.role,
       full_name: email.split("@")[0],
+      // What the owner ticked, or what the role implies if they ticked nothing.
+      ...(input.pages && input.pages.length > 0 && { allowed_pages: input.pages }),
     },
     { onConflict: "user_id,agency_id" }
   );
+  if (error) return { ok: false, error: error.message };
+  revalidateDashboard(locale);
+  return { ok: true };
+}
+
+/**
+ * What a colleague sees in the sidebar.
+ *
+ * Owner only, and the function cannot reach role, so tidying a menu can never
+ * be the thing that quietly promotes somebody. It is navigation: RLS decides
+ * what the data will actually give up, whatever is ticked here.
+ */
+export async function setMemberPages(
+  locale: string,
+  input: { agencyId: string; userId: string; pages: string[] }
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_member_pages", {
+    target_agency: input.agencyId,
+    target_user: input.userId,
+    pages: input.pages,
+  });
   if (error) return { ok: false, error: error.message };
   revalidateDashboard(locale);
   return { ok: true };

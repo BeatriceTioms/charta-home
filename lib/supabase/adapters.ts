@@ -46,7 +46,7 @@ export type Portfolio = {
   agencyId: string;
   agencyInfo: { name: string; city: string; country: string; whatsapp: string; currency: string };
   /** The signed in person, not the agency. Drives the greeting and the roles. */
-  currentUser: { name: string; email: string; role: MemberRole };
+  currentUser: { name: string; email: string; role: MemberRole; allowedPages: string[] };
   buildings: Building[];
   tickets: Ticket[];
   technicians: Technician[];
@@ -77,11 +77,25 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
   // each one signs in as themselves, so the name on screen and the permissions
   // behind it both come from this row rather than from the agency.
   const { data: auth } = await supabase.auth.getUser();
+  const userId = auth.user?.id ?? "";
+
+  // Name and role are asked for on their own, and page access separately.
+  // A deployment reaches Vercel before its migration is pasted into Supabase,
+  // and in that window selecting a column that does not exist yet fails the
+  // whole row: the name fell back to the email and an owner was shown as a
+  // manager. Two queries cost one round trip and cannot do that.
   const { data: membership } = await supabase
     .from("memberships")
     .select("full_name, role")
     .eq("agency_id", agencyId)
-    .eq("user_id", auth.user?.id ?? "")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  const { data: access } = await supabase
+    .from("memberships")
+    .select("allowed_pages")
+    .eq("agency_id", agencyId)
+    .eq("user_id", userId)
     .maybeSingle();
 
   const currentUser = {
@@ -90,6 +104,12 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
     name: membership?.full_name?.trim() || auth.user?.email?.split("@")[0] || "",
     email: auth.user?.email ?? "",
     role: (membership?.role ?? "manager") as MemberRole,
+    // Navigation only. The route guard in middleware reads the same column,
+    // and RLS guards the data whatever either of them says. Before the
+    // migration lands there is no column, and everything is shown.
+    allowedPages: (access?.allowed_pages as string[] | null) ?? [
+      "dashboard", "apartments", "rent", "maintenance",
+    ],
   };
 
   const [

@@ -1153,6 +1153,9 @@ export const fr = {
         submit: "Envoyer l'invitation",
         invited: "Invitation envoyée à {email}.",
         emailHint: "Un email part vers cette adresse avec un lien pour créer le compte.",
+        roleHint: "Le rôle décide de ce qu'il peut modifier. Les pages ci dessous suivent, et restent ajustables.",
+        pages: "Pages accessibles",
+        pagesHint: "Ce qu'il verra dans le menu. Son compte reste toujours accessible.",
         errorNotOwner: "Seul un associé peut inviter un collègue.",
         errorEmailFailed:
           "Le compte est créé mais l'email n'est pas parti. Vérifiez la configuration de l'envoi.",
@@ -2329,6 +2332,9 @@ export const en: Dictionary = {
         submit: "Send invitation",
         invited: "Invitation sent to {email}.",
         emailHint: "An email goes to this address with a link to create the account.",
+        roleHint: "The role decides what they can change. The pages below follow from it, and stay adjustable.",
+        pages: "Pages they can open",
+        pagesHint: "What they see in the menu. Their own account stays reachable either way.",
         errorNotOwner: "Only a partner can invite a colleague.",
         errorEmailFailed:
           "The account exists but the email did not go out. Check the sending configuration.",

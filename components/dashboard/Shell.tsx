@@ -67,6 +67,19 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
       .map((part) => part[0]?.toUpperCase() ?? "")
       .join("") || "?";
 
+  // What this colleague may open. The middleware checks the same list, so a
+  // hidden link is a closed route rather than a link somebody could guess.
+  const mayOpen = (href: string) => {
+    const pages = currentUser?.allowedPages;
+    if (!pages) return true;
+    const section = href.replace("/dashboard", "").replace(/^\//, "").split("/")[0];
+    // Settings is never gated: it holds the person's own name, and its agency
+    // fields are owner only already.
+    if (section === "" ) return pages.includes("dashboard");
+    if (section === "settings") return true;
+    return pages.includes(section);
+  };
+
   const groups = [
     {
       label: t.dash.groups.main,
@@ -87,7 +100,9 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
       label: t.dash.groups.system,
       items: [{ label: t.dash.nav.settings, href: "/dashboard/settings", icon: ICONS.settings }],
     },
-  ];
+  ]
+    .map((group) => ({ ...group, items: group.items.filter((i) => mayOpen(i.href)) }))
+    .filter((group) => group.items.length > 0);
   const flatNav = groups.flatMap((g) => g.items);
 
   const isActive = (href: string) => {

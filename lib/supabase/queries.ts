@@ -163,9 +163,14 @@ export async function getSettingsData() {
     supabase.rpc("list_agency_members", { target_agency: agencyId }),
   ]);
 
+  // Needed so the roster can tell which row is the reader's own: an owner may
+  // not narrow their own access, and the interface should not offer to.
+  const { data: auth } = await supabase.auth.getUser();
+
   return {
     agency: membership.agencies,
     myRole: membership.role,
+    myUserId: auth.user?.id ?? "",
     reminderRules: (rules ?? []) as ReminderRuleRow[],
     members: (members ?? []) as AgencyMember[],
   };
