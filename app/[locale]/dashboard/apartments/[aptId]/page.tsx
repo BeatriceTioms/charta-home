@@ -13,6 +13,7 @@ import { Card, CardTitle, PageTitle, PhotoPlaceholder, RentChip, StatCard, Ticke
 import { Field, Modal, ModalActions, fieldCls } from "@/components/dashboard/Modal";
 import { PhotoGallery } from "@/components/dashboard/PhotoGallery";
 import { ReminderModal } from "@/components/dashboard/ReminderModal";
+import { PaymentSchedule } from "@/components/dashboard/PaymentSchedule";
 
 const WEEK = [
   { day: 5, key: "wed" },
@@ -456,6 +457,12 @@ export default function ApartmentPage() {
 
           <Card>
             <CardTitle>{t.dash.apartment.paymentHistory}</CardTitle>
+
+            {/* Which periods are settled, before the detail of how. */}
+            <div className="mb-5">
+              <PaymentSchedule payments={apartment.payments} />
+            </div>
+
             {apartment.payments.length === 0 ? (
               <p className="text-sm text-onyx/45 dark:text-white/45">{t.dash.apartment.noPayments}</p>
             ) : (

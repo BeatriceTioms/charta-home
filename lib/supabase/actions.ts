@@ -81,25 +81,61 @@ export async function createLease(
   return { ok: true };
 }
 
+/**
+ * Money received, with the paper behind it.
+ *
+ * The proof arrives as a file rather than a path: it is uploaded here, under
+ * the agency's own folder in the private receipts bucket, so the client never
+ * chooses where anything lands. A failed upload does not lose the payment,
+ * because the payment is what matters and the slip can be attached later.
+ *
+ * Fields on the form: leaseId, agencyId, amount, method, paidOn, periods,
+ * reference, and optionally proof.
+ */
 export async function recordPayment(
   locale: string,
-  input: {
-    leaseId: string;
-    amount: number;
-    method: PaymentMethod;
-    paidOn: string;
-    reference?: string;
-  }
+  form: FormData
 ): Promise<ActionResult> {
   const supabase = await createClient();
+
+  const leaseId = String(form.get("leaseId") ?? "");
+  const agencyId = String(form.get("agencyId") ?? "");
+  const amount = Number(form.get("amount") ?? 0);
+  if (!leaseId || !Number.isFinite(amount) || amount <= 0) {
+    return { ok: false, error: "payment-invalid" };
+  }
+
+  let proofPath: string | null = null;
+  const proof = form.get("proof");
+  if (proof instanceof File && proof.size > 0) {
+    const check = await validateImage(proof);
+    if (!check.ok) return { ok: false, error: `proof-${check.reason}` };
+
+    // The policy on this bucket matches on the leading folder being an agency
+    // the caller belongs to, so the path is built here and not by the browser.
+    const path = `${agencyId}/${leaseId}/${crypto.randomUUID()}`;
+    const { error: uploadError } = await supabase.storage
+      .from("receipts")
+      .upload(path, proof, { contentType: check.mime, upsert: false });
+    if (uploadError) return { ok: false, error: uploadError.message };
+    proofPath = path;
+  }
+
   const { error } = await supabase.rpc("record_payment", {
-    target_lease: input.leaseId,
-    payment_amount: input.amount,
-    payment_method_in: input.method,
-    paid_on_in: input.paidOn,
-    reference_in: input.reference ?? null,
+    target_lease: leaseId,
+    payment_amount: amount,
+    payment_method_in: String(form.get("method") ?? "cash") as PaymentMethod,
+    paid_on_in: String(form.get("paidOn") ?? ""),
+    reference_in: String(form.get("reference") ?? "") || null,
+    periods_covered: Math.max(1, Number(form.get("periods") ?? 1)),
+    proof_path_in: proofPath,
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) {
+    // The slip is orphaned if the payment failed; better than keeping a file
+    // that belongs to a record which does not exist.
+    if (proofPath) await supabase.storage.from("receipts").remove([proofPath]);
+    return { ok: false, error: error.message };
+  }
   revalidateDashboard(locale);
   return { ok: true };
 }

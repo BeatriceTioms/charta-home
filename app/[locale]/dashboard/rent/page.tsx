@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { byPeriodDesc, cycleLabel, shortRef, type RentStatus } from "@/lib/data";
 import { useBuilding } from "@/lib/building-context";
 import { useStore } from "@/lib/store";
@@ -34,21 +34,33 @@ function RecordPaymentModal({ onClose }: { onClose: () => void }) {
     leased.find((a) => a.rentStatus !== "paid")?.id ?? leased[0]?.id ?? ""
   );
 
+  const [periods, setPeriods] = useState(1);
+  const [proof, setProof] = useState<File | undefined>();
+  const [amount, setAmount] = useState(0);
+
   const matches = leased.filter((a) =>
     `${a.tenant!.name} ${a.label}`.toLowerCase().includes(query.trim().toLowerCase())
   );
   const selected = building.apartments.find((a) => a.id === aptId);
 
+  // Each tenant has their own rent, so changing who is paying resets what is
+  // suggested, times however many periods are being settled.
+  useEffect(() => {
+    if (selected) setAmount(selected.rent * periods);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.id]);
+
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!selected) return;
     const data = new FormData(e.currentTarget);
-    const amount = Number(data.get("amount") ?? selected.rent);
     recordPayment(building.id, selected.id, {
       amount,
       method: String(data.get("method") ?? "cash"),
       paidOn: String(data.get("date") ?? ""),
       reference: String(data.get("reference") ?? ""),
+      periods,
+      proof,
     });
     notify(f(m.recorded, { amount: fmt(amount) }));
     onClose();
@@ -106,7 +118,8 @@ function RecordPaymentModal({ onClose }: { onClose: () => void }) {
                 type="number"
                 min={0}
                 step={10}
-                defaultValue={selected?.rent ?? 0}
+                value={amount}
+                onChange={(e) => setAmount(Number(e.target.value))}
                 className={fieldCls}
               />
             </Field>
@@ -114,6 +127,34 @@ function RecordPaymentModal({ onClose }: { onClose: () => void }) {
               <input name="date" type="date" defaultValue="2026-08-08" className={fieldCls} />
             </Field>
           </div>
+
+          {/* Paying several periods at once is common, so it is a field here
+              rather than something to work out on a calculator. */}
+          <Field
+            label={m.periods}
+            hint={periods > 1 && selected ? f(m.periodsHint, {
+              count: String(periods),
+              cycle: cycleLabel(selected.cycle, t.dash.rent).toLowerCase(),
+              total: fmt(selected.rent * periods),
+            }) : undefined}
+            hintAfter
+          >
+            <input
+              name="periods"
+              type="number"
+              min={1}
+              max={60}
+              value={periods}
+              onChange={(e) => {
+                const next = Math.max(1, Number(e.target.value) || 1);
+                setPeriods(next);
+                // The amount follows the count, because someone entering six
+                // months means six months of rent unless they say otherwise.
+                if (selected) setAmount(selected.rent * next);
+              }}
+              className={fieldCls}
+            />
+          </Field>
           <Field label={m.method}>
             <select name="method" defaultValue="cash" className={fieldCls}>
               <option value="cash">{m.methods.cash}</option>
@@ -124,6 +165,18 @@ function RecordPaymentModal({ onClose }: { onClose: () => void }) {
           </Field>
           <Field label={m.reference}>
             <input name="reference" className={fieldCls} />
+          </Field>
+
+          {/* No card processing here, so the proof of a payment is a
+              photograph of a slip or an Orange Money confirmation. */}
+          <Field label={m.proof} hint={m.proofHint} hintAfter>
+            <input
+              name="proof"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={(e) => setProof(e.target.files?.[0])}
+              className="block w-full text-sm text-onyx/70 file:mr-3 file:rounded-full file:border-0 file:bg-azure-900/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-azure-900 hover:file:bg-azure-900/15 dark:text-white/70 dark:file:bg-white/10 dark:file:text-white"
+            />
           </Field>
           <ModalActions onCancel={onClose} submitLabel={m.submit} />
         </form>

@@ -424,6 +424,8 @@ export type Database = {
           payment_method_in?: PaymentMethod;
           paid_on_in?: string;
           reference_in?: string | null;
+          periods_covered?: number;
+          proof_path_in?: string | null;
         };
         Returns: string;
       };
@@ -453,6 +455,10 @@ export type Database = {
       };
       ensure_rent_charge: {
         Args: { target_lease: string; period: string };
+        Returns: string;
+      };
+      next_period_start: {
+        Args: { from_period: string; cycle_in: LeaseCycle };
         Returns: string;
       };
       set_my_display_name: {

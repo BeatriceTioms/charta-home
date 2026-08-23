@@ -54,10 +54,13 @@ check("the real validator still checks magic bytes",
 check("the real validator returns the sniffed type, not the declared one",
   src.includes("return { ok: true, mime: match.mime }"));
 
-// Every upload path must actually call it.
+// Every upload path must actually call it. Matched on the call rather than on
+// one variable name, because the parameter is called `file` in some actions
+// and `proof` in others, and a canary that fails on a rename teaches people to
+// edit the canary.
 const actions = readFileSync("lib/supabase/actions.ts", "utf8");
 const uploads = (actions.match(/\.upload\(/g) ?? []).length;
-const validations = (actions.match(/await validateImage\(file\)/g) ?? []).length;
+const validations = (actions.match(/await validateImage\(/g) ?? []).length;
 check("every upload path validates first", uploads === validations, `${uploads} uploads, ${validations} checks`);
 
 const failed = results.filter((r) => !r.pass);

@@ -97,7 +97,16 @@ type StoreValue = {
   recordPayment: (
     buildingId: string,
     apartmentId: string,
-    input: { amount: number; method: string; paidOn: string; reference?: string }
+    input: {
+      amount: number;
+      method: string;
+      paidOn: string;
+      reference?: string;
+      /** How many rent periods this covers. Six for half a year up front. */
+      periods?: number;
+      /** The deposit slip or transfer screenshot behind it. */
+      proof?: File;
+    }
   ) => void;
   markReminded: (buildingId: string, apartmentId: string) => void;
 
@@ -506,15 +515,20 @@ export function StoreProvider({
         .find((b) => b.id === buildingId)
         ?.apartments.find((a) => a.id === apartmentId)?.leaseId;
       if (leaseId) {
-        persist(() =>
-          sb.recordPayment(locale, {
-            leaseId,
-            amount: input.amount,
-            method: METHODS[input.method] ?? "other",
-            paidOn: input.paidOn,
-            reference: input.reference || undefined,
-          })
-        );
+        // A form rather than an object, because the proof of payment is a
+        // file and the upload belongs on the server side of the boundary.
+        persist(async () => {
+          const form = new FormData();
+          form.set("leaseId", leaseId);
+          form.set("agencyId", agencyId);
+          form.set("amount", String(input.amount));
+          form.set("method", METHODS[input.method] ?? "other");
+          form.set("paidOn", input.paidOn);
+          form.set("reference", input.reference ?? "");
+          form.set("periods", String(input.periods ?? 1));
+          if (input.proof) form.set("proof", input.proof);
+          return sb.recordPayment(locale, form);
+        });
       }
       setBuildings((list) =>
         list.map((b) => {
