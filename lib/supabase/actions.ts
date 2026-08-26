@@ -50,6 +50,28 @@ export async function addApartment(
   return { ok: true, id: data.id };
 }
 
+/**
+ * Who this number already belongs to, if anyone.
+ *
+ * The lease form asks while the number is being typed, so an agency is told
+ * "already on file for Beatrice Tiomela" before they submit rather than
+ * afterwards, by reading a name they did not enter.
+ */
+export async function residentByPhone(
+  input: { agencyId: string; phone: string }
+): Promise<{ name: string } | null> {
+  const phone = toE164(input.phone);
+  if (!phone) return null;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("resident_by_phone", {
+    target_agency: input.agencyId,
+    phone,
+  });
+  if (error || !data || data.length === 0) return null;
+  return { name: data[0].full_name };
+}
+
 export async function createLease(
   locale: string,
   input: {
@@ -64,12 +86,21 @@ export async function createLease(
     endsOn?: string | null;
   }
 ): Promise<ActionResult> {
+  // A number that cannot be read at all is a typo worth stopping on, rather
+  // than a tenant quietly recorded with no way to reach them.
+  const phone = toE164(input.residentPhone);
+  if (input.residentPhone.trim() && !phone) {
+    return { ok: false, error: "lease-bad-phone" };
+  }
+
   const supabase = await createClient();
   const { error } = await supabase.rpc("create_lease", {
     target_apartment: input.apartmentId,
     resident_name: input.residentName,
-    // The form shows, and suggests, a spaced number. The column wants E.164.
-    resident_phone: toE164(input.residentPhone),
+    // The form shows, and suggests, a spaced number. The column wants E.164,
+    // and blank has to reach the database as null, not as the empty string
+    // the column's own check refuses.
+    resident_phone: phone || null,
     rent: input.rent,
     cycle_in: input.cycle,
     starts_on_in: input.startsOn,

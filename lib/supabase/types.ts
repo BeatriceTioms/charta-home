@@ -411,7 +411,7 @@ export type Database = {
         Args: {
           target_apartment: string;
           resident_name: string;
-          resident_phone: string;
+          resident_phone: string | null;
           rent: number;
           cycle_in?: LeaseCycle;
           starts_on_in?: string;
@@ -467,6 +467,10 @@ export type Database = {
       set_member_pages: {
         Args: { target_agency: string; target_user: string; pages: string[] };
         Returns: void;
+      };
+      resident_by_phone: {
+        Args: { target_agency: string; phone: string };
+        Returns: { resident_id: string; full_name: string }[];
       };
       wa_route_inbound: {
         Args: { from_phone: string; body: string };

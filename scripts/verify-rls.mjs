@@ -630,6 +630,86 @@ check("a September half year bills July to December",
   iso(semester.period_start) === "07-01" && iso(semester.period_end) === "12-31",
   `${iso(semester.period_start)} to ${iso(semester.period_end)}`);
 
+
+/* ------------------------------------------- the tenant you typed --------
+ * Adding a tenant showed somebody else's name. create_lease matched a
+ * resident by phone and then discarded the name that had just been entered,
+ * so an agency reusing a number got the previous tenant back with nothing
+ * said about it. The number stays the identity, because the WhatsApp webhook
+ * finds a tenant by the number they message from, but the name has to follow
+ * what was typed.
+ */
+const [aptOne] = await asUser(userA.id, `
+  insert into apartments (agency_id, building_id, label, rooms, bathrooms, sqm, base_rent)
+  values ('${a1.id}', '${bA.id}', 'Ident 1', 1, 1, 30, 500000) returning id`);
+const [aptTwo] = await asUser(userA.id, `
+  insert into apartments (agency_id, building_id, label, rooms, bathrooms, sqm, base_rent)
+  values ('${a1.id}', '${bA.id}', 'Ident 2', 1, 1, 30, 500000) returning id`);
+
+await asUser(userA.id, `select public.create_lease('${aptOne.id}', 'First Tenant',
+  '+224620555001', 500000, 'monthly'::lease_cycle, date '2026-08-01', 0, null)`);
+await asUser(userA.id, `select public.create_lease('${aptTwo.id}', 'Second Tenant',
+  '+224620555001', 500000, 'monthly'::lease_cycle, date '2026-08-01', 0, null)`);
+
+const [second] = await asUser(userA.id, `
+  select r.full_name from v_apartment_state s
+  join residents r on r.id = s.resident_id
+  where s.apartment_id = '${aptTwo.id}'`);
+check("the name entered is the name shown",
+  second.full_name === "Second Tenant", `shows ${second.full_name}`);
+
+const sharedPhone = await asUser(userA.id, `
+  select count(*)::int as n from residents
+  where agency_id = '${a1.id}' and phone_e164 = '+224620555001'`);
+check("one number stays one person",
+  sharedPhone[0].n === 1,
+  "two residents on one number would make WhatsApp routing ambiguous");
+
+// A tenant with no number at all has to be possible, and two of them must not
+// collapse into each other.
+await asUser(userA.id, `
+  insert into apartments (agency_id, building_id, label, rooms, bathrooms, sqm, base_rent)
+  values ('${a1.id}', '${bA.id}', 'NoPhone 1', 1, 1, 30, 400000)`);
+const [aptNo1] = await asUser(userA.id,
+  `select id from apartments where label = 'NoPhone 1' and agency_id = '${a1.id}'`);
+await asUser(userA.id, `
+  insert into apartments (agency_id, building_id, label, rooms, bathrooms, sqm, base_rent)
+  values ('${a1.id}', '${bA.id}', 'NoPhone 2', 1, 1, 30, 400000)`);
+const [aptNo2] = await asUser(userA.id,
+  `select id from apartments where label = 'NoPhone 2' and agency_id = '${a1.id}'`);
+
+let blankWorks = true;
+try {
+  await asUser(userA.id, `select public.create_lease('${aptNo1.id}', 'No Number One',
+    null, 400000, 'monthly'::lease_cycle, date '2026-08-01', 0, null)`);
+  await asUser(userA.id, `select public.create_lease('${aptNo2.id}', 'No Number Two',
+    null, 400000, 'monthly'::lease_cycle, date '2026-08-01', 0, null)`);
+} catch {
+  blankWorks = false;
+}
+check("a tenant without a phone can be added", blankWorks);
+
+const [noPhoneTwo] = await asUser(userA.id, `
+  select r.full_name from v_apartment_state s
+  join residents r on r.id = s.resident_id
+  where s.apartment_id = '${aptNo2.id}'`);
+check("two tenants without phones stay two people",
+  noPhoneTwo?.full_name === "No Number Two", `shows ${noPhoneTwo?.full_name}`);
+
+let namelessRefused = false;
+try {
+  await asUser(userA.id, `select public.create_lease('${aptOne.id}', '   ',
+    '+224620555009', 500000, 'monthly'::lease_cycle, date '2026-08-01', 0, null)`);
+} catch {
+  namelessRefused = true;
+}
+check("a lease with no tenant name is refused", namelessRefused);
+
+const lookup = await asUser(userA.id,
+  `select full_name from resident_by_phone('${a1.id}', '+224620555001')`);
+check("the form can ask who a number belongs to",
+  lookup[0]?.full_name === "Second Tenant", lookup[0]?.full_name);
+
 await db.close();
 
 const failed = results.filter((r) => !r.pass);

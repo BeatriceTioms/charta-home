@@ -808,6 +808,8 @@ export const fr = {
         tenantPlaceholder: "Mariam Diallo",
         phone: "Téléphone / WhatsApp",
         phonePlaceholder: "+224 620 00 00 00",
+        phoneInUse:
+          "Ce numéro est déjà enregistré pour {name}. En continuant, cette personne sera renommée avec le nom saisi ci dessus. Utilisez un autre numéro s'il s'agit de quelqu'un d'autre.",
         rent: "Loyer mensuel",
         rentFor: "Loyer convenu · {cycle}",
         rentHint: "Le prix demandé pour ce logement est de {asking}. Modifiez-le si vous avez convenu d'un autre montant avec ce locataire.",
@@ -1988,6 +1990,8 @@ export const en: Dictionary = {
         tenantPlaceholder: "Mariam Diallo",
         phone: "Phone / WhatsApp",
         phonePlaceholder: "+224 620 00 00 00",
+        phoneInUse:
+          "This number is already on file for {name}. Continuing will rename that person to the name above. Use a different number if this is somebody else.",
         rent: "Monthly rent",
         rentFor: "Agreed rent · {cycle}",
         rentHint: "This unit is asking {asking}. Change it if you agreed a different amount with this tenant.",

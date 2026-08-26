@@ -58,11 +58,25 @@ const source = await readFile(path.join(process.cwd(), "lib", "phone.ts"), "utf8
 const inCode = source.includes("/^\\+[1-9][0-9]{6,14}$/");
 check("isE164 matches the constraint the column carries", inMigration && inCode);
 
-/* Every write path that touches a phone column has to go through it. */
+/* Every write path that touches a phone column has to go through it.
+ *
+ * A call is not always written inline: the result is sometimes held in a
+ * variable first, because the action wants to check it before deciding what to
+ * send. Those names are collected so the canary follows the value rather than
+ * only matching the shape of one line, which would push people towards
+ * inlining a call to satisfy a test. */
 const actions = await readFile(path.join(process.cwd(), "lib", "supabase", "actions.ts"), "utf8");
+const normalised = new Set(
+  [...actions.matchAll(/(?:const|let)\s+(\w+)\s*=\s*toE164\(/g)].map((m) => m[1])
+);
 const rawWrites = [...actions.matchAll(/(phone_e164|resident_phone):\s*([^,\n]+)/g)]
   .map((m) => m[2].trim())
-  .filter((expr) => !expr.includes("toE164") && expr !== "null");
+  .filter((expr) => {
+    if (expr.includes("toE164") || expr === "null") return false;
+    // `phone || null` counts when `phone` came from toE164 above.
+    const root = expr.replace(/\s*\|\|\s*null$/, "").trim();
+    return !normalised.has(root);
+  });
 check(
   "no phone reaches the database unnormalised",
   rawWrites.length === 0,

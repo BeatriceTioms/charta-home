@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { byPeriodDesc, cycleLabel, type Apartment, type LeaseCycle } from "@/lib/data";
 import { useBuilding } from "@/lib/building-context";
 import { useStore } from "@/lib/store";
+import * as sb from "@/lib/supabase/actions";
 import { useMoney } from "@/lib/money";
 import { useI18n } from "@/lib/i18n/context";
 import { Card, CardTitle, PageTitle, PhotoPlaceholder, RentChip, StatCard, TicketChip } from "@/components/dashboard/ui";
@@ -36,12 +37,33 @@ function LeaseModal({
   defaultRent: number;
   onClose: () => void;
 }) {
-  const { t, f } = useI18n();
+  const { t, f, locale } = useI18n();
   const { building } = useBuilding();
-  const { addLease, notify } = useStore();
+  const { addLease, notify, agencyId } = useStore();
   const { fmt } = useMoney();
   const m = t.dash.apartment.leaseModal;
   const [error, setError] = useState<string>();
+  // A number already in the book belongs to somebody, and reusing it renames
+  // them. Said here, while it is being typed, rather than discovered later by
+  // reading a tenant name nobody entered.
+  const [phone, setPhone] = useState("");
+  const [knownAs, setKnownAs] = useState<string>();
+
+  useEffect(() => {
+    if (!agencyId || !phone.trim()) {
+      setKnownAs(undefined);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      const found = await sb.residentByPhone({ agencyId, phone });
+      if (!cancelled) setKnownAs(found?.name);
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [phone, agencyId]);
   // The rent's label names the cycle, so a daily let does not ask for a
   // monthly figure. It is the price agreed with this tenant, which is why it
   // starts at the unit's asking price rather than being fixed to it.
@@ -87,8 +109,19 @@ function LeaseModal({
           <input name="name" placeholder={m.tenantPlaceholder} className={fieldCls} />
         </Field>
         <Field label={m.phone}>
-          <input name="phone" placeholder={m.phonePlaceholder} className={fieldCls} />
+          <input
+            name="phone"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder={m.phonePlaceholder}
+            className={fieldCls}
+          />
         </Field>
+        {knownAs && (
+          <p className="-mt-1 rounded-2xl bg-soft-200/70 px-4 py-3 text-xs leading-relaxed text-azure-900 dark:bg-white/10 dark:text-white/75">
+            {f(m.phoneInUse, { name: knownAs })}
+          </p>
+        )}
         <div className="grid grid-cols-2 gap-3">
           <Field label={f(m.rentFor, { cycle: cycleLabel(cycle, t.dash.rent) })}>
             <input name="rent" type="number" min={0} step={50} defaultValue={defaultRent} className={fieldCls} />
