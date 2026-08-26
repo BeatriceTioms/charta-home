@@ -565,6 +565,71 @@ const roster = await asUser(userA.id, `select * from list_agency_members('${a1.i
 check("the roster carries each colleague's pages",
   roster.every((m) => Array.isArray(m.allowed_pages)), `${roster.length} member(s)`);
 
+
+/* ------------------------------------------------ money always lands --
+ * A payment that allocates to nothing is money in the books and invisible on
+ * the schedule. It happened whenever a tenant who was already straight handed
+ * over more: the only period the payment could reach was the current one, and
+ * that was settled. Every franc has to end up against a period.
+ */
+const [aptPay] = await asUser(userA.id, `
+  insert into apartments (agency_id, building_id, label, rooms, bathrooms, sqm, base_rent)
+  values ('${a1.id}', '${bA.id}', 'Pay 1', 2, 1, 50, 1000000) returning id`);
+const [leasePay] = await asUser(userA.id, `
+  select public.create_lease('${aptPay.id}', 'Ahead', '+224620000777',
+    1000000, 'monthly'::lease_cycle, date '2026-08-01', 1, null) as id`);
+
+const allocated = async () => {
+  const [row] = await asUser(userA.id, `
+    select coalesce(sum(p.amount),0)::bigint as received,
+           coalesce((select sum(pa.amount) from payment_allocations pa
+                     join payments p2 on p2.id = pa.payment_id
+                     where p2.lease_id = '${leasePay.id}'), 0)::bigint as allocated
+    from payments p where p.lease_id = '${leasePay.id}'`);
+  return { received: Number(row.received), allocated: Number(row.allocated) };
+};
+
+await asUser(userA.id, `select public.record_payment('${leasePay.id}', 1000000, 'cash', date '2026-08-05')`);
+let money = await allocated();
+check("a payment settles the period it is for",
+  money.received === money.allocated, `${money.allocated} of ${money.received}`);
+
+await asUser(userA.id, `select public.record_payment('${leasePay.id}', 1000000, 'cash', date '2026-08-06')`);
+money = await allocated();
+check("paying while already straight rolls to the next period",
+  money.received === money.allocated && money.received === 2000000,
+  `${money.allocated} of ${money.received} allocated`);
+
+const ahead = await asUser(userA.id, `
+  select period_start, state from v_charge_status
+  where lease_id = '${leasePay.id}' order by period_start`);
+check("the next period is raised and marked paid",
+  ahead.length === 2 && ahead.every((r) => r.state === "paid"),
+  ahead.map((r) => String(r.period_start).slice(0, 10)).join(", "));
+
+await asUser(userA.id, `select public.record_payment('${leasePay.id}', 2500000, 'cash', date '2026-08-07')`);
+money = await allocated();
+check("an amount that is not whole periods still allocates fully",
+  money.received === money.allocated, `${money.allocated} of ${money.received}`);
+
+/* --------------------------------------------------------- half years -- */
+
+const [aptSem] = await asUser(userA.id, `
+  insert into apartments (agency_id, building_id, label, rooms, bathrooms, sqm, base_rent)
+  values ('${a1.id}', '${bA.id}', 'Sem 1', 2, 1, 50, 3000000) returning id`);
+await asUser(userA.id, `
+  select public.create_lease('${aptSem.id}', 'Half', '+224620000888',
+    3000000, 'semester'::lease_cycle, date '2026-09-03', 1, null)`);
+const [semester] = await asUser(userA.id, `
+  select period_start, period_end from rent_charges
+  where lease_id = (select id from leases where apartment_id = '${aptSem.id}')`);
+// The driver hands dates back as Date objects, so these are compared by
+// month and day rather than by slicing a string that is not ISO.
+const iso = (d) => new Date(d).toISOString().slice(5, 10);
+check("a September half year bills July to December",
+  iso(semester.period_start) === "07-01" && iso(semester.period_end) === "12-31",
+  `${iso(semester.period_start)} to ${iso(semester.period_end)}`);
+
 await db.close();
 
 const failed = results.filter((r) => !r.pass);

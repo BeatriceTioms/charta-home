@@ -103,6 +103,7 @@ function LeaseModal({
               <option value="daily">{t.dash.rent.daily}</option>
               <option value="monthly">{t.dash.rent.monthly}</option>
               <option value="quarterly">{t.dash.rent.quarterly}</option>
+              <option value="semester">{t.dash.rent.semester}</option>
               <option value="yearly">{t.dash.rent.yearly}</option>
             </select>
           </Field>
@@ -242,6 +243,7 @@ function EditTenantModal({
               <option value="daily">{t.dash.rent.daily}</option>
               <option value="monthly">{t.dash.rent.monthly}</option>
               <option value="quarterly">{t.dash.rent.quarterly}</option>
+              <option value="semester">{t.dash.rent.semester}</option>
               <option value="yearly">{t.dash.rent.yearly}</option>
             </select>
           </Field>

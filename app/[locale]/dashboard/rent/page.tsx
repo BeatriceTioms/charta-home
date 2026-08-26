@@ -72,45 +72,47 @@ function RecordPaymentModal({ onClose }: { onClose: () => void }) {
         <p className="text-sm text-onyx/55 dark:text-white/55">{m.noLeases}</p>
       ) : (
         <form onSubmit={submit} className="space-y-4">
-          <Field label={m.searchTenant}>
-            <div className="flex items-center gap-2.5 rounded-2xl border border-azure-900/15 bg-white px-4 py-3 dark:border-white/15 dark:bg-white/5">
-              <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-onyx/35 dark:text-white/35" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" />
-              </svg>
-              <input
-                value={query}
-                onChange={(e) => {
-                  setQuery(e.target.value);
-                  const first = leased.find((a) =>
-                    `${a.tenant!.name} ${a.label}`
-                      .toLowerCase()
-                      .includes(e.target.value.trim().toLowerCase())
-                  );
-                  if (first) setAptId(first.id);
-                }}
-                placeholder={m.searchTenant}
-                className="w-full bg-transparent text-[15px] text-onyx outline-none placeholder:text-onyx/30 dark:text-white dark:placeholder:text-white/30"
-              />
-            </div>
-          </Field>
-
+          {/* One dropdown instead of a search box above a five row listbox.
+              The tenant is who this payment is for, so their name is the
+              first thing on screen and stays visible while the rest is
+              filled in, rather than scrolling away inside a list. */}
           <Field label={m.selectTenant}>
             <select
               name="lease"
               value={aptId}
               onChange={(e) => setAptId(e.target.value)}
-              size={Math.min(5, Math.max(2, matches.length))}
-              className={`${fieldCls} py-2`}
+              className={fieldCls}
             >
-              {matches.length === 0 && <option disabled>{t.dash.common.noResults}</option>}
-              {matches.map((a) => (
+              {leased.map((a) => (
                 <option key={a.id} value={a.id}>
-                  {a.tenant!.name} · {a.label} · {fmt(a.rent)}
-                  {a.rentStatus !== "paid" ? ` · ${t.dash.status[a.rentStatus]}` : ""}
+                  {a.tenant!.name} · {a.label}
                 </option>
               ))}
             </select>
           </Field>
+
+          {selected && (
+            <div className="flex items-center gap-3 rounded-2xl bg-soft-200/60 px-4 py-3 dark:bg-white/10">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-azure-800 text-xs font-bold text-soft-500">
+                {selected.tenant!.name.split(" ").map((w) => w[0]).join("").slice(0, 2)}
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold text-azure-950 dark:text-white">
+                  {selected.tenant!.name}
+                </p>
+                <p className="truncate text-xs text-onyx/55 dark:text-white/55">
+                  {selected.label} · {fmt(selected.rent)} ·{" "}
+                  {cycleLabel(selected.cycle, t.dash.rent)}
+                  {selected.rentStatus !== "paid" && (
+                    <span className="font-semibold text-red-600 dark:text-red-400">
+                      {" "}· {t.dash.status[selected.rentStatus]}
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-3">
             <Field label={m.amount}>
               <input
@@ -128,41 +130,47 @@ function RecordPaymentModal({ onClose }: { onClose: () => void }) {
             </Field>
           </div>
 
-          {/* Paying several periods at once is common, so it is a field here
-              rather than something to work out on a calculator. */}
-          <Field
-            label={m.periods}
-            hint={periods > 1 && selected ? f(m.periodsHint, {
-              count: String(periods),
-              cycle: cycleLabel(selected.cycle, t.dash.rent).toLowerCase(),
-              total: fmt(selected.rent * periods),
-            }) : undefined}
-            hintAfter
-          >
-            <input
-              name="periods"
-              type="number"
-              min={1}
-              max={60}
-              value={periods}
-              onChange={(e) => {
-                const next = Math.max(1, Number(e.target.value) || 1);
-                setPeriods(next);
-                // The amount follows the count, because someone entering six
-                // months means six months of rent unless they say otherwise.
-                if (selected) setAmount(selected.rent * next);
-              }}
-              className={fieldCls}
-            />
-          </Field>
-          <Field label={m.method}>
-            <select name="method" defaultValue="cash" className={fieldCls}>
-              <option value="cash">{m.methods.cash}</option>
-              <option value="orange">{m.methods.orange}</option>
-              <option value="mtn">{m.methods.mtn}</option>
-              <option value="bank">{m.methods.bank}</option>
-            </select>
-          </Field>
+          {/* Periods and method share a row: both are short answers, and the
+              form was long enough to scroll, which put the tenant's name out
+              of sight exactly when somebody wanted to check it. */}
+          <div className="grid grid-cols-2 gap-3">
+            <Field label={m.periods}>
+              <input
+                name="periods"
+                type="number"
+                min={1}
+                max={60}
+                value={periods}
+                onChange={(e) => {
+                  const next = Math.max(1, Number(e.target.value) || 1);
+                  setPeriods(next);
+                  // The amount follows the count, because someone entering six
+                  // months means six months of rent unless they say otherwise.
+                  if (selected) setAmount(selected.rent * next);
+                }}
+                className={fieldCls}
+              />
+            </Field>
+            <Field label={m.method}>
+              <select name="method" defaultValue="cash" className={fieldCls}>
+                <option value="cash">{m.methods.cash}</option>
+                <option value="orange">{m.methods.orange}</option>
+                <option value="mtn">{m.methods.mtn}</option>
+                <option value="bank">{m.methods.bank}</option>
+              </select>
+            </Field>
+          </div>
+
+          {periods > 1 && selected && (
+            <p className="-mt-1 text-xs text-onyx/55 dark:text-white/55">
+              {f(m.periodsHint, {
+                count: String(periods),
+                cycle: cycleLabel(selected.cycle, t.dash.rent).toLowerCase(),
+                total: fmt(selected.rent * periods),
+              })}
+            </p>
+          )}
+
           <Field label={m.reference}>
             <input name="reference" className={fieldCls} />
           </Field>

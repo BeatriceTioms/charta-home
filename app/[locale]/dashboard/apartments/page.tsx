@@ -38,7 +38,8 @@ function AddApartmentModal({ onClose }: { onClose: () => void }) {
       bathrooms: Number(data.get("bathrooms") ?? 1),
       sqm: Number(data.get("sqm") ?? 60),
       rent: Number(data.get("rent") ?? 800),
-      cycle: (data.get("cycle") as LeaseCycle) ?? "monthly",
+      // The asking price. A tenancy sets its own rent and its own cycle.
+      cycle: "monthly",
       photos,
     });
     notify(`${label} · ${m.submit}`);
@@ -62,19 +63,13 @@ function AddApartmentModal({ onClose }: { onClose: () => void }) {
             <input name="sqm" type="number" min={10} defaultValue={60} className={fieldCls} />
           </Field>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label={m.rent}>
-            <input name="rent" type="number" min={0} step={50} defaultValue={800} className={fieldCls} />
-          </Field>
-          <Field label={m.cycle}>
-            <select name="cycle" defaultValue="monthly" className={fieldCls}>
-              <option value="daily">{m.daily}</option>
-              <option value="monthly">{m.monthly}</option>
-              <option value="quarterly">{m.quarterly}</option>
-              <option value="yearly">{m.yearly}</option>
-            </select>
-          </Field>
-        </div>
+        {/* No cycle here. How often rent falls due is a term of a tenancy,
+            not a property of a room, and it is agreed with whoever signs. The
+            field that used to sit beside this one was never saved: apartments
+            has no such column, so the choice vanished on the next refresh. */}
+        <Field label={m.rent} hint={m.rentHint} hintAfter>
+          <input name="rent" type="number" min={0} step={50} defaultValue={800} className={fieldCls} />
+        </Field>
         <Field plain label={m.photos} hint={m.photosHint}>
           <MultiPhotoPicker
             value={photos}

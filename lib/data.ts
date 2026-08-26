@@ -36,12 +36,12 @@ export type Technician = {
  * How often the rent falls due. These are the values of the `lease_cycle`
  * enum in Postgres, so the two must be changed together.
  */
-export type LeaseCycle = "daily" | "monthly" | "quarterly" | "yearly";
+export type LeaseCycle = "daily" | "monthly" | "quarterly" | "semester" | "yearly";
 
 /** The translated name of a cycle, from any dictionary section that carries all three. */
 export function cycleLabel(
   cycle: LeaseCycle,
-  labels: { daily: string; monthly: string; quarterly: string; yearly: string }
+  labels: { daily: string; monthly: string; quarterly: string; semester: string; yearly: string }
 ): string {
   return labels[cycle] ?? labels.monthly;
 }
