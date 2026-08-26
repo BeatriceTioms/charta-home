@@ -325,6 +325,11 @@ export function SettingsForm({ data }: { data: SettingsData }) {
   const [country, setCountry] = useState(data?.agency.country ?? "Guinea");
   const [city, setCity] = useState(data?.agency.city ?? "Conakry");
   const [currency, setCurrency] = useState(data?.agency.currency ?? "GNF");
+  // What a receipt needs and the agency row did not carry. Optional: a blank
+  // one leaves the line off the receipt rather than printing somebody else's.
+  const [address, setAddress] = useState(data?.agency.address ?? "");
+  const [email, setEmail] = useState(data?.agency.email ?? "");
+  const [registration, setRegistration] = useState(data?.agency.registration ?? "");
 
   const rules = data?.reminderRules;
   // The courtesy reminder is whichever rule sits before the due date.
@@ -422,6 +427,9 @@ export function SettingsForm({ data }: { data: SettingsData }) {
         country,
         city,
         currency,
+        address,
+        email,
+        registration,
       });
       if (!result.ok) {
         setSaving(false);
@@ -562,6 +570,41 @@ export function SettingsForm({ data }: { data: SettingsData }) {
               />
             </Field>
             <p className="text-xs leading-relaxed text-onyx/50 dark:text-white/45">{s.agencyNote}</p>
+
+            {/* Printed on receipts. A tenant keeps a receipt and may produce
+                it later, so these are the agency's own or they are absent. */}
+            <Field label={s.address}>
+              <input
+                value={address}
+                disabled={!canEdit}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder={s.addressPlaceholder}
+                className={fieldCls}
+              />
+            </Field>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label={s.email}>
+                <input
+                  value={email}
+                  type="email"
+                  disabled={!canEdit}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className={fieldCls}
+                />
+              </Field>
+              <Field label={s.registration}>
+                <input
+                  value={registration}
+                  disabled={!canEdit}
+                  onChange={(e) => setRegistration(e.target.value)}
+                  placeholder={s.registrationPlaceholder}
+                  className={fieldCls}
+                />
+              </Field>
+            </div>
+            <p className="text-xs leading-relaxed text-onyx/50 dark:text-white/45">
+              {s.receiptNote}
+            </p>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label={s.country}>
                 <select

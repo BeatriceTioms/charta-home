@@ -534,6 +534,9 @@ export async function updateAgencySettings(
     country: string;
     city: string;
     currency: string;
+    address?: string;
+    email?: string;
+    registration?: string;
   }
 ): Promise<ActionResult> {
   const supabase = await createClient();
@@ -545,6 +548,11 @@ export async function updateAgencySettings(
       country: input.country,
       city: input.city,
       currency: input.currency,
+      // Blank clears the line rather than storing an empty string, so the
+      // receipt leaves it out entirely.
+      address: input.address?.trim() || null,
+      email: input.email?.trim() || null,
+      registration: input.registration?.trim() || null,
     })
     .eq("id", input.agencyId);
   if (error) return { ok: false, error: error.message };

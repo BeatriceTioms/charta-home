@@ -13,6 +13,31 @@ export type Payment = {
   amount: number;
   paidOn: string | null;
   status: RentStatus;
+  /** The payment that settled this period, when one did. */
+  paymentId?: string;
+  /** Signed URL of the slip behind it, when the agency attached one. */
+  proof?: string;
+};
+
+/**
+ * One payment as it was received, rather than one period as it was billed.
+ *
+ * A tenant handing over six months is a single transaction that settles six
+ * charges, and a receipt is written against the transaction. Keeping the two
+ * shapes separate is what lets a receipt say which months it covers instead of
+ * naming one and hoping.
+ */
+export type PaymentRecord = {
+  id: string;
+  amount: number;
+  /** ISO, as recorded. The receipt formats it for reading. */
+  paidOn: string;
+  method: string;
+  reference: string;
+  /** Signed URL of the deposit slip or transfer screenshot. */
+  proof?: string;
+  /** Every period this payment settled, oldest first. */
+  periods: string[];
 };
 
 export type ApartmentPhoto = {
@@ -54,6 +79,8 @@ export type Apartment = {
   residentId?: string;
   /** ISO start of the active lease. Closing one cannot predate it. */
   leaseStartsOn?: string;
+  /** What was actually received, for receipts. Newest first. */
+  receipts?: PaymentRecord[];
   photos?: ApartmentPhoto[];
   label: string;
   rooms: number;

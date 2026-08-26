@@ -32,17 +32,25 @@ check("an attribute break cannot survive", !esc('" onerror="x').includes('"'));
 const start = src.indexOf("w.document.write(`");
 const end = src.indexOf("`);", start);
 const template = src.slice(start, end);
+// Some values are assembled before the template, because several optional
+// lines have to be dropped when blank. Those are safe when the assembly
+// escaped them, so the names are collected rather than listed by hand: a
+// canary with an allowlist of variable names rots the first time one is
+// renamed, and teaches people to add to the list.
+const escapedLocals = new Set(
+  [...src.matchAll(/(?:const|let)\s+(\w+)\s*=\s*([\s\S]{0,400}?);\n/g)]
+    .filter(([, , init]) => /\besc\b|\brow\(/.test(init))
+    .map((m) => m[1])
+);
+
 const raw = [...template.matchAll(/\$\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}/g)]
   .map((m) => m[1].trim())
-  // Safe forms: already escaped, or a helper that escapes its own values, or a
-  // conditional whose branches are checked separately below.
-  .filter(
-    (expr) =>
-      !expr.startsWith("esc(") &&
-      !expr.startsWith("row(") &&
-      !expr.includes("? row(") &&
-      !expr.includes("? `")
-  );
+  // Safe when the expression escapes somewhere inside it, or is a name that
+  // was built by escaping. Anything else reaches the document as it was typed.
+  .filter((expr) => {
+    if (/\besc\(|\brow\(/.test(expr)) return false;
+    return !escapedLocals.has(expr);
+  });
 check("every value in the printed receipt is escaped", raw.length === 0,
   raw.length ? raw.join(" | ") : "none unescaped");
 

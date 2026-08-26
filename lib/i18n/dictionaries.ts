@@ -729,6 +729,8 @@ export const fr = {
         late: "en retard",
         inAdvance: "payées d'avance",
         paidOn: "réglé le",
+        viewProof: "voir le justificatif",
+        withProof: "avec justificatif",
       },
       noPayments: "Aucun paiement pour l'instant. Ce logement attend son premier bail.",
       period: "Période",
@@ -882,6 +884,7 @@ export const fr = {
         property: "Bien loué",
         description: "Désignation",
         period: "Période",
+        periodRange: "{from} à {to}",
         amount: "Montant",
         rentLine: "Loyer",
         chargesLine: "Charges locatives",
@@ -1145,6 +1148,13 @@ export const fr = {
         email: "Adresse email",
         saved: "Nom enregistré.",
       },
+      address: "Adresse",
+      addressPlaceholder: "Immeuble, quartier, rue",
+      email: "Email de l'agence",
+      registration: "RCCM",
+      registrationPlaceholder: "RCCM/GC KAL/2026 B 00000",
+      receiptNote:
+        "Ces informations apparaissent sur les reçus remis aux locataires. Laissez vide ce que vous n'avez pas : la ligne sera simplement absente.",
       agencyOwnerOnly:
         "Seul l'associé propriétaire peut modifier ces informations. Vous pouvez changer votre nom dans Votre compte.",
       inviteModal: {
@@ -1912,6 +1922,8 @@ export const en: Dictionary = {
         late: "late",
         inAdvance: "paid ahead",
         paidOn: "settled on",
+        viewProof: "view the proof",
+        withProof: "with proof",
       },
       noPayments: "No payments yet. This apartment is waiting for its first lease.",
       period: "Period",
@@ -2064,6 +2076,7 @@ export const en: Dictionary = {
         property: "Leased property",
         description: "Description",
         period: "Period",
+        periodRange: "{from} to {to}",
         amount: "Amount",
         rentLine: "Rent",
         chargesLine: "Service charges",
@@ -2327,6 +2340,13 @@ export const en: Dictionary = {
         email: "Email address",
         saved: "Name saved.",
       },
+      address: "Address",
+      addressPlaceholder: "Building, district, street",
+      email: "Agency email",
+      registration: "Company registration",
+      registrationPlaceholder: "RCCM/GC KAL/2026 B 00000",
+      receiptNote:
+        "These appear on the receipts you hand tenants. Leave blank whatever you do not have: the line is simply left off.",
       agencyOwnerOnly:
         "Only the owning partner can change these. You can change your own name under Your account.",
       inviteModal: {

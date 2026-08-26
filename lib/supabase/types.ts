@@ -27,6 +27,10 @@ export type Agency = {
   locale: "fr" | "en";
   whatsapp_number: string | null;
   logo_path: string | null;
+  /** Printed on receipts, and left off when the agency has not set them. */
+  address: string | null;
+  email: string | null;
+  registration: string | null;
   created_at: string;
   updated_at: string;
 };

@@ -43,6 +43,7 @@ export function PaymentSchedule({ payments }: { payments: Payment[] }) {
   const ahead = ordered.filter(
     (p) => p.status === "paid" && periodValue(p.month) > periodValue(thisPeriod)
   ).length;
+  const withProof = ordered.filter((p) => p.proof).length;
 
   return (
     <div>
@@ -53,6 +54,11 @@ export function PaymentSchedule({ payments }: { payments: Payment[] }) {
         {overdue > 0 && (
           <span className="font-semibold text-red-600 dark:text-red-400">
             {overdue} {s.late}
+          </span>
+        )}
+        {withProof > 0 && (
+          <span className="font-semibold text-onyx/50 dark:text-white/50">
+            {withProof} {s.withProof}
           </span>
         )}
         {ahead > 0 && (
@@ -71,19 +77,51 @@ export function PaymentSchedule({ payments }: { payments: Payment[] }) {
                 ? "bg-red-500/12 text-red-700 border-red-500/35 dark:text-red-300"
                 : "bg-transparent text-onyx/45 border-azure-900/15 dark:text-white/45 dark:border-white/15";
 
-          return (
-            <span
-              key={p.month}
-              // The title carries what the square cannot: the amount, and when
-              // it was actually settled.
-              title={`${p.month} · ${fmt(p.amount)} · ${
-                p.status === "paid" && p.paidOn
-                  ? `${s.paidOn} ${p.paidOn}`
-                  : t.dash.status[p.status]
-              }`}
-              className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold ${tone}`}
-            >
+          const title = `${p.month} · ${fmt(p.amount)} · ${
+            p.status === "paid" && p.paidOn
+              ? `${s.paidOn} ${p.paidOn}`
+              : t.dash.status[p.status]
+          }`;
+
+          // A settled period with a slip behind it opens the slip. It is the
+          // answer to "are we sure this was paid", and it was being stored
+          // where nobody could reach it.
+          const body = (
+            <>
               {p.month}
+              {p.proof && (
+                <svg
+                  viewBox="0 0 24 24"
+                  className="ml-1.5 inline h-3 w-3 align-[-1px]"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+                </svg>
+              )}
+            </>
+          );
+
+          const shape = `rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold ${tone}`;
+
+          return p.proof ? (
+            <a
+              key={p.month}
+              href={p.proof}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={`${title} · ${s.viewProof}`}
+              className={`${shape} transition hover:opacity-80`}
+            >
+              {body}
+            </a>
+          ) : (
+            <span key={p.month} title={title} className={shape}>
+              {body}
             </span>
           );
         })}

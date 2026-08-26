@@ -452,19 +452,27 @@ export default function RentPage() {
                         </Link>
                         {a.rentStatus === "paid" ? (
                           <button
-                            onClick={() =>
+                            onClick={() => {
+                              // The receipt is written against a transaction,
+                              // not against the current rent: the amount, the
+                              // date and the periods all come from what was
+                              // actually received.
+                              const latest = a.receipts?.[0];
                               setReceipt({
                                 tenant: a.tenant!.name,
                                 tenantPhone: a.tenant!.phone,
                                 apartment: a.label,
                                 building: building.name,
                                 address: `${building.address}, ${building.city}`,
-                                amount: a.rent,
-                                period: latestPaidPeriod(a),
-                                paidOn: "2026-08-02",
-                                reference: `RCP-2026-08-${shortRef(a.id)}`,
-                              })
-                            }
+                                amount: latest?.amount ?? a.rent,
+                                periods: latest?.periods ?? [latestPaidPeriod(a)],
+                                paidOn: latest?.paidOn ?? "",
+                                method: latest?.method,
+                                reference:
+                                  latest?.reference ||
+                                  `RCP-${shortRef(latest?.id ?? a.id)}`,
+                              });
+                            }}
                             className="rounded-xl border border-azure-900/15 px-4 py-2 text-sm font-semibold text-azure-950 transition hover:bg-azure-900/5 dark:border-white/15 dark:text-white dark:hover:bg-white/10"
                           >
                             {t.dash.rent.receipt}

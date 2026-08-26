@@ -15,7 +15,12 @@ export type ReceiptData = {
   amount: number;
   /** Service charges billed on top of the rent, when the lease carries any. */
   charges?: number;
-  period: string;
+  /**
+   * Every period this payment settled, oldest first. A tenant handing over six
+   * months gets one receipt naming all six, because a receipt saying "Aug 2026"
+   * against six months of rent is the kind of paper that starts an argument.
+   */
+  periods: string[];
   paidOn: string;
   method?: string;
   reference: string;
@@ -49,17 +54,31 @@ export function ReceiptModal({
   const { fmt } = useMoney();
   const m = t.dash.rent.receiptModal;
 
-  // The signed in agency's own details where the row carries them, the
-  // defaults for the fields agencies has no column for yet.
+  // The agency's own details, and nothing else. These used to fall back to a
+  // demo address, email and registration number, so every agency's receipt
+  // carried another company's details and an invented RCCM. A receipt is a
+  // document a tenant keeps, so a missing line is left missing.
   const agency = {
-    ...agencyDefaults,
-    ...(agencyInfo && {
-      name: agencyInfo.name,
-      city: agencyInfo.city,
-      country: agencyInfo.country,
-      ...(agencyInfo.whatsapp && { phone: agencyInfo.whatsapp }),
-    }),
+    name: agencyInfo?.name ?? agencyDefaults.name,
+    city: agencyInfo?.city ?? "",
+    country: agencyInfo?.country ?? "",
+    phone: agencyInfo?.whatsapp ?? "",
+    address: agencyInfo?.address ?? "",
+    email: agencyInfo?.email ?? "",
+    registration: agencyInfo?.registration ?? "",
   };
+
+  // "Aug 2026" alone, or "Aug 2026 to Jan 2027" when it is a run of them.
+  const periodLabel =
+    receipt.periods.length === 0
+      ? ""
+      : receipt.periods.length === 1
+        ? receipt.periods[0]
+        : f(m.periodRange, {
+            from: receipt.periods[0],
+            to: receipt.periods[receipt.periods.length - 1],
+          });
+  const periodCount = receipt.periods.length;
   const tag = locale === "fr" ? "fr-FR" : "en-GB";
 
   const longDate = (value: string) =>
@@ -84,6 +103,26 @@ export function ReceiptModal({
   const print = () => {
     const w = window.open("", "_blank", "width=820,height=1000");
     if (!w) return;
+
+    // Only the lines the agency actually has. An empty address printed as a
+    // stray separator looks like a fault in the document.
+    const issuerLines = [
+      agency.address,
+      [agency.city, agency.country].filter(Boolean).join(", "),
+      [agency.phone, agency.email].filter(Boolean).join(" · "),
+      agency.registration ? `${m.registration} ${agency.registration}` : "",
+    ]
+      .filter(Boolean)
+      .map(esc)
+      .join("<br/>");
+
+    const landlordLines = [
+      agency.address,
+      [agency.city, agency.country].filter(Boolean).join(", "),
+    ]
+      .filter(Boolean)
+      .map(esc)
+      .join("<br/>");
 
     const row = (label: string, period: string, value: number) =>
       `<tr><td>${esc(label)}</td><td class="mid">${esc(period)}</td><td class="num">${esc(fmt(value))}</td></tr>`;
@@ -124,7 +163,7 @@ export function ReceiptModal({
   <header>
     <div>
       <div class="brand">${esc(agency.name)}</div>
-      <div class="issuer">${esc(agency.address)}<br/>${esc(agency.city)}, ${esc(agency.country)}<br/>${esc(agency.phone)} · ${esc(agency.email)}<br/>${esc(m.registration)} ${esc(agency.registration)}</div>
+      <div class="issuer">${issuerLines}</div>
     </div>
     <div class="doc">
       <h1>${esc(m.docType)}</h1>
@@ -137,7 +176,7 @@ export function ReceiptModal({
     <div class="party">
       <div class="term">${esc(m.landlord)}</div>
       <div class="name">${esc(agency.name)}</div>
-      <div class="muted">${esc(agency.address)}<br/>${esc(agency.city)}, ${esc(agency.country)}</div>
+      <div class="muted">${landlordLines}</div>
     </div>
     <div class="party">
       <div class="term">${esc(m.tenant)}</div>
@@ -155,8 +194,12 @@ export function ReceiptModal({
   <table>
     <thead><tr><th>${esc(m.description)}</th><th class="mid">${esc(m.period)}</th><th class="num">${esc(m.amount)}</th></tr></thead>
     <tbody>
-      ${row(m.rentLine, receipt.period, receipt.amount)}
-      ${charges > 0 ? row(m.chargesLine, receipt.period, charges) : ""}
+      ${receipt.periods.length > 1
+        ? receipt.periods
+            .map((p) => row(m.rentLine, p, receipt.amount / receipt.periods.length))
+            .join("")
+        : row(m.rentLine, periodLabel, receipt.amount)}
+      ${charges > 0 ? row(m.chargesLine, periodLabel, charges) : ""}
     </tbody>
     <tfoot><tr><td colspan="2">${esc(m.total)}</td><td class="num">${esc(fmt(total))}</td></tr></tfoot>
   </table>
@@ -198,14 +241,23 @@ export function ReceiptModal({
               <LogoMark className="h-11 w-11 shrink-0" />
               <div>
                 <p className="font-serif text-lg font-semibold text-azure-800">{agency.name}</p>
+                {/* The same lines the printed sheet builds, dropped when the
+                    agency has not filled them in. An empty "RCCM" with nothing
+                    after it reads as a fault in the document. */}
                 <p className="mt-1 text-[11px] leading-relaxed text-onyx/55">
-                  {agency.address}
-                  <br />
-                  {agency.city}, {agency.country}
-                  <br />
-                  {agency.phone} · {agency.email}
-                  <br />
-                  {m.registration} {agency.registration}
+                  {[
+                    agency.address,
+                    [agency.city, agency.country].filter(Boolean).join(", "),
+                    [agency.phone, agency.email].filter(Boolean).join(" · "),
+                    agency.registration ? `${m.registration} ${agency.registration}` : "",
+                  ]
+                    .filter(Boolean)
+                    .map((line, i) => (
+                      <span key={line}>
+                        {i > 0 && <br />}
+                        {line}
+                      </span>
+                    ))}
                 </p>
               </div>
             </div>
@@ -230,7 +282,10 @@ export function ReceiptModal({
               {
                 label: m.landlord,
                 name: agency.name,
-                lines: [agency.address, `${agency.city}, ${agency.country}`],
+                lines: [
+                  agency.address,
+                  [agency.city, agency.country].filter(Boolean).join(", "),
+                ].filter(Boolean),
               },
               {
                 label: m.tenant,
@@ -270,15 +325,29 @@ export function ReceiptModal({
               </tr>
             </thead>
             <tbody>
-              <tr className={rule}>
-                <td className="py-3">{m.rentLine}</td>
-                <td className="py-3 text-center text-onyx/55">{receipt.period}</td>
-                <td className="py-3 text-right font-semibold">{fmt(receipt.amount)}</td>
-              </tr>
+              {/* One line per period settled, so six months of rent reads as
+                  six lines that add up to what was handed over. */}
+              {periodCount > 1 ? (
+                receipt.periods.map((p) => (
+                  <tr key={p} className={rule}>
+                    <td className="py-3">{m.rentLine}</td>
+                    <td className="py-3 text-center text-onyx/55">{p}</td>
+                    <td className="py-3 text-right font-semibold">
+                      {fmt(receipt.amount / periodCount)}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr className={rule}>
+                  <td className="py-3">{m.rentLine}</td>
+                  <td className="py-3 text-center text-onyx/55">{periodLabel}</td>
+                  <td className="py-3 text-right font-semibold">{fmt(receipt.amount)}</td>
+                </tr>
+              )}
               {charges > 0 && (
                 <tr className={rule}>
                   <td className="py-3">{m.chargesLine}</td>
-                  <td className="py-3 text-center text-onyx/55">{receipt.period}</td>
+                  <td className="py-3 text-center text-onyx/55">{periodLabel}</td>
                   <td className="py-3 text-right font-semibold">{fmt(charges)}</td>
                 </tr>
               )}

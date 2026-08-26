@@ -1,4 +1,4 @@
-import type { ActivityItem, Building, LeaseCycle, Payment, RentStatus, Technician, Ticket } from "@/lib/data";
+import { periodValue, type ActivityItem, type Building, type LeaseCycle, type Payment, type PaymentRecord, type RentStatus, type Technician, type Ticket } from "@/lib/data";
 import { isSupabaseConfigured } from "./config";
 import { createClient } from "./server";
 import type { MemberRole } from "./types";
@@ -44,7 +44,17 @@ const ticketStatus = (raw: string): Ticket["status"] =>
 export type Portfolio = {
   /** The signed in user's agency, which every insert must carry. */
   agencyId: string;
-  agencyInfo: { name: string; city: string; country: string; whatsapp: string; currency: string };
+  agencyInfo: {
+    name: string;
+    city: string;
+    country: string;
+    whatsapp: string;
+    currency: string;
+    /** Printed on receipts. Blank until the agency fills them in. */
+    address: string;
+    email: string;
+    registration: string;
+  };
   /** The signed in person, not the agency. Drives the greeting and the roles. */
   currentUser: { name: string; email: string; role: MemberRole; allowedPages: string[] };
   buildings: Building[];
@@ -72,6 +82,16 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
     .maybeSingle();
   if (!agencyRow) return null;
   const agencyId = agencyRow.id;
+
+  // Asked for separately, and allowed to fail. These arrive with a migration,
+  // and a deployment reaches Vercel before that migration is pasted in; a
+  // single select naming a column that does not exist yet would fail the whole
+  // row, and a null agency is the screen that says there is no agency at all.
+  const { data: details } = await supabase
+    .from("agencies")
+    .select("address, email, registration")
+    .eq("id", agencyId)
+    .maybeSingle();
 
   // Who is reading this. An agency has as many people in it as it hires, and
   // each one signs in as themselves, so the name on screen and the permissions
@@ -127,7 +147,11 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
     supabase.from("v_building_performance").select("*"),
     supabase.from("v_apartment_state").select("*"),
     supabase.from("v_charge_status").select("*").order("period_start"),
-    supabase.from("payment_allocations").select("rent_charge_id, payments(paid_on)"),
+    supabase
+      .from("payment_allocations")
+      .select(
+        "rent_charge_id, amount, payments(id, amount, paid_on, method, reference, proof_path, lease_id)"
+      ),
     supabase
       .from("tickets")
       .select(
@@ -176,26 +200,91 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
     }
   }
 
-  // When a charge was settled, and on what day.
-  const paidOnByCharge = new Map<string, string>();
-  for (const row of allocations ?? []) {
-    const paidOn = (row as { payments: { paid_on: string } | null }).payments?.paid_on;
-    if (row.rent_charge_id && paidOn) paidOnByCharge.set(row.rent_charge_id, paidOn);
+  type AllocationRow = {
+    rent_charge_id: string;
+    payments: {
+      id: string;
+      amount: number;
+      paid_on: string;
+      method: string;
+      reference: string | null;
+      proof_path: string | null;
+      lease_id: string;
+    } | null;
+  };
+
+  // Which payment settled which charge, and the payment itself. One payment
+  // can settle several charges, which is exactly what a receipt has to say.
+  const settledBy = new Map<string, AllocationRow["payments"]>();
+  const paymentRows = new Map<string, NonNullable<AllocationRow["payments"]>>();
+  for (const row of (allocations ?? []) as unknown as AllocationRow[]) {
+    if (!row.rent_charge_id || !row.payments) continue;
+    settledBy.set(row.rent_charge_id, row.payments);
+    paymentRows.set(row.payments.id, row.payments);
+  }
+
+  // The slips live in the same private bucket as everything else, so the
+  // browser needs signed URLs. One batch for all of them.
+  const proofUrls = new Map<string, string>();
+  const proofPaths = [...paymentRows.values()]
+    .map((p) => p.proof_path)
+    .filter((x): x is string => Boolean(x));
+  if (proofPaths.length > 0) {
+    const { data: signed } = await supabase.storage
+      .from("receipts")
+      .createSignedUrls(proofPaths, 60 * 60);
+    for (const entry of signed ?? []) {
+      if (entry.path && entry.signedUrl) proofUrls.set(entry.path, entry.signedUrl);
+    }
   }
 
   const paymentsByLease = new Map<string, Payment[]>();
+  // Every period a given payment settled, so the receipt can list them.
+  const periodsByPayment = new Map<string, string[]>();
+
   for (const charge of charges ?? []) {
     if (!charge.lease_id) continue;
+    const settlement = settledBy.get(charge.rent_charge_id);
+    const period = periodOf(charge.period_start);
+
     const list = paymentsByLease.get(charge.lease_id) ?? [];
     list.push({
-      month: periodOf(charge.period_start),
+      month: period,
       amount: Number(charge.amount),
-      paidOn: paidOnByCharge.get(charge.rent_charge_id)
-        ? dayOf(paidOnByCharge.get(charge.rent_charge_id)!)
-        : null,
+      paidOn: settlement ? dayOf(settlement.paid_on) : null,
       status: charge.state as RentStatus,
+      paymentId: settlement?.id,
+      proof: settlement?.proof_path ? proofUrls.get(settlement.proof_path) : undefined,
     });
     paymentsByLease.set(charge.lease_id, list);
+
+    if (settlement) {
+      const periods = periodsByPayment.get(settlement.id) ?? [];
+      periods.push(period);
+      periodsByPayment.set(settlement.id, periods);
+    }
+  }
+
+  // One entry per transaction rather than per period, newest first, which is
+  // the order somebody looking for "the receipt I just gave them" wants.
+  const receiptsByLease = new Map<string, PaymentRecord[]>();
+  for (const payment of paymentRows.values()) {
+    const list = receiptsByLease.get(payment.lease_id) ?? [];
+    list.push({
+      id: payment.id,
+      amount: Number(payment.amount),
+      paidOn: payment.paid_on,
+      method: payment.method,
+      reference: payment.reference ?? "",
+      proof: payment.proof_path ? proofUrls.get(payment.proof_path) : undefined,
+      periods: (periodsByPayment.get(payment.id) ?? []).sort(
+        (a, b) => periodValue(a) - periodValue(b)
+      ),
+    });
+    receiptsByLease.set(payment.lease_id, list);
+  }
+  for (const list of receiptsByLease.values()) {
+    list.sort((a, b) => b.paidOn.localeCompare(a.paidOn));
   }
 
   const perfByBuilding = new Map((performance ?? []).map((p) => [p.building_id, p]));
@@ -246,6 +335,7 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
         // Yield is measured per building, so a unit reports its building's.
         netYield: Number(perf?.net_yield_pct ?? 0),
         payments: u.lease_id ? paymentsByLease.get(u.lease_id) ?? [] : [],
+        receipts: u.lease_id ? receiptsByLease.get(u.lease_id) ?? [] : [],
         // Only what the agency actually uploaded.
         photos: photosByApartment.get(u.apartment_id) ?? [],
       })),
@@ -310,6 +400,9 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
     country: agencyRow.country,
     whatsapp: agencyRow.whatsapp_number ?? "",
     currency: agencyRow.currency ?? "GNF",
+    address: details?.address ?? "",
+    email: details?.email ?? "",
+    registration: details?.registration ?? "",
   };
 
   return { agencyId, agencyInfo, currentUser, buildings, tickets, technicians, activity };

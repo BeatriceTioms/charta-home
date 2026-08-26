@@ -99,7 +99,7 @@ export default function TenantPage() {
     building: building.name,
     address: `${building.address}, ${building.city}`,
     amount,
-    period,
+    periods: [period],
     paidOn: isoPaidOn(paidOn, key),
     reference: `RCP-${key.replace(" ", "-").toUpperCase()}-${shortRef(apartment.id)}`,
   });
