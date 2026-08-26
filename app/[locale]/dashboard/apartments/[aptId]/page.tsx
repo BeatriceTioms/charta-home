@@ -90,7 +90,9 @@ function LeaseModal({
       name,
       phone: String(data.get("phone") ?? ""),
       rent: Number(data.get("rent") ?? defaultRent),
-      cycle,
+      // Monthly is what nearly every tenancy is. A different term is set on
+      // the tenant's own form, once they exist.
+      cycle: "monthly",
       since,
       until,
     });
@@ -122,28 +124,13 @@ function LeaseModal({
             {f(m.phoneInUse, { name: knownAs })}
           </p>
         )}
-        <div className="grid grid-cols-2 gap-3">
-          <Field label={f(m.rentFor, { cycle: cycleLabel(cycle, t.dash.rent) })}>
-            <input name="rent" type="number" min={0} step={50} defaultValue={defaultRent} className={fieldCls} />
-          </Field>
-          <Field label={m.cycle}>
-            <select
-              name="cycle"
-              value={cycle}
-              onChange={(e) => setCycle(e.target.value as LeaseCycle)}
-              className={fieldCls}
-            >
-              <option value="daily">{t.dash.rent.daily}</option>
-              <option value="monthly">{t.dash.rent.monthly}</option>
-              <option value="quarterly">{t.dash.rent.quarterly}</option>
-              <option value="semester">{t.dash.rent.semester}</option>
-              <option value="yearly">{t.dash.rent.yearly}</option>
-            </select>
-          </Field>
-        </div>
-        <p className="text-xs text-onyx/50 dark:text-white/45">
-          {f(m.rentHint, { asking: fmt(defaultRent) })}
-        </p>
+        {/* No cycle here. Almost every tenancy is monthly, so asking made the
+            common case answer a question it already knew, and the rare one is
+            still reachable: the cycle is on the edit tenant form, where a
+            quarterly or yearly term is set once the tenancy exists. */}
+        <Field label={m.rent} hint={f(m.rentHint, { asking: fmt(defaultRent) })} hintAfter>
+          <input name="rent" type="number" min={0} step={50} defaultValue={defaultRent} className={fieldCls} />
+        </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label={m.startDate}>
             <input name="start" type="date" defaultValue="2026-09-01" className={fieldCls} />

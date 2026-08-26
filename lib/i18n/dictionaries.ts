@@ -810,9 +810,9 @@ export const fr = {
         phonePlaceholder: "+224 620 00 00 00",
         phoneInUse:
           "Ce numéro est déjà enregistré pour {name}. En continuant, cette personne sera renommée avec le nom saisi ci dessus. Utilisez un autre numéro s'il s'agit de quelqu'un d'autre.",
-        rent: "Loyer mensuel",
+        rent: "Loyer mensuel convenu",
         rentFor: "Loyer convenu · {cycle}",
-        rentHint: "Le prix demandé pour ce logement est de {asking}. Modifiez-le si vous avez convenu d'un autre montant avec ce locataire.",
+        rentHint: "Le prix demandé est de {asking}. Modifiez-le si vous avez convenu d'un autre montant. Un bail trimestriel, semestriel ou annuel se règle ensuite sur la fiche du locataire.",
         cycle: "Cycle",
         startDate: "Début du bail",
         endDate: "Fin du bail",
@@ -1992,9 +1992,9 @@ export const en: Dictionary = {
         phonePlaceholder: "+224 620 00 00 00",
         phoneInUse:
           "This number is already on file for {name}. Continuing will rename that person to the name above. Use a different number if this is somebody else.",
-        rent: "Monthly rent",
+        rent: "Agreed monthly rent",
         rentFor: "Agreed rent · {cycle}",
-        rentHint: "This unit is asking {asking}. Change it if you agreed a different amount with this tenant.",
+        rentHint: "The asking price is {asking}. Change it if you agreed a different amount. A quarterly, half yearly or annual term is set afterwards on the tenant's own form.",
         cycle: "Cycle",
         startDate: "Lease start",
         endDate: "Lease end",
