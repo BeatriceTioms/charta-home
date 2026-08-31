@@ -89,16 +89,12 @@ export function PaymentSchedule({ payments }: { payments: Payment[] }) {
               <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ${tone}`}>
                 {t.dash.status[p.status]}
               </span>
-              <span className="min-w-0 flex-1 truncate text-[13px] text-onyx/55 dark:text-white/55">
-                {fmt(p.amount)}
-                {p.status === "paid" && p.paidOn ? ` · ${s.paidOn} ${p.paidOn}` : ""}
-              </span>
               {p.proof ? (
                 <a
                   href={p.proof}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex shrink-0 items-center gap-1.5 rounded-full border border-azure-900/15 px-3 py-1 text-[11px] font-semibold text-azure-800 transition hover:bg-azure-900/5 dark:border-white/15 dark:text-soft-500 dark:hover:bg-white/10"
+                  className="flex w-[5.5rem] shrink-0 items-center justify-center gap-1.5 rounded-full border border-azure-900/15 px-3 py-1 text-[11px] font-semibold text-azure-800 transition hover:bg-azure-900/5 dark:border-white/15 dark:text-soft-500 dark:hover:bg-white/10"
                 >
                   <svg
                     viewBox="0 0 24 24"
@@ -115,8 +111,12 @@ export function PaymentSchedule({ payments }: { payments: Payment[] }) {
                   {s.proof}
                 </a>
               ) : (
-                <span className="w-[4.5rem] shrink-0" aria-hidden="true" />
+                <span className="w-[5.5rem] shrink-0" aria-hidden="true" />
               )}
+              <span className="min-w-0 flex-1 truncate text-right text-[13px] text-onyx/55 dark:text-white/55">
+                {fmt(p.amount)}
+                {p.status === "paid" && p.paidOn ? ` · ${s.paidOn} ${p.paidOn}` : ""}
+              </span>
             </div>
           );
         })}

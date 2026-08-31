@@ -260,8 +260,13 @@ function EditTenantModal({
               onChange={(e) => setCycle(e.target.value as LeaseCycle)}
               className={fieldCls}
             >
-              <option value="daily">{t.dash.rent.daily}</option>
-              <option value="monthly">{t.dash.rent.monthly}</option>
+              {/* Daily and monthly are not renewal terms: a tenancy comes
+                  round again on a quarter, a half year or a year. An existing
+                  lease on one of the shorter cycles still shows its own value,
+                  so opening this form cannot silently change it. */}
+              {(cycle === "daily" || cycle === "monthly") && (
+                <option value={cycle}>{cycleLabel(cycle, t.dash.rent)}</option>
+              )}
               <option value="quarterly">{t.dash.rent.quarterly}</option>
               <option value="semester">{t.dash.rent.semester}</option>
               <option value="yearly">{t.dash.rent.yearly}</option>

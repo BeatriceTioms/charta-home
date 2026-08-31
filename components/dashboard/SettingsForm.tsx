@@ -8,7 +8,7 @@ import { useI18n } from "@/lib/i18n/context";
 import { locales } from "@/lib/i18n";
 import * as sb from "@/lib/supabase/actions";
 import { renderMessage } from "@/lib/whatsapp";
-import type { AgencyMember, MemberRole, ReminderRuleRow } from "@/lib/supabase/types";
+import type { AgencyMember, MemberRole, ReminderRuleRow, ReportChannel } from "@/lib/supabase/types";
 import type { getSettingsData } from "@/lib/supabase/queries";
 import { Card, CardTitle, PageTitle } from "@/components/dashboard/ui";
 import { Field, Modal, ModalActions, fieldCls } from "@/components/dashboard/Modal";
@@ -359,7 +359,12 @@ export function SettingsForm({ data }: { data: SettingsData }) {
     escalation: bodyOf("escalation"),
   });
   const [editingMessage, setEditingMessage] = useState<ReminderKey | null>(null);
-  const [channels, setChannels] = useState({ whatsapp: true, sms: false, email: true });
+  // Which channel the reminders go out on. This was three buttons over a
+  // hardcoded object: pressing them changed nothing, saved nothing, and was
+  // read by nothing. reminder_rules has carried a channel column all along.
+  const [channel, setChannel] = useState<ReportChannel>(
+    (rules?.find((r) => r.offset_days < 0)?.channel as ReportChannel) ?? "whatsapp"
+  );
 
   const [members, setMembers] = useState<
     { userId?: string; name: string; role: string; email: string; pages: string[] }[]
@@ -442,14 +447,14 @@ export function SettingsForm({ data }: { data: SettingsData }) {
         rules: [
           {
             offsetDays: -leadDays,
-            channel: "whatsapp" as const,
+            channel,
             isActive: reminders.before,
             escalationStep: 0,
             messageBody: messages.before,
           },
           ...(Object.keys(FIXED_OFFSETS) as (keyof typeof FIXED_OFFSETS)[]).map((key) => ({
             offsetDays: FIXED_OFFSETS[key],
-            channel: "whatsapp" as const,
+            channel,
             isActive: reminders[key],
             escalationStep: key === "after" ? 1 : key === "escalation" ? 2 : 0,
             messageBody: messages[key],
@@ -732,24 +737,32 @@ export function SettingsForm({ data }: { data: SettingsData }) {
             {s.channels}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
-            {(["whatsapp", "sms", "email"] as const).map((key) => {
-              const on = channels[key];
+            {/* One channel, not a set: a reminder goes out once. SMS is absent
+                because nothing can send one yet, and a button that records a
+                choice nobody can act on is the thing being fixed here. */}
+            {(["whatsapp", "email"] as const).map((key) => {
+              const on = channel === key;
               return (
                 <button
                   key={key}
-                  onClick={() => setChannels((c) => ({ ...c, [key]: !c[key] }))}
+                  type="button"
+                  disabled={!canEdit}
+                  onClick={() => setChannel(key)}
                   aria-pressed={on}
-                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition disabled:opacity-50 ${
                     on
                       ? "bg-onyx text-white dark:bg-soft-500 dark:text-azure-950"
                       : "border border-azure-900/15 text-onyx/55 hover:bg-azure-900/5 dark:border-white/15 dark:text-white/55 dark:hover:bg-white/10"
                   }`}
                 >
-                  {key === "sms" ? "SMS" : t.dash.maintenance.via[key]}
+                  {t.dash.maintenance.via[key]}
                 </button>
               );
             })}
           </div>
+          <p className="mt-2 text-xs leading-relaxed text-onyx/50 dark:text-white/45">
+            {s.channelNote}
+          </p>
         </Card>
 
         {/* team */}

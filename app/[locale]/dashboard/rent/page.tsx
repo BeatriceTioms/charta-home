@@ -8,7 +8,7 @@ import { useBuilding } from "@/lib/building-context";
 import { useStore } from "@/lib/store";
 import { useMoney } from "@/lib/money";
 import { useI18n } from "@/lib/i18n/context";
-import { PageTitle, PhotoPlaceholder, RentChip, Tabs } from "@/components/dashboard/ui";
+import { PageTitle, PhotoPlaceholder, RentChip, StatCard, Tabs } from "@/components/dashboard/ui";
 import { TenantsPanel } from "@/components/dashboard/TenantsPanel";
 import { ReceiptModal, type ReceiptData } from "@/components/dashboard/ReceiptModal";
 import { Field, Modal, ModalActions, fieldCls } from "@/components/dashboard/Modal";
@@ -219,9 +219,21 @@ export default function RentPage() {
 
   const leased = building.apartments.filter((a) => a.tenant);
   const due = leased.reduce((s, a) => s + a.rent, 0);
-  const collected = leased
-    .filter((a) => a.rentStatus === "paid")
-    .reduce((s, a) => s + a.rent, 0);
+
+  // Money actually received this year, and what is still owed across every
+  // billed period. Both come from the ledger rather than from the current
+  // rent of whoever happens to be marked paid, so a tenant on a half yearly
+  // term counts for what they handed over rather than for one month of it.
+  const collected = building.incomeYtd;
+  const outstanding = leased.reduce(
+    (total, a) =>
+      total +
+      a.payments
+        .filter((p) => p.status !== "paid")
+        .reduce((sum, p) => sum + p.amount, 0),
+    0
+  );
+  const behind = leased.filter((a) => a.rentStatus !== "paid").length;
 
   const counts = {
     all: leased.length,
@@ -293,6 +305,32 @@ export default function RentPage() {
 
   return (
     <>
+      {/* The same four figures the tenant directory leads with, so the two
+          screens answer the same question the same way. */}
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          emphasis
+          label={t.dash.rent.kpiCollected}
+          value={fmt(collected)}
+          hint={t.dash.rent.kpiThisYear}
+        />
+        <StatCard
+          label={t.dash.rent.kpiOutstanding}
+          value={fmt(outstanding)}
+          hint={t.dash.rent.kpiAllPeriods}
+        />
+        <StatCard
+          label={t.dash.rent.kpiBehind}
+          value={String(behind)}
+          hint={f(t.dash.rent.kpiOfLeased, { count: leased.length })}
+        />
+        <StatCard
+          label={t.dash.rent.kpiExpected}
+          value={fmt(due)}
+          hint={t.dash.rent.kpiPerCycle}
+        />
+      </div>
+
       <PageTitle
         title={t.dash.rent.title}
         subtitle={f(t.dash.rent.subtitle, {

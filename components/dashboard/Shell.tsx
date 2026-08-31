@@ -54,7 +54,7 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { t, path, locale } = useI18n();
   const [collapsed, setCollapsed] = useState(false);
-  const { buildings, currentUser } = useStore();
+  const { buildings, currentUser, agencyInfo } = useStore();
   const hasBuildings = buildings.length > 0;
 
   // Initials from whatever name is on the membership. One word gives one
@@ -168,6 +168,15 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
             </button>
           )}
         </div>
+
+        {/* Whose data this is. Charta Home is the product; the agency is the
+            business using it, and its name appeared nowhere in the interface,
+            so renaming it in settings changed nothing anybody could see. */}
+        {!collapsed && agencyInfo?.name && (
+          <p className="truncate px-5 pb-1 text-[13px] font-semibold text-azure-800 dark:text-soft-500">
+            {agencyInfo.name}
+          </p>
+        )}
 
         {collapsed && (
           <button
