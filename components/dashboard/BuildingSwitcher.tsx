@@ -4,21 +4,17 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
 import { useBuildingOptional } from "@/lib/building-context";
-import { useStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n/context";
 import { useMoney } from "@/lib/money";
-import { Field, Modal, ModalActions, fieldCls } from "./Modal";
+import { AddBuildingModal } from "./AddBuildingModal";
 import { PhotoPlaceholder } from "./ui";
 
 export function BuildingSwitcher({ align = "left" }: { align?: "left" | "right" }) {
   const { building, setBuildingId, buildings } = useBuildingOptional();
-  const { addBuilding, notify } = useStore();
-  const { t, f } = useI18n();
+  const { t } = useI18n();
   const { fmt } = useMoney();
   const [open, setOpen] = useState(false);
   const [adding, setAdding] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string>();
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -131,7 +127,6 @@ export function BuildingSwitcher({ align = "left" }: { align?: "left" | "right" 
             <button
               onClick={() => {
                 setOpen(false);
-                setError(undefined);
                 setAdding(true);
               }}
               className="flex w-full items-center gap-3 rounded-2xl p-2.5 text-left transition hover:bg-azure-900/5 dark:hover:bg-white/10"
@@ -149,51 +144,7 @@ export function BuildingSwitcher({ align = "left" }: { align?: "left" | "right" 
         </div>
       )}
 
-      {adding && (
-        <Modal
-          title={t.dash.shell.addBuilding}
-          subtitle={t.dash.shell.addBuildingSubtitle}
-          onClose={() => setAdding(false)}
-        >
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault();
-              const data = new FormData(e.currentTarget);
-              const name = String(data.get("name") ?? "").trim();
-              const address = String(data.get("address") ?? "").trim();
-              const city = String(data.get("city") ?? "").trim();
-              if (!name) {
-                setError(t.dash.common.required);
-                return;
-              }
-              setSaving(true);
-              const id = await addBuilding({ name, address, city });
-              setSaving(false);
-              if (!id) return;
-              // The rest of the dashboard moves to the new building, which is
-              // where whoever just created it is going next.
-              setBuildingId(id);
-              notify(f(t.dash.onboarding.created, { name }));
-              setAdding(false);
-            }}
-            className="space-y-4"
-          >
-            <Field label={t.dash.onboarding.name} error={error}>
-              <input name="name" placeholder={t.dash.onboarding.namePlaceholder} className={fieldCls} />
-            </Field>
-            <Field label={t.dash.onboarding.address}>
-              <input name="address" placeholder={t.dash.onboarding.addressPlaceholder} className={fieldCls} />
-            </Field>
-            <Field label={t.dash.onboarding.city}>
-              <input name="city" defaultValue={building.city} className={fieldCls} />
-            </Field>
-            <ModalActions
-              onCancel={() => setAdding(false)}
-              submitLabel={saving ? t.dash.common.saving : t.dash.onboarding.submit}
-            />
-          </form>
-        </Modal>
-      )}
+      {adding && <AddBuildingModal onClose={() => setAdding(false)} />}
     </div>
   );
 }
