@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { type Technician } from "@/lib/data";
+import { type Technician, type Ticket } from "@/lib/data";
 import { useStore } from "@/lib/store";
 import { useMoney } from "@/lib/money";
 import { useI18n } from "@/lib/i18n/context";
@@ -111,16 +111,28 @@ export function TechnicianForm({
 /**
  * Technician directory with the performance numbers behind each name. Lives
  * inside the maintenance page as a tab, next to the ticket list.
+ *
+ * The tickets are handed in already narrowed to the building on screen, and
+ * that matters: reading them from the store gave every technician the jobs and
+ * the money they had earned across the whole agency, so a building added this
+ * morning opened with a plumber who had apparently done nine jobs in it.
+ *
+ * The technicians themselves stay agency wide, because they are: one plumber
+ * serves every building, and asking an agency to enter him again for each one
+ * would be duplication with nothing gained. What is scoped is his record here.
  */
 export function TechniciansPanel({
   adding,
   onCloseAdd,
+  tickets,
 }: {
   adding: boolean;
   onCloseAdd: () => void;
+  /** This building's tickets only. */
+  tickets: Ticket[];
 }) {
   const { t, f, path } = useI18n();
-  const { technicians, tickets, deleteTechnician, notify } = useStore();
+  const { technicians, deleteTechnician, notify } = useStore();
   const { fmt } = useMoney();
   const tr = t.dash.technicians;
 

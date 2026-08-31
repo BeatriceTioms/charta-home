@@ -384,7 +384,11 @@ export default function MaintenancePage() {
       />
 
       {view === "technicians" ? (
-        <TechniciansPanel adding={addingTech} onCloseAdd={() => setAddingTech(false)} />
+        <TechniciansPanel
+          adding={addingTech}
+          onCloseAdd={() => setAddingTech(false)}
+          tickets={buildingTickets}
+        />
       ) : (
         <>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
