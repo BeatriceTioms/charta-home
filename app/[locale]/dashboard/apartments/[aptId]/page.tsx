@@ -362,7 +362,7 @@ export default function ApartmentPage() {
                 <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1118 0z" /><circle cx="12" cy="10" r="3" />
               </svg>
               {building.name} ·{" "}
-              {f(t.dash.apartment.leaseCycle, {
+              {f(t.dash.apartment.renewCycle, {
                 cycle: cycleLabel(apartment.cycle, t.dash.rent),
               })}
             </p>
@@ -450,14 +450,29 @@ export default function ApartmentPage() {
               emphasis
               label={t.dash.apartment.monthlyRent}
               value={fmt(apartment.rent)}
-              hint={f(t.dash.apartment.leaseCycle, {
+              hint={f(t.dash.apartment.renewCycle, {
                 cycle: cycleLabel(apartment.cycle, t.dash.rent),
               })}
             />
+            {/* What this flat returned, from its own money in and out, rather
+                than the building's yield repeated on every unit inside it. The
+                percentage is what is left of the rent after what the flat cost
+                to keep; the hint shows both figures so it can be checked. */}
             <StatCard
               label={t.dash.apartment.netYield}
-              value={apartment.tenant ? `${apartment.netYield}%` : "N/A"}
-              hint={apartment.tenant ? t.dash.apartment.yearToDate : t.dash.apartment.currentlyVacant}
+              value={
+                apartment.performance.marginPct === null
+                  ? "N/A"
+                  : `${apartment.performance.marginPct}%`
+              }
+              hint={
+                apartment.performance.collected > 0
+                  ? f(t.dash.apartment.returnHint, {
+                      collected: fmt(apartment.performance.collected),
+                      spent: fmt(apartment.performance.expenses),
+                    })
+                  : t.dash.apartment.nothingCollected
+              }
             />
             <StatCard
               label={t.dash.apartment.currentStatus}

@@ -135,6 +135,7 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
   const [
     { data: buildingRows },
     { data: performance },
+    { data: unitPerformance },
     { data: states },
     { data: charges },
     { data: allocations },
@@ -145,6 +146,7 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
   ] = await Promise.all([
     supabase.from("buildings").select("*").order("name"),
     supabase.from("v_building_performance").select("*"),
+    supabase.from("v_apartment_performance").select("*"),
     supabase.from("v_apartment_state").select("*"),
     supabase.from("v_charge_status").select("*").order("period_start"),
     supabase
@@ -288,6 +290,11 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
   }
 
   const perfByBuilding = new Map((performance ?? []).map((p) => [p.building_id, p]));
+  // Per unit money in and out. The view arrives with a migration, so a null
+  // here is a deployment ahead of its migration rather than a failure.
+  const perfByApartment = new Map(
+    (unitPerformance ?? []).map((p) => [p.apartment_id, p])
+  );
 
   const buildings: Building[] = buildingRows.map((b) => {
     const perf = perfByBuilding.get(b.id);
@@ -333,7 +340,15 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
         // A vacant unit has no rent state; the interface treats that as pending.
         rentStatus: (u.rent_state ?? "pending") as RentStatus,
         // Yield is measured per building, so a unit reports its building's.
-        netYield: Number(perf?.net_yield_pct ?? 0),
+        performance: {
+          collected: Number(perfByApartment.get(u.apartment_id)?.collected_ytd ?? 0),
+          expenses: Number(perfByApartment.get(u.apartment_id)?.expenses_ytd ?? 0),
+          net: Number(perfByApartment.get(u.apartment_id)?.net_ytd ?? 0),
+          marginPct:
+            perfByApartment.get(u.apartment_id)?.net_margin_pct == null
+              ? null
+              : Number(perfByApartment.get(u.apartment_id)!.net_margin_pct),
+        },
         payments: u.lease_id ? paymentsByLease.get(u.lease_id) ?? [] : [],
         receipts: u.lease_id ? receiptsByLease.get(u.lease_id) ?? [] : [],
         // Only what the agency actually uploaded.

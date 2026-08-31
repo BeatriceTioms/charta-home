@@ -289,7 +289,7 @@ export function StoreProvider({
             rent: input.rent,
             cycle: input.cycle,
             rentStatus: "pending",
-            netYield: 0,
+            performance: { collected: 0, expenses: 0, net: 0, marginPct: null },
             payments: [],
             // The first photo doubles as the cover shown in the apartment grid.
             photos: (input.photos ?? []).map((src, n) => ({ id: `${id}-p${n}`, src })),
@@ -349,7 +349,6 @@ export function StoreProvider({
         rent: input.rent,
         cycle: input.cycle,
         rentStatus: "pending",
-        netYield: 8.5,
       });
       persist(() =>
         sb.createLease(locale, {

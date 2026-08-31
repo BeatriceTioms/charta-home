@@ -90,7 +90,18 @@ export type Apartment = {
   cycle: LeaseCycle;
   tenant?: { name: string; phone: string; since: string; until?: string };
   rentStatus: RentStatus;
-  netYield: number;
+  /**
+   * What this flat returned this year: what it took, what it cost to keep,
+   * and what is left of the first after the second. The percentage is null
+   * when nothing has been collected, because a unit that has taken no money
+   * has no margin and 0% would read as breaking even.
+   */
+  performance: {
+    collected: number;
+    expenses: number;
+    net: number;
+    marginPct: number | null;
+  };
   payments: Payment[];
 };
 

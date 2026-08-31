@@ -68,61 +68,56 @@ export function PaymentSchedule({ payments }: { payments: Payment[] }) {
         )}
       </div>
 
-      <div className="flex flex-wrap gap-1.5">
+      {/* A row per period rather than a strip of chips: the month, what it
+          was, when it settled and the slip behind it all line up in columns,
+          so a slip sits beside the month it belongs to instead of being a
+          mark inside it. */}
+      <div className="divide-y divide-azure-900/8 dark:divide-white/8">
         {ordered.map((p) => {
           const tone =
             p.status === "paid"
-              ? "bg-soft-500 text-azure-950 border-soft-500"
+              ? "bg-soft-500 text-azure-950"
               : p.status === "overdue"
-                ? "bg-red-500/12 text-red-700 border-red-500/35 dark:text-red-300"
-                : "bg-transparent text-onyx/45 border-azure-900/15 dark:text-white/45 dark:border-white/15";
+                ? "bg-red-500/15 text-red-700 dark:text-red-300"
+                : "bg-azure-900/8 text-onyx/55 dark:bg-white/10 dark:text-white/55";
 
-          const title = `${p.month} · ${fmt(p.amount)} · ${
-            p.status === "paid" && p.paidOn
-              ? `${s.paidOn} ${p.paidOn}`
-              : t.dash.status[p.status]
-          }`;
-
-          // A settled period with a slip behind it opens the slip. It is the
-          // answer to "are we sure this was paid", and it was being stored
-          // where nobody could reach it.
-          const body = (
-            <>
-              {p.month}
-              {p.proof && (
-                <svg
-                  viewBox="0 0 24 24"
-                  className="ml-1.5 inline h-3 w-3 align-[-1px]"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
+          return (
+            <div key={p.month} className="flex items-center gap-3 py-2">
+              <span className="w-20 shrink-0 text-[13px] font-bold text-azure-950 dark:text-white">
+                {p.month}
+              </span>
+              <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ${tone}`}>
+                {t.dash.status[p.status]}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-[13px] text-onyx/55 dark:text-white/55">
+                {fmt(p.amount)}
+                {p.status === "paid" && p.paidOn ? ` · ${s.paidOn} ${p.paidOn}` : ""}
+              </span>
+              {p.proof ? (
+                <a
+                  href={p.proof}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex shrink-0 items-center gap-1.5 rounded-full border border-azure-900/15 px-3 py-1 text-[11px] font-semibold text-azure-800 transition hover:bg-azure-900/5 dark:border-white/15 dark:text-soft-500 dark:hover:bg-white/10"
                 >
-                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
-                </svg>
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-3 w-3"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+                  </svg>
+                  {s.proof}
+                </a>
+              ) : (
+                <span className="w-[4.5rem] shrink-0" aria-hidden="true" />
               )}
-            </>
-          );
-
-          const shape = `rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold ${tone}`;
-
-          return p.proof ? (
-            <a
-              key={p.month}
-              href={p.proof}
-              target="_blank"
-              rel="noopener noreferrer"
-              title={`${title} · ${s.viewProof}`}
-              className={`${shape} transition hover:opacity-80`}
-            >
-              {body}
-            </a>
-          ) : (
-            <span key={p.month} title={title} className={shape}>
-              {body}
-            </span>
+            </div>
           );
         })}
       </div>

@@ -116,6 +116,16 @@ export type BuildingPerformance = {
   net_yield_pct: number | null;
 };
 
+export type ApartmentPerformance = {
+  apartment_id: string;
+  agency_id: string;
+  building_id: string;
+  collected_ytd: number;
+  expenses_ytd: number;
+  net_ytd: number;
+  net_margin_pct: number | null;
+};
+
 export type ChargeStatusRow = {
   rent_charge_id: string;
   agency_id: string;
@@ -394,6 +404,10 @@ export type Database = {
     };
     Views: {
       v_apartment_state: { Row: ApartmentState; Relationships: [] };
+      v_apartment_performance: {
+        Row: ApartmentPerformance;
+        Relationships: [];
+      };
       v_building_performance: { Row: BuildingPerformance; Relationships: [] };
       v_charge_status: { Row: ChargeStatusRow; Relationships: [] };
       v_technician_performance: { Row: TechnicianPerformance; Relationships: [] };

@@ -150,14 +150,30 @@ export default function DashboardPage() {
 
   const occupied = building.apartments.filter((a) => a.tenant);
   const vacant = building.apartments.length - occupied.length;
-  const rentCollected = occupied
-    .filter((a) => a.rentStatus === "paid")
-    .reduce((s, a) => s + a.rent, 0);
-  const debt = occupied
-    .filter((a) => a.rentStatus === "overdue")
-    .reduce((s, a) => s + a.rent, 0);
-  const services = Math.round(rentCollected * 0.08);
-  const maintenanceCost = Math.round(building.expensesYtd / 8);
+  // Money actually received this year, from the payments themselves. This used
+  // to be the sum of the current rent for units marked paid, which ignored
+  // what was really handed over: a tenant on a quarterly term paying three
+  // months counted once, and a payment covering six months counted as one.
+  const rentCollected = building.incomeYtd;
+
+  // What the building actually cost to keep, rather than its yearly expenses
+  // divided by eight, which is what the tile showed and nothing supported.
+  const maintenanceCost = building.expensesYtd;
+
+  // Everything billed and not settled, across every period, rather than one
+  // month's rent for whoever is currently marked overdue.
+  const debt = occupied.reduce(
+    (total, a) =>
+      total +
+      a.payments
+        .filter((p) => p.status !== "paid")
+        .reduce((sum, p) => sum + p.amount, 0),
+    0
+  );
+
+  // The count an agency actually acts on, in place of a service charge figure
+  // that was rent times 0.08 and belonged to no ledger anywhere.
+  const unpaidTenants = occupied.filter((a) => a.rentStatus !== "paid").length;
 
   const bTickets = tickets.filter((x) => x.buildingId === building.id);
   const counts = {
@@ -332,7 +348,7 @@ export default function DashboardPage() {
             <div className="grid grid-cols-2 gap-x-6 gap-y-5">
               {[
                 [fmt(rentCollected), t.dash.overview.rentCollected, false],
-                [fmt(services), t.dash.overview.charges, false],
+                [String(unpaidTenants), t.dash.overview.unpaidTenants, unpaidTenants > 0],
                 [fmt(maintenanceCost), t.dash.overview.maintenance, false],
                 [fmt(debt), t.dash.overview.debt, true],
               ].map(([value, label, alert]) => (
