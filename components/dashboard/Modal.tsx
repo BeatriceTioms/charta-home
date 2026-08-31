@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useI18n } from "@/lib/i18n/context";
 
 export function Modal({
@@ -18,6 +19,17 @@ export function Modal({
 }) {
   const { t } = useI18n();
 
+  // A modal has to escape wherever it was opened from.
+  //
+  // `position: fixed` is resolved against the viewport only while no ancestor
+  // creates a containing block, and backdrop-filter does exactly that. The
+  // dashboard's top bar and sidebar are both blurred glass, so a modal opened
+  // from either was laid out inside a bar sixty four pixels tall and arrived
+  // sliced through its own title. Rendering into the body sidesteps every
+  // ancestor, which is what a dialog wants anyway.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     document.addEventListener("keydown", onKey);
@@ -28,7 +40,9 @@ export function Modal({
     };
   }, [onClose]);
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <div
       className="fixed inset-0 z-[60] grid place-items-center overflow-y-auto bg-onyx/60 p-5 backdrop-blur-sm"
       onClick={onClose}
@@ -63,7 +77,8 @@ export function Modal({
         <div className="mt-6">{children}</div>
         {footer && <div className="mt-7">{footer}</div>}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
