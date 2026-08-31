@@ -540,6 +540,14 @@ export async function updateAgencySettings(
   }
 ): Promise<ActionResult> {
   const supabase = await createClient();
+
+  // What the agency was called before this save, for the rename below.
+  const { data: previous } = await supabase
+    .from("agencies")
+    .select("name")
+    .eq("id", input.agencyId)
+    .maybeSingle();
+
   const { error } = await supabase
     .from("agencies")
     .update({

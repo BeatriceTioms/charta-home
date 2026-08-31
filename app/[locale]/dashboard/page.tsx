@@ -7,7 +7,7 @@ import { useBuilding } from "@/lib/building-context";
 import { useStore } from "@/lib/store";
 import { useMoney } from "@/lib/money";
 import { useI18n } from "@/lib/i18n/context";
-import { Card, CardTitle, PhotoPlaceholder } from "@/components/dashboard/ui";
+import { Card, CardTitle, PhotoPlaceholder, TicketChip } from "@/components/dashboard/ui";
 
 function WorkOrdersDonut({
   segments,
@@ -487,46 +487,48 @@ export default function DashboardPage() {
             </div>
           </Card>
 
+          {/* The day's maintenance, in place of a diary of viewings. What is
+              broken and who is on it is the thing worth glancing at daily. */}
           <Card>
-            <CardTitle>
-              {f(t.dash.overview.todayAt, { name: building.name.split(" ").slice(-1)[0] })}
+            <CardTitle action={{ label: t.dash.overview.seeMore, href: path("/dashboard/maintenance") }}>
+              {t.dash.overview.maintenanceNow}
             </CardTitle>
-            {schedule.length === 0 ? (
-              <p className="text-sm text-onyx/45 dark:text-white/45">{t.dash.overview.nothingToday}</p>
+            {bTickets.length === 0 ? (
+              <p className="text-sm text-onyx/45 dark:text-white/45">
+                {t.dash.overview.noMaintenance}
+              </p>
             ) : (
               <div className="space-y-3">
-                {schedule.map((item) => (
-                  <div key={`${item.time}-${item.title}`} className="flex gap-3">
-                    <p className="w-12 shrink-0 pt-3 text-right text-sm font-bold text-azure-950 dark:text-white">
-                      {item.time}
-                    </p>
+                {[...bTickets]
+                  // Open work first, and the freshest of it on top.
+                  .sort((a, b) => {
+                    // Open before resolved; among open work, the longest
+                    // waiting first, since that is the one going stale.
+                    const open = (x: typeof a) => (x.status === "resolved" ? 1 : 0);
+                    if (open(a) !== open(b)) return open(a) - open(b);
+                    return b.daysOpen - a.daysOpen;
+                  })
+                  .slice(0, 5)
+                  .map((ticket) => (
                     <div
-                      className={`flex-1 rounded-2xl p-3.5 ${
-                        item.kind === "viewing"
-                          ? "bg-soft-200 text-azure-950 dark:bg-white/10 dark:text-white"
-                          : "bg-onyx text-white dark:bg-white/[0.06]"
-                      }`}
+                      key={ticket.id}
+                      className="flex items-center gap-3 rounded-2xl border border-azure-900/8 p-3.5 dark:border-white/8"
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-sm font-bold">{item.title}</p>
-                          <p className={`mt-0.5 truncate text-xs ${item.kind === "viewing" ? "opacity-60" : "text-white/65"}`}>
-                            {item.detail}
-                          </p>
-                        </div>
-                        <span
-                          className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-[10px] font-bold ${
-                            item.kind === "viewing"
-                              ? "bg-white text-azure-800"
-                              : "bg-white/15 text-soft-500"
-                          }`}
-                        >
-                          {item.who}
-                        </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-bold text-azure-950 dark:text-white">
+                          {ticket.title}
+                        </p>
+                        <p className="mt-0.5 truncate text-xs text-onyx/50 dark:text-white/50">
+                          {ticket.apartment}
+                          {ticket.assignee ? ` · ${ticket.assignee}` : ""}
+                          {ticket.status !== "resolved"
+                            ? ` · ${f(t.dash.overview.openForDays, { days: ticket.daysOpen })}`
+                            : ""}
+                        </p>
                       </div>
+                      <TicketChip status={ticket.status} />
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             )}
           </Card>

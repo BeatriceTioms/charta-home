@@ -660,8 +660,9 @@ export const fr = {
       workOrders: "Interventions",
       open: "Ouvrir",
       totalShort: "total",
-      todayAt: "Aujourd'hui à {name}",
-      nothingToday: "Rien de prévu aujourd'hui.",
+      maintenanceNow: "Maintenance",
+      noMaintenance: "Aucune intervention en cours. Tout fonctionne.",
+      openForDays: "ouvert depuis {days} j",
     },
     apartments: {
       title: "Appartements",
@@ -726,6 +727,7 @@ export const fr = {
       sqmLabel: "Surface m²",
       views: { living: "Séjour", kitchen: "Cuisine", bedrooms: "Chambres" },
       paymentHistory: "Historique des paiements",
+      proofCol: "Justificatif",
       schedule: {
         empty: "Aucune période facturée pour l'instant.",
         settled: "réglées",
@@ -1866,8 +1868,9 @@ export const en: Dictionary = {
       workOrders: "Work orders",
       open: "Open",
       totalShort: "total",
-      todayAt: "Today at {name}",
-      nothingToday: "Nothing scheduled today.",
+      maintenanceNow: "Maintenance",
+      noMaintenance: "No work in progress. Everything is running.",
+      openForDays: "open for {days} d",
     },
     apartments: {
       title: "Apartments",
@@ -1932,6 +1935,7 @@ export const en: Dictionary = {
       sqmLabel: "Sq. Mtrs",
       views: { living: "Living room", kitchen: "Kitchen", bedrooms: "Bedrooms" },
       paymentHistory: "Payment history",
+      proofCol: "Proof",
       schedule: {
         empty: "No periods billed yet.",
         settled: "settled",

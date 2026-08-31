@@ -14,7 +14,6 @@ import { Card, CardTitle, PageTitle, PhotoPlaceholder, RentChip, StatCard, Ticke
 import { Field, Modal, ModalActions, fieldCls } from "@/components/dashboard/Modal";
 import { PhotoGallery } from "@/components/dashboard/PhotoGallery";
 import { ReminderModal } from "@/components/dashboard/ReminderModal";
-import { PaymentSchedule } from "@/components/dashboard/PaymentSchedule";
 
 const WEEK = [
   { day: 5, key: "wed" },
@@ -500,11 +499,6 @@ export default function ApartmentPage() {
           <Card>
             <CardTitle>{t.dash.apartment.paymentHistory}</CardTitle>
 
-            {/* Which periods are settled, before the detail of how. */}
-            <div className="mb-5">
-              <PaymentSchedule payments={apartment.payments} />
-            </div>
-
             {apartment.payments.length === 0 ? (
               <p className="text-sm text-onyx/45 dark:text-white/45">{t.dash.apartment.noPayments}</p>
             ) : (
@@ -515,7 +509,8 @@ export default function ApartmentPage() {
                       <th className="pb-3 font-semibold">{t.dash.apartment.period}</th>
                       <th className="pb-3 font-semibold">{t.dash.apartment.amount}</th>
                       <th className="pb-3 font-semibold">{t.dash.apartment.paidOn}</th>
-                      <th className="pb-3 text-right font-semibold">{t.dash.apartment.statusCol}</th>
+                      <th className="pb-3 font-semibold">{t.dash.apartment.statusCol}</th>
+                      <th className="pb-3 text-right font-semibold">{t.dash.apartment.proofCol}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -531,8 +526,25 @@ export default function ApartmentPage() {
                         <td className="py-3.5 text-onyx/60 dark:text-white/60">
                           {p.paidOn ?? t.dash.apartment.notPaid}
                         </td>
-                        <td className="py-3.5 text-right">
+                        <td className="py-3.5">
                           <RentChip status={p.status} />
+                        </td>
+                        <td className="py-3.5 text-right">
+                          {p.proof ? (
+                            <a
+                              href={p.proof}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 rounded-full border border-azure-900/15 px-3 py-1 text-[11px] font-semibold text-azure-800 transition hover:bg-azure-900/5 dark:border-white/15 dark:text-soft-500 dark:hover:bg-white/10"
+                            >
+                              <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+                              </svg>
+                              {t.dash.apartment.proofCol}
+                            </a>
+                          ) : (
+                            <span className="text-onyx/25 dark:text-white/25">—</span>
+                          )}
                         </td>
                       </tr>
                     ))}
