@@ -4,15 +4,21 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
 import { useBuildingOptional } from "@/lib/building-context";
+import { useStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n/context";
 import { useMoney } from "@/lib/money";
+import { Field, Modal, ModalActions, fieldCls } from "./Modal";
 import { PhotoPlaceholder } from "./ui";
 
 export function BuildingSwitcher({ align = "left" }: { align?: "left" | "right" }) {
   const { building, setBuildingId, buildings } = useBuildingOptional();
-  const { t } = useI18n();
+  const { addBuilding, notify } = useStore();
+  const { t, f } = useI18n();
   const { fmt } = useMoney();
   const [open, setOpen] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string>();
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -93,13 +99,17 @@ export function BuildingSwitcher({ align = "left" }: { align?: "left" | "right" 
                     : "hover:bg-azure-900/5 dark:hover:bg-white/10"
                 }`}
               >
-                <Image
-                  src={b.photo}
-                  alt=""
-                  width={96}
-                  height={96}
-                  className="h-11 w-11 shrink-0 rounded-xl object-cover"
-                />
+                {b.photo ? (
+                  <Image
+                    src={b.photo}
+                    alt=""
+                    width={96}
+                    height={96}
+                    className="h-11 w-11 shrink-0 rounded-xl object-cover"
+                  />
+                ) : (
+                  <PhotoPlaceholder icon="building" className="h-11 w-11 shrink-0 rounded-xl" />
+                )}
                 <span className="min-w-0 flex-1">
                   <span className={`block truncate text-sm font-bold ${active ? "" : "text-azure-950 dark:text-white"}`}>
                     {b.name}
@@ -116,7 +126,73 @@ export function BuildingSwitcher({ align = "left" }: { align?: "left" | "right" 
               </button>
             );
           })}
+
+          <div className="mt-1 border-t border-azure-900/10 pt-1 dark:border-white/10">
+            <button
+              onClick={() => {
+                setOpen(false);
+                setError(undefined);
+                setAdding(true);
+              }}
+              className="flex w-full items-center gap-3 rounded-2xl p-2.5 text-left transition hover:bg-azure-900/5 dark:hover:bg-white/10"
+            >
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-dashed border-azure-900/25 text-azure-800 dark:border-white/25 dark:text-soft-500">
+                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+              </span>
+              <span className="text-sm font-bold text-azure-950 dark:text-white">
+                {t.dash.shell.addBuilding}
+              </span>
+            </button>
+          </div>
         </div>
+      )}
+
+      {adding && (
+        <Modal
+          title={t.dash.shell.addBuilding}
+          subtitle={t.dash.shell.addBuildingSubtitle}
+          onClose={() => setAdding(false)}
+        >
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const data = new FormData(e.currentTarget);
+              const name = String(data.get("name") ?? "").trim();
+              const address = String(data.get("address") ?? "").trim();
+              const city = String(data.get("city") ?? "").trim();
+              if (!name) {
+                setError(t.dash.common.required);
+                return;
+              }
+              setSaving(true);
+              const id = await addBuilding({ name, address, city });
+              setSaving(false);
+              if (!id) return;
+              // The rest of the dashboard moves to the new building, which is
+              // where whoever just created it is going next.
+              setBuildingId(id);
+              notify(f(t.dash.onboarding.created, { name }));
+              setAdding(false);
+            }}
+            className="space-y-4"
+          >
+            <Field label={t.dash.onboarding.name} error={error}>
+              <input name="name" placeholder={t.dash.onboarding.namePlaceholder} className={fieldCls} />
+            </Field>
+            <Field label={t.dash.onboarding.address}>
+              <input name="address" placeholder={t.dash.onboarding.addressPlaceholder} className={fieldCls} />
+            </Field>
+            <Field label={t.dash.onboarding.city}>
+              <input name="city" defaultValue={building.city} className={fieldCls} />
+            </Field>
+            <ModalActions
+              onCancel={() => setAdding(false)}
+              submitLabel={saving ? t.dash.common.saving : t.dash.onboarding.submit}
+            />
+          </form>
+        </Modal>
       )}
     </div>
   );
