@@ -54,7 +54,7 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { t, path, locale } = useI18n();
   const [collapsed, setCollapsed] = useState(false);
-  const { buildings, currentUser, agencyInfo } = useStore();
+  const { buildings, currentUser } = useStore();
   const hasBuildings = buildings.length > 0;
 
   // Initials from whatever name is on the membership. One word gives one
@@ -171,15 +171,9 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
           )}
         </div>
 
-        {/* Whose data this is. Charta Home is the product; the agency is the
-            business using it. A name and nothing else: switching between
-            agencies belongs on the settings page, next to everything else
-            about the agency, rather than as a second menu in the sidebar. */}
-        {!collapsed && agencyInfo?.name && (
-          <p className="truncate px-5 pb-1 text-[13px] font-semibold text-azure-800 dark:text-soft-500">
-            {agencyInfo.name}
-          </p>
-        )}
+        {/* No agency name here. The sidebar is for moving around, and the
+            agency is on the settings page where it can be read and changed
+            together with its currency, its team and the buildings under it. */}
 
         {collapsed && (
           <button
