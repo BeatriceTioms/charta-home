@@ -25,7 +25,8 @@
     "whatsapp:check": "node scripts/verify-whatsapp-flow.mjs",
     "email:config": "node --experimental-strip-types --no-warnings scripts/check-email-config.mjs",
     "uploads:check": "node scripts/verify-uploads.mjs",
-    "switcher:check": "node scripts/verify-switcher.mjs"
+    "switcher:check": "node scripts/verify-switcher.mjs",
+    "activity:check": "node --experimental-strip-types --no-warnings scripts/verify-activity.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

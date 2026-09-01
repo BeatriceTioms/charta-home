@@ -25,6 +25,7 @@ import * as sb from "@/lib/supabase/actions";
 import type { MemberRole, PaymentMethod } from "@/lib/supabase/types";
 import {
   type ActivityItem,
+  type RecentEvent,
   type Apartment,
   type ApartmentPhoto,
   type Building,
@@ -41,6 +42,8 @@ type StoreValue = {
   buildings: Building[];
   tickets: Ticket[];
   activity: ActivityItem[];
+  /** What actually happened, newest first. */
+  recent: RecentEvent[];
   agencyInfo: {
     name: string; city: string; country: string; whatsapp: string; currency: string;
     address: string; email: string; registration: string;
@@ -168,6 +171,7 @@ export type StoreSeed = {
   tickets: Ticket[];
   technicians: Technician[];
   activity: ActivityItem[];
+  recent: RecentEvent[];
 };
 
 /** The dashboard form's payment methods, in the database's spelling. */
@@ -205,6 +209,7 @@ export function StoreProvider({
     seed.technicians.map((t) => ({ ...t }))
   );
   const [activity, setActivity] = useState<ActivityItem[]>(() => seed.activity);
+  const [recent, setRecent] = useState<RecentEvent[]>(() => seed.recent ?? []);
   const [remindedKeys, setRemindedKeys] = useState<string[]>([]);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
@@ -233,6 +238,7 @@ export function StoreProvider({
     setTickets(seed.tickets.map((x) => ({ ...x })));
     setTechnicians(seed.technicians.map((x) => ({ ...x })));
     setActivity(seed.activity);
+    setRecent(seed.recent ?? []);
   }, [seed]);
 
   /** Sends a write to the server, surfaces failure, and pulls back truth. */
@@ -854,6 +860,7 @@ export function StoreProvider({
       buildings,
       tickets,
       activity,
+      recent,
       agencyInfo,
       agencies,
       currentUser,
@@ -888,7 +895,7 @@ export function StoreProvider({
       remindedKeys,
     }),
     [
-      buildings, tickets, activity, agencyInfo, agencies, currentUser, toasts, agencyId, addBuilding, notify, dismissToast, addApartment, updateApartment2, deleteApartment, updateTenant, endLease,
+      buildings, tickets, activity, recent, agencyInfo, agencies, currentUser, toasts, agencyId, addBuilding, notify, dismissToast, addApartment, updateApartment2, deleteApartment, updateTenant, endLease,
       setBuildingPhoto, removeBuildingPhoto, addLease,
       recordPayment, markReminded, addTicket, updateTicket, deleteTicket, assignTicket,
       resolveTicket, photosFor, addPhoto, updatePhoto, deletePhoto, technicians,

@@ -7,6 +7,7 @@ import { useBuilding } from "@/lib/building-context";
 import { useStore } from "@/lib/store";
 import { useMoney } from "@/lib/money";
 import { useI18n } from "@/lib/i18n/context";
+import { RelativeTime } from "@/components/dashboard/RelativeTime";
 import { Card, CardTitle, PhotoPlaceholder, TicketChip } from "@/components/dashboard/ui";
 
 function WorkOrdersDonut({
@@ -182,7 +183,7 @@ export default function DashboardPage() {
     progress: bTickets.filter((x) => x.status === "in-progress").length,
     resolved: bTickets.filter((x) => x.status === "resolved").length,
   };
-  const { activity, currentUser } = useStore();
+  const { activity, recent: recentEvents, currentUser } = useStore();
   const { fmt } = useMoney();
   // The greeting is to one person, so it takes the name they go by rather
   // than the whole of what they signed up with.
@@ -203,63 +204,54 @@ export default function DashboardPage() {
       photo: a.photos?.[0]?.src ?? "",
     }));
 
-  const paidUnit = occupied.find((a) => a.rentStatus === "paid");
-  const resolvedTicket = bTickets.find((x) => x.status === "resolved");
-  const lastUnit = occupied[occupied.length - 1];
+  // The real feed, narrowed to the building on screen. Sorted on the server,
+  // so the order here is the order things happened.
+  const ICON = {
+    payment: (
+      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M20 6L9 17l-5-5" />
+      </svg>
+    ),
+    ticket: (
+      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14.7 6.3a4.5 4.5 0 00-6 6L3 18l3 3 5.7-5.7a4.5 4.5 0 006-6L15 12l-3-3 2.7-2.7z" />
+      </svg>
+    ),
+    lease: (
+      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6M9 13h6M9 17h4" />
+      </svg>
+    ),
+  };
+  const TITLE = {
+    payment: t.dash.overview.activityPayment,
+    ticket: t.dash.overview.activityTicket,
+    lease: t.dash.overview.activityLease,
+  };
 
-  // A ticket carries its unit's label rather than its id, so the photo comes
-  // from matching that back against the building.
-  const ticketUnit = resolvedTicket
-    ? building.apartments.find((a) => a.label === resolvedTicket.apartment)
-    : undefined;
+  const recent = recentEvents
+    .filter((e) => e.buildingId === building.id)
+    .slice(0, 3)
+    .map((e) => {
+      // The unit's cover photo. Matched by id where there is one, and by label
+      // for a ticket, which records the flat it concerns rather than its id.
+      const flat = e.apartmentId
+        ? building.apartments.find((a) => a.id === e.apartmentId)
+        : building.apartments.find((a) => a.label === e.apartmentLabel);
+      return {
+        key: `${e.kind}-${e.at}-${e.apartmentLabel}`,
+        title: TITLE[e.kind],
+        detail: e.apartmentLabel ? `${e.apartmentLabel} · ${e.detail}` : e.detail,
+        at: e.at,
+        photo: flat?.photos?.[0]?.src ?? "",
+        alt: e.apartmentLabel,
+        icon: ICON[e.kind],
+      };
+    });
 
-  const recent = [
-    paidUnit && {
-      title: t.dash.overview.activityPayment,
-      detail: `${paidUnit.label} · ${paidUnit.tenant!.name}`,
-      time: t.dash.overview.hoursAgo,
-      photo: paidUnit.photos?.[0]?.src ?? "",
-      alt: paidUnit.label,
-      icon: (
-        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M20 6L9 17l-5-5" />
-        </svg>
-      ),
-    },
-    resolvedTicket && {
-      title: t.dash.overview.activityTicket,
-      detail: resolvedTicket.title,
-      time: t.dash.overview.yesterday,
-      photo: ticketUnit?.photos?.[0]?.src ?? "",
-      alt: ticketUnit?.label ?? resolvedTicket.apartment,
-      icon: (
-        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M14.7 6.3a4.5 4.5 0 00-6 6L3 18l3 3 5.7-5.7a4.5 4.5 0 006-6L15 12l-3-3 2.7-2.7z" />
-        </svg>
-      ),
-    },
-    lastUnit && {
-      title: t.dash.overview.activityLease,
-      detail: `${lastUnit.label} · ${lastUnit.tenant!.name}`,
-      time: t.dash.overview.daysAgo,
-      photo: lastUnit.photos?.[0]?.src ?? "",
-      alt: lastUnit.label,
-      icon: (
-        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6M9 13h6M9 17h4" />
-        </svg>
-      ),
-    },
-  ].filter(Boolean) as {
-    title: string;
-    detail: string;
-    time: string;
-    photo: string;
-    alt: string;
-    icon: React.ReactNode;
-  }[];
-
-  const today = new Date(2026, 7, 8).toLocaleDateString(locale === "fr" ? "fr-FR" : "en-GB", {
+  // Was pinned to 8 August 2026, which is how the greeting came to say "today"
+  // above activity dated ten days later.
+  const today = new Date().toLocaleDateString(locale === "fr" ? "fr-FR" : "en-GB", {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -271,7 +263,7 @@ export default function DashboardPage() {
         <span className="text-onyx/50 dark:text-white/50">{t.dash.overview.greeting}</span>{" "}
         <span className="text-azure-950 dark:text-white">{firstName}</span>
       </h1>
-      <p className="mt-1.5 text-[15px] text-onyx/40 dark:text-white/40">
+      <p className="mt-1.5 text-[15px] text-onyx/40 dark:text-white/40" suppressHydrationWarning>
         {f(t.dash.overview.subtitle, { building: building.name, date: today })}
       </p>
 
@@ -371,9 +363,14 @@ export default function DashboardPage() {
             <CardTitle action={{ label: t.dash.overview.seeMore, href: path("/dashboard/rent") }}>
               {t.dash.overview.recentActivity}
             </CardTitle>
+            {recent.length === 0 ? (
+              <p className="py-6 text-center text-sm text-onyx/45 dark:text-white/45">
+                {t.dash.overview.recentActivityEmpty}
+              </p>
+            ) : (
             <div className="grid gap-4 sm:grid-cols-3">
               {recent.map((a) => (
-                <div key={a.title} className="overflow-hidden rounded-2xl border border-azure-900/8 dark:border-white/8">
+                <div key={a.key} className="overflow-hidden rounded-2xl border border-azure-900/8 dark:border-white/8">
                   <div className="relative h-32">
                     {a.photo ? (
                       <Image src={a.photo} alt={a.alt} fill className="object-cover" />
@@ -387,11 +384,12 @@ export default function DashboardPage() {
                   <div className="p-4">
                     <p className="text-sm font-bold text-azure-950 dark:text-white">{a.title}</p>
                     <p className="mt-0.5 truncate text-xs text-onyx/50 dark:text-white/50">{a.detail}</p>
-                    <p className="mt-1.5 text-[11px] text-onyx/35 dark:text-white/35">{a.time}</p>
+                    <RelativeTime at={a.at} />
                   </div>
                 </div>
               ))}
             </div>
+            )}
           </Card>
 
           <Card>

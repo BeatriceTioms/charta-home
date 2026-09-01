@@ -238,6 +238,25 @@ export const ticketValue = (t: Ticket) => {
 /** Most recently opened ticket first. */
 export const byOpenedDesc = (a: Ticket, b: Ticket) => ticketValue(b) - ticketValue(a);
 
+/**
+ * Something that actually happened, with the moment it happened.
+ *
+ * Distinct from ActivityItem, which is the diary: what is *going* to happen,
+ * at a time somebody chose. This is the record, at a time nobody chose, which
+ * is why `at` is a full ISO timestamp rather than the "09:00" a viewing gets.
+ */
+export type RecentEvent = {
+  kind: "payment" | "ticket" | "lease";
+  /** ISO 8601, straight off the row that recorded it. */
+  at: string;
+  /** The unit it concerns, for the photo and the label. */
+  apartmentId: string;
+  apartmentLabel: string;
+  buildingId: string;
+  /** The tenant, or the ticket's subject. */
+  detail: string;
+};
+
 export type ActivityItem = {
   buildingId: string;
   time: string;

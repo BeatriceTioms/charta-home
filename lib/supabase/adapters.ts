@@ -1,4 +1,4 @@
-import { periodValue, type ActivityItem, type Building, type LeaseCycle, type Payment, type PaymentRecord, type RentStatus, type Technician, type Ticket } from "@/lib/data";
+import { periodValue, type ActivityItem, type Building, type LeaseCycle, type Payment, type PaymentRecord, type RecentEvent, type RentStatus, type Technician, type Ticket } from "@/lib/data";
 import { requestedAgencyId } from "@/lib/agency";
 import { isSupabaseConfigured } from "./config";
 import { createClient } from "./server";
@@ -64,6 +64,8 @@ export type Portfolio = {
   tickets: Ticket[];
   technicians: Technician[];
   activity: ActivityItem[];
+  /** What actually happened, newest first, with real timestamps. */
+  recent: RecentEvent[];
 };
 
 /**
@@ -156,6 +158,8 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
     { data: technicianRows },
     { data: photoRows },
     { data: eventRows },
+    { data: paymentEventRows },
+    { data: leaseEventRows },
     // Every one of these is filtered by agency now. Row level security answers
     // with every agency the reader belongs to, which was the whole answer while
     // that was always one; with two it would hand back both portfolios shuffled
@@ -191,6 +195,23 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
       .eq("agency_id", agencyId)
       .order("position"),
     supabase.from("events").select("*").eq("agency_id", agencyId).order("starts_at"),
+    // The recent activity feed used to be assembled from whatever happened to
+    // be in the arrays already loaded: any paid unit became "rent received",
+    // the last flat in the list became "lease renewed", and the times were
+    // three fixed strings. None of it had happened. These two reads are where
+    // the real events come from, and they carry the moment they were recorded.
+    supabase
+      .from("payments")
+      .select("id, created_at, leases(apartment_id, apartments(label, building_id), residents(full_name))")
+      .eq("agency_id", agencyId)
+      .order("created_at", { ascending: false })
+      .limit(12),
+    supabase
+      .from("leases")
+      .select("id, created_at, apartment_id, apartments(label, building_id), residents(full_name)")
+      .eq("agency_id", agencyId)
+      .order("created_at", { ascending: false })
+      .limit(12),
   ]);
 
   // Nothing to show means the account has no buildings yet, not a failure.
@@ -437,6 +458,80 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
     who: e.assignee ?? "",
   }));
 
+  /* ------------------------------------------------- what actually happened
+   * Three real sources, merged and sorted by the moment each was recorded.
+   * A row whose apartment or resident has since been deleted is dropped
+   * rather than shown with a blank where the flat should be.
+   */
+  type EventJoin = {
+    label: string;
+    building_id: string;
+  } | null;
+
+  const paymentEvents: RecentEvent[] = (paymentEventRows ?? []).flatMap((row) => {
+    const lease = (row as unknown as {
+      leases: {
+        apartment_id: string;
+        apartments: EventJoin;
+        residents: { full_name: string } | null;
+      } | null;
+    }).leases;
+    const flat = lease?.apartments;
+    if (!lease || !flat) return [];
+    return [{
+      kind: "payment" as const,
+      at: String(row.created_at),
+      apartmentId: lease.apartment_id,
+      apartmentLabel: flat.label,
+      buildingId: flat.building_id,
+      detail: lease.residents?.full_name ?? "",
+    }];
+  });
+
+  const leaseEvents: RecentEvent[] = (leaseEventRows ?? []).flatMap((row) => {
+    const r = row as unknown as {
+      created_at: string;
+      apartment_id: string;
+      apartments: EventJoin;
+      residents: { full_name: string } | null;
+    };
+    if (!r.apartments) return [];
+    return [{
+      kind: "lease" as const,
+      at: String(r.created_at),
+      apartmentId: r.apartment_id,
+      apartmentLabel: r.apartments.label,
+      buildingId: r.apartments.building_id,
+      detail: r.residents?.full_name ?? "",
+    }];
+  });
+
+  // Resolved tickets come from the rows already read for the maintenance page.
+  // resolved_at is when it was closed, which is the moment worth showing; a
+  // ticket still open has not happened yet in this sense.
+  const ticketEvents: RecentEvent[] = (ticketRows ?? []).flatMap((row) => {
+    const r = row as unknown as {
+      title: string;
+      resolved_at: string | null;
+      building_id: string;
+      apartments: { id?: string; label: string } | null;
+    };
+    if (!r.resolved_at) return [];
+    return [{
+      kind: "ticket" as const,
+      at: String(r.resolved_at),
+      apartmentId: "",
+      apartmentLabel: r.apartments?.label ?? "",
+      buildingId: r.building_id,
+      detail: r.title,
+    }];
+  });
+
+  const recent = [...paymentEvents, ...leaseEvents, ...ticketEvents]
+    .filter((e) => !Number.isNaN(Date.parse(e.at)))
+    .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
+    .slice(0, 12);
+
   const agencyInfo = {
     name: agencyRow.name,
     city: agencyRow.city,
@@ -448,5 +543,5 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
     registration: details?.registration ?? "",
   };
 
-  return { agencyId, agencies, agencyInfo, currentUser, buildings, tickets, technicians, activity };
+  return { agencyId, agencies, agencyInfo, currentUser, buildings, tickets, technicians, activity, recent };
 }
