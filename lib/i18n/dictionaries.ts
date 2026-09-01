@@ -1114,7 +1114,7 @@ export const fr = {
     },
     settings: {
       title: "Paramètres",
-      subtitle: "Votre agence, votre équipe et votre formule.",
+      subtitle: "Votre agence, votre équipe et votre formule. Ces réglages valent pour toute l'agence, quel que soit l'immeuble ouvert.",
       agency: "Agence",
       agencyName: "Nom de l'agence",
       whatsappNumber: "Numéro WhatsApp",
@@ -2323,7 +2323,7 @@ export const en: Dictionary = {
     },
     settings: {
       title: "Settings",
-      subtitle: "Your agency, your team, and your plan.",
+      subtitle: "Your agency, your team, and your plan. These apply across the whole agency, whichever building is open.",
       agency: "Agency",
       agencyName: "Agency name",
       whatsappNumber: "WhatsApp number",

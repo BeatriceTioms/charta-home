@@ -99,7 +99,11 @@ export default function ApartmentsPage() {
   const overdue = building.apartments.filter((a) => a.rentStatus === "overdue" && a.tenant);
   const sqm = building.apartments.reduce((sum, a) => sum + a.sqm, 0);
   const rentRoll = occupied.reduce((sum, a) => sum + a.rent, 0);
-  const pct = Math.round((occupied.length / building.apartments.length) * 100);
+  // A building with no units yet is every building on the day it is created,
+  // and dividing by that count read "Loué à NaN%" on the screen it opens to.
+  const pct = building.apartments.length
+    ? Math.round((occupied.length / building.apartments.length) * 100)
+    : 0;
 
   const rows = useMemo(
     () =>
