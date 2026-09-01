@@ -12,7 +12,6 @@ import type { AgencyMember, MemberRole, ReminderRuleRow, ReportChannel } from "@
 import type { getSettingsData } from "@/lib/supabase/queries";
 import { Card, CardTitle, PageTitle } from "@/components/dashboard/ui";
 import { Field, Modal, ModalActions, fieldCls } from "@/components/dashboard/Modal";
-import { AgencyPanel } from "@/components/dashboard/AgencyPanel";
 
 type SettingsData = Awaited<ReturnType<typeof getSettingsData>>;
 
@@ -663,12 +662,6 @@ export function SettingsForm({ data }: { data: SettingsData }) {
               </Field>
             </div>
           </div>
-        </Card>
-
-        {/* which business the dashboard is showing */}
-        <Card>
-          <CardTitle>{s.agencies.title}</CardTitle>
-          <AgencyPanel />
         </Card>
 
         {/* reminders */}

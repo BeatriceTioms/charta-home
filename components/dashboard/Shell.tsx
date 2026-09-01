@@ -7,6 +7,7 @@ import { Logo, LogoMark } from "@/components/Logo";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ThemeToggle } from "./ThemeToggle";
 import { BuildingSwitcher } from "./BuildingSwitcher";
+import { AgencySwitcher } from "./AgencySwitcher";
 import { Toasts } from "./Toasts";
 import { BuildingProvider } from "@/lib/building-context";
 import { StoreProvider, useStore, type StoreSeed } from "@/lib/store";
@@ -314,6 +315,9 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
             <div className="flex items-center gap-3">
               <LanguageSwitcher tone="dashboard" />
               <ThemeToggle />
+              {/* Agency then building: the chips read in the order the things
+                  nest, and the agency is named here and nowhere else. */}
+              <AgencySwitcher align="right" />
               <BuildingSwitcher align="right" />
             </div>
           </div>
