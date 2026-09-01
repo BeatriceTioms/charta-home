@@ -710,6 +710,59 @@ const lookup = await asUser(userA.id,
 check("the form can ask who a number belongs to",
   lookup[0]?.full_name === "Second Tenant", lookup[0]?.full_name);
 
+
+/* ------------------------------------------ one person, two agencies ----
+ * A person can belong to more than one agency, and the database has always
+ * said so: a membership is a person and an agency rather than a column on
+ * either. What matters is that row level security answers with both, because
+ * the application picks one of them and filters by it. If RLS answered with
+ * only the first, the switcher would have nothing to switch to; if the
+ * application forgot to filter, both portfolios would arrive shuffled.
+ */
+const [a3] = await asUser(userA.id, `
+  select public.create_agency_for_current_user('Second Agency','Guinea','Kankan','GNF','fr','Amina Sow') as id`);
+
+const bothAgencies = await asUser(userA.id, `select id, name from agencies order by name`);
+check("row level security answers with every agency they belong to",
+  bothAgencies.length === 2, bothAgencies.map((a) => a.name).join(", "));
+
+const [bC] = await asUser(userA.id, `
+  insert into buildings (agency_id, name, address, city)
+  values ('${a3.id}', 'Kankan Court', '1 Rue Neuve', 'Kankan') returning id`);
+
+// Unfiltered is what the application used to do, and is now the bug this
+// guards: it returns both portfolios at once.
+const unfiltered = await asUser(userA.id, `select name from buildings`);
+check("asking without an agency returns both portfolios",
+  unfiltered.length >= 2,
+  "which is why every portfolio query names one");
+
+const scoped = await asUser(userA.id,
+  `select name from buildings where agency_id = '${a3.id}'`);
+check("asking for one agency returns only its buildings",
+  scoped.length === 1 && scoped[0].name === "Kankan Court",
+  scoped.map((b) => b.name).join(", "));
+
+// The second agency arrives furnished the way signup furnishes the first.
+const [sub3] = await asUser(userA.id,
+  `select plan, status from subscriptions where agency_id = '${a3.id}'`);
+check("a second agency gets its own trial", Boolean(sub3), `${sub3?.plan} / ${sub3?.status}`);
+
+const [rules3] = await asUser(userA.id,
+  `select count(*)::int as n from reminder_rules where agency_id = '${a3.id}'`);
+check("a second agency gets its own reminder cadence", rules3.n > 0, `${rules3.n} rules`);
+
+const [own3] = await asUser(userA.id,
+  `select role from memberships where agency_id = '${a3.id}' and user_id = '${userA.id}'`);
+check("the person creating it owns it", own3?.role === "owner", own3?.role);
+
+// And none of it reaches the other agency's members.
+let outsiderBlocked = true;
+const seenByB = await asUser(userB.id, `select name from buildings where agency_id = '${a3.id}'`);
+outsiderBlocked = seenByB.length === 0;
+check("a second agency is invisible to somebody outside it", outsiderBlocked,
+  `${seenByB.length} rows leaked`);
+
 await db.close();
 
 const failed = results.filter((r) => !r.pass);

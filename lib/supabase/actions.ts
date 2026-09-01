@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
+import { AGENCY_COOKIE, AGENCY_COOKIE_MAX_AGE } from "@/lib/agency";
 import { invitationEmail, isEmailConfigured, sendEmail } from "@/lib/email";
 import { toE164 } from "@/lib/phone";
 import { isSiteUrlReachable, siteUrl } from "@/lib/site-url";
@@ -17,6 +19,67 @@ type ActionResult = { ok: true; id?: string } | { ok: false; error: string };
 
 const revalidateDashboard = (locale: string) =>
   revalidatePath(`/${locale}/dashboard`, "layout");
+
+/**
+ * Switches which agency the dashboard is showing.
+ *
+ * Only sets a cookie. Nothing is trusted to it: the portfolio checks the value
+ * against the agencies the reader actually belongs to before loading anything,
+ * so a hand written cookie shows the same dashboard as no cookie at all.
+ */
+export async function selectAgency(locale: string, agencyId: string): Promise<ActionResult> {
+  const jar = await cookies();
+  jar.set(AGENCY_COOKIE, agencyId, {
+    maxAge: AGENCY_COOKIE_MAX_AGE,
+    sameSite: "lax",
+    path: "/",
+  });
+  revalidateDashboard(locale);
+  return { ok: true };
+}
+
+/**
+ * A second agency for somebody who already has one.
+ *
+ * The same function signup calls, which creates the agency, the owner's
+ * membership, the trial and the default reminder cadence in one transaction.
+ * A person managing two businesses is two memberships, not two logins, and the
+ * new one is selected straight away because that is what they are here for.
+ */
+export async function createAgency(
+  locale: string,
+  input: { name: string; country: string; city: string; currency: string }
+): Promise<ActionResult> {
+  const name = input.name.trim();
+  if (!name) return { ok: false, error: "agency-name-required" };
+
+  const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return { ok: false, error: "not signed in" };
+
+  const { data: id, error } = await supabase.rpc("create_agency_for_current_user", {
+    agency_name: name,
+    agency_country: input.country,
+    agency_city: input.city,
+    agency_currency: input.currency,
+    agency_locale: locale === "en" ? "en" : "fr",
+    // The name they already go by, so a second agency does not greet them as
+    // the local part of their email address.
+    owner_name:
+      (await supabase.from("memberships").select("full_name").limit(1).maybeSingle()).data
+        ?.full_name ?? auth.user.email?.split("@")[0] ?? "",
+  });
+  if (error) return { ok: false, error: error.message };
+
+  const jar = await cookies();
+  jar.set(AGENCY_COOKIE, String(id), {
+    maxAge: AGENCY_COOKIE_MAX_AGE,
+    sameSite: "lax",
+    path: "/",
+  });
+  revalidateDashboard(locale);
+  return { ok: true, id: String(id) };
+}
 
 export async function addApartment(
   locale: string,

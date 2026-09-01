@@ -7,6 +7,7 @@ import { Logo, LogoMark } from "@/components/Logo";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ThemeToggle } from "./ThemeToggle";
 import { BuildingSwitcher } from "./BuildingSwitcher";
+import { AgencySwitcher } from "./AgencySwitcher";
 import { Toasts } from "./Toasts";
 import { BuildingProvider } from "@/lib/building-context";
 import { StoreProvider, useStore, type StoreSeed } from "@/lib/store";
@@ -105,6 +106,8 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
     .filter((group) => group.items.length > 0);
   const flatNav = groups.flatMap((g) => g.items);
 
+  const isSettings = pathname.startsWith(`/${locale}/dashboard/settings`);
+
   const isActive = (href: string) => {
     const base = pathname.replace(new RegExp(`^/${locale}`), "") || "/";
     if (href === "/dashboard") return base === "/dashboard";
@@ -170,13 +173,9 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Whose data this is. Charta Home is the product; the agency is the
-            business using it, and its name appeared nowhere in the interface,
-            so renaming it in settings changed nothing anybody could see. */}
-        {!collapsed && agencyInfo?.name && (
-          <p className="truncate px-5 pb-1 text-[13px] font-semibold text-azure-800 dark:text-soft-500">
-            {agencyInfo.name}
-          </p>
-        )}
+            business using it. It is also the switch: somebody managing two
+            businesses keeps two agencies rather than two logins. */}
+        <AgencySwitcher collapsed={collapsed} />
 
         {collapsed && (
           <button
@@ -344,7 +343,13 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
         </header>
 
         <main className="relative z-10 flex-1 px-5 py-8 sm:px-8">
-          {hasBuildings ? children : <FirstBuilding />}
+          {/* An agency with no buildings gets the prompt to add one, because
+              apartments, leases and tickets all hang off a building. Settings
+              is the exception: a new agency needs its name, its currency and
+              its team set, and standing in front of that until a building
+              exists means an agency that bills in the wrong currency from its
+              first day. */}
+          {hasBuildings || isSettings ? children : <FirstBuilding />}
         </main>
       </div>
 

@@ -1,4 +1,5 @@
 import { periodValue, type ActivityItem, type Building, type LeaseCycle, type Payment, type PaymentRecord, type RentStatus, type Technician, type Ticket } from "@/lib/data";
+import { requestedAgencyId } from "@/lib/agency";
 import { isSupabaseConfigured } from "./config";
 import { createClient } from "./server";
 import type { MemberRole } from "./types";
@@ -42,8 +43,10 @@ const ticketStatus = (raw: string): Ticket["status"] =>
   raw === "in_progress" ? "in-progress" : (raw as Ticket["status"]);
 
 export type Portfolio = {
-  /** The signed in user's agency, which every insert must carry. */
+  /** The agency being shown, which every insert must carry. */
   agencyId: string;
+  /** Every agency this person belongs to, for the switcher. */
+  agencies: { id: string; name: string; city: string }[];
   agencyInfo: {
     name: string;
     city: string;
@@ -64,24 +67,34 @@ export type Portfolio = {
 };
 
 /**
- * Reads the signed in agency's whole portfolio. Row level security decides
- * what comes back, so none of these queries filters by agency.
+ * Reads one agency's whole portfolio.
+ *
+ * Row level security decides what a reader *may* see, which is every agency
+ * they belong to. Which of those they are looking at is a separate question,
+ * answered by the cookie, and every query below is filtered by the answer.
  */
 export async function loadPortfolio(): Promise<Portfolio | null> {
   if (!isSupabaseConfigured()) return null;
 
   const supabase = await createClient();
 
-  // The authoritative source for the agency id. Buildings and apartment
-  // states are both empty for a brand new agency, so deriving it from their
-  // first row silently produced "" and made every write look unconfigured.
-  const { data: agencyRow } = await supabase
+  // Every agency this person belongs to. Row level security answers with
+  // exactly those, so no filter is needed to ask the question and none of the
+  // answer can be somebody else's.
+  const { data: agencyRows } = await supabase
     .from("agencies")
     .select("id, name, city, country, whatsapp_number, currency")
-    .limit(1)
-    .maybeSingle();
-  if (!agencyRow) return null;
+    .order("name");
+  if (!agencyRows || agencyRows.length === 0) return null;
+
+  // What the cookie asks for, honoured only if it is one of theirs. A stale
+  // cookie from an agency they have since left falls back to the first rather
+  // than showing an empty dashboard nobody can explain.
+  const asked = await requestedAgencyId();
+  const agencyRow = agencyRows.find((a) => a.id === asked) ?? agencyRows[0];
   const agencyId = agencyRow.id;
+
+  const agencies = agencyRows.map((a) => ({ id: a.id, name: a.name, city: a.city }));
 
   // Asked for separately, and allowed to fail. These arrive with a migration,
   // and a deployment reaches Vercel before that migration is pasted in; a
@@ -143,26 +156,41 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
     { data: technicianRows },
     { data: photoRows },
     { data: eventRows },
+    // Every one of these is filtered by agency now. Row level security answers
+    // with every agency the reader belongs to, which was the whole answer while
+    // that was always one; with two it would hand back both portfolios shuffled
+    // together, and the dashboard would add up buildings from a business the
+    // reader is not currently looking at.
   ] = await Promise.all([
-    supabase.from("buildings").select("*").order("name"),
-    supabase.from("v_building_performance").select("*"),
-    supabase.from("v_apartment_performance").select("*"),
-    supabase.from("v_apartment_state").select("*"),
-    supabase.from("v_charge_status").select("*").order("period_start"),
+    supabase.from("buildings").select("*").eq("agency_id", agencyId).order("name"),
+    supabase.from("v_building_performance").select("*").eq("agency_id", agencyId),
+    supabase.from("v_apartment_performance").select("*").eq("agency_id", agencyId),
+    supabase.from("v_apartment_state").select("*").eq("agency_id", agencyId),
+    supabase
+      .from("v_charge_status")
+      .select("*")
+      .eq("agency_id", agencyId)
+      .order("period_start"),
     supabase
       .from("payment_allocations")
       .select(
         "rent_charge_id, amount, payments(id, amount, paid_on, method, reference, proof_path, lease_id)"
-      ),
+      )
+      .eq("agency_id", agencyId),
     supabase
       .from("tickets")
       .select(
         "id, title, description, status, priority, reported_via, cost, opened_at, resolved_at, building_id, technician_id, apartments(label), residents(full_name), technicians(full_name)"
       )
+      .eq("agency_id", agencyId)
       .order("opened_at", { ascending: false }),
-    supabase.from("technicians").select("*").order("full_name"),
-    supabase.from("apartment_photos").select("*").order("position"),
-    supabase.from("events").select("*").order("starts_at"),
+    supabase.from("technicians").select("*").eq("agency_id", agencyId).order("full_name"),
+    supabase
+      .from("apartment_photos")
+      .select("*")
+      .eq("agency_id", agencyId)
+      .order("position"),
+    supabase.from("events").select("*").eq("agency_id", agencyId).order("starts_at"),
   ]);
 
   // Nothing to show means the account has no buildings yet, not a failure.
@@ -420,5 +448,5 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
     registration: details?.registration ?? "",
   };
 
-  return { agencyId, agencyInfo, currentUser, buildings, tickets, technicians, activity };
+  return { agencyId, agencies, agencyInfo, currentUser, buildings, tickets, technicians, activity };
 }

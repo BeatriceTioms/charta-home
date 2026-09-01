@@ -1,3 +1,4 @@
+import { requestedAgencyId } from "@/lib/agency";
 import { createClient } from "./server";
 import type {
   AgencyMember,
@@ -20,6 +21,14 @@ import type {
  * database rather than in application code.
  */
 
+/**
+ * The membership for the agency currently being shown.
+ *
+ * The same choice the portfolio makes, made the same way: the cookie says
+ * which, and it is honoured only when it names an agency this person actually
+ * belongs to. Taking the first row instead would have shown one agency's
+ * buildings under another's settings once anybody joined a second.
+ */
 export async function getCurrentAgency() {
   const supabase = await createClient();
   const {
@@ -27,13 +36,14 @@ export async function getCurrentAgency() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data } = await supabase
+  const { data: rows } = await supabase
     .from("memberships")
     .select("agency_id, role, full_name, agencies(*)")
-    .limit(1)
-    .maybeSingle();
+    .eq("user_id", user.id);
+  if (!rows || rows.length === 0) return null;
 
-  return data ?? null;
+  const asked = await requestedAgencyId();
+  return rows.find((m) => m.agency_id === asked) ?? rows[0];
 }
 
 export async function getBuildings(): Promise<BuildingRow[]> {

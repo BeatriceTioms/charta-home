@@ -50,6 +50,8 @@ type StoreValue = {
   toasts: Toast[];
   /** The signed in agency, empty string on the mock. */
   agencyId: string;
+  /** Every agency this person belongs to, for the switcher. */
+  agencies: { id: string; name: string; city: string }[];
   addBuilding: (input: { name: string; address: string; city: string }) => Promise<string | undefined>;
   notify: (message: string) => void;
   dismissToast: (id: number) => void;
@@ -156,6 +158,7 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 /** The signed in agency's portfolio, loaded server side. */
 export type StoreSeed = {
   agencyId: string;
+  agencies?: { id: string; name: string; city: string }[];
   agencyInfo?: {
     name: string; city: string; country: string; whatsapp: string; currency: string;
     address: string; email: string; registration: string;
@@ -210,6 +213,7 @@ export function StoreProvider({
   const live = Boolean(seed.agencyId);
   const agencyId = seed.agencyId;
   const agencyInfo = seed.agencyInfo ?? null;
+  const agencies = seed.agencies ?? [];
   const currentUser = seed.currentUser ?? null;
 
   const notify = useCallback((message: string) => {
@@ -851,6 +855,7 @@ export function StoreProvider({
       tickets,
       activity,
       agencyInfo,
+      agencies,
       currentUser,
       toasts,
       agencyId,
@@ -883,7 +888,7 @@ export function StoreProvider({
       remindedKeys,
     }),
     [
-      buildings, tickets, activity, agencyInfo, currentUser, toasts, agencyId, addBuilding, notify, dismissToast, addApartment, updateApartment2, deleteApartment, updateTenant, endLease,
+      buildings, tickets, activity, agencyInfo, agencies, currentUser, toasts, agencyId, addBuilding, notify, dismissToast, addApartment, updateApartment2, deleteApartment, updateTenant, endLease,
       setBuildingPhoto, removeBuildingPhoto, addLease,
       recordPayment, markReminded, addTicket, updateTicket, deleteTicket, assignTicket,
       resolveTicket, photosFor, addPhoto, updatePhoto, deletePhoto, technicians,
