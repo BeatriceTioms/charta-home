@@ -7,7 +7,6 @@ import { Logo, LogoMark } from "@/components/Logo";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ThemeToggle } from "./ThemeToggle";
 import { BuildingSwitcher } from "./BuildingSwitcher";
-import { AgencySwitcher } from "./AgencySwitcher";
 import { Toasts } from "./Toasts";
 import { BuildingProvider } from "@/lib/building-context";
 import { StoreProvider, useStore, type StoreSeed } from "@/lib/store";
@@ -173,9 +172,14 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Whose data this is. Charta Home is the product; the agency is the
-            business using it. It is also the switch: somebody managing two
-            businesses keeps two agencies rather than two logins. */}
-        <AgencySwitcher collapsed={collapsed} />
+            business using it. A name and nothing else: switching between
+            agencies belongs on the settings page, next to everything else
+            about the agency, rather than as a second menu in the sidebar. */}
+        {!collapsed && agencyInfo?.name && (
+          <p className="truncate px-5 pb-1 text-[13px] font-semibold text-azure-800 dark:text-soft-500">
+            {agencyInfo.name}
+          </p>
+        )}
 
         {collapsed && (
           <button
