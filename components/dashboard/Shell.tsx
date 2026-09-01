@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Logo, LogoMark } from "@/components/Logo";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ThemeToggle } from "./ThemeToggle";
-import { BuildingSwitcher } from "./BuildingSwitcher";
+import { PortfolioSwitcher } from "./PortfolioSwitcher";
 import { Toasts } from "./Toasts";
 import { BuildingProvider } from "@/lib/building-context";
 import { StoreProvider, useStore, type StoreSeed } from "@/lib/store";
@@ -314,10 +314,9 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
             <div className="flex items-center gap-3">
               <LanguageSwitcher tone="dashboard" />
               <ThemeToggle />
-              {/* One chip, and it changes the building. An agency chip beside
-                  it read as a second building selector, which is a bad way to
-                  find out you are looking at a different portfolio. */}
-              <BuildingSwitcher align="right" />
+              {/* One chip, and it changes the agency. Its buildings hang
+                  underneath it, because that is where they live. */}
+              <PortfolioSwitcher align="right" />
             </div>
           </div>
 
