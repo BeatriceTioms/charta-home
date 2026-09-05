@@ -15,7 +15,8 @@ export type TicketStatus = "new" | "assigned" | "in_progress" | "resolved" | "ca
 export type TicketPriority = "normal" | "high" | "urgent";
 export type ReportChannel = "whatsapp" | "sms" | "phone" | "email" | "in_person";
 export type EventKind = "viewing" | "work" | "inspection" | "other";
-export type PlanTier = "starter" | "growth" | "agency";
+export type PlanTier = "starter" | "growth" | "pro" | "business" | "enterprise";
+export type BillingCycle = "monthly" | "annual";
 export type SubscriptionStatus = "trialing" | "active" | "past_due" | "cancelled";
 
 export type Agency = {
@@ -339,6 +340,36 @@ export type SubscriptionRow = {
   current_period_end: string | null;
 };
 
+/** The catalogue: a tier is a band of managed apartments. */
+export type PlanRow = {
+  code: PlanTier;
+  rank: number;
+  min_apartments: number;
+  max_apartments: number | null;
+};
+
+/** Whole francs per tier and country. Null is a quote. */
+export type PlanPriceRow = {
+  plan: PlanTier;
+  country: string;
+  currency: string;
+  monthly: number | null;
+  annual: number | null;
+};
+
+/** An owner's choice of tier, waiting for its mobile money payment. */
+export type PlanRequestRow = {
+  id: string;
+  agency_id: string;
+  plan: PlanTier;
+  cycle: BillingCycle;
+  currency: string;
+  amount: number | null;
+  status: "pending" | "paid" | "cancelled";
+  requested_by: string | null;
+  created_at: string;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -395,6 +426,24 @@ export type Database = {
           { foreignKeyName: "payment_allocations_rent_charge_id_fkey"; columns: ["rent_charge_id"]; isOneToOne: false; referencedRelation: "rent_charges"; referencedColumns: ["id"] },
         ];
       };
+      plans: {
+        Row: PlanRow;
+        Insert: Partial<PlanRow>;
+        Update: Partial<PlanRow>;
+        Relationships: [];
+      };
+      plan_prices: {
+        Row: PlanPriceRow;
+        Insert: Partial<PlanPriceRow>;
+        Update: Partial<PlanPriceRow>;
+        Relationships: [];
+      };
+      plan_requests: {
+        Row: PlanRequestRow;
+        Insert: Partial<PlanRequestRow>;
+        Update: Partial<PlanRequestRow>;
+        Relationships: [];
+      };
       subscriptions: {
         Row: SubscriptionRow;
         Insert: Partial<SubscriptionRow>;
@@ -414,6 +463,10 @@ export type Database = {
       v_reminder_targets: { Row: ReminderTargetRow; Relationships: [] };
     };
     Functions: {
+      request_plan: {
+        Args: { target_agency: string; plan_code: string; cycle_in: string };
+        Returns: { request_id: string; paid_in: string; due: number | null }[];
+      };
       create_agency_for_current_user: {
         Args: {
           agency_name: string;
@@ -422,6 +475,7 @@ export type Database = {
           agency_currency?: string;
           agency_locale?: string;
           owner_name?: string | null;
+          plan_code?: string;
         };
         Returns: string;
       };

@@ -21,6 +21,7 @@ import {
   useState,
 } from "react";
 import { useI18n } from "@/lib/i18n/context";
+import type { PlanInfo } from "@/lib/pricing";
 import * as sb from "@/lib/supabase/actions";
 import type { MemberRole, PaymentMethod } from "@/lib/supabase/types";
 import {
@@ -44,6 +45,8 @@ type StoreValue = {
   activity: ActivityItem[];
   /** What actually happened, newest first. */
   recent: RecentEvent[];
+  /** The subscription and its ceiling. Null until the catalogue is in place. */
+  plan: PlanInfo | null;
   agencyInfo: {
     name: string; city: string; country: string; whatsapp: string; currency: string;
     address: string; email: string; registration: string;
@@ -172,6 +175,7 @@ export type StoreSeed = {
   technicians: Technician[];
   activity: ActivityItem[];
   recent: RecentEvent[];
+  plan?: PlanInfo | null;
 };
 
 /** The dashboard form's payment methods, in the database's spelling. */
@@ -219,6 +223,7 @@ export function StoreProvider({
   const agencyId = seed.agencyId;
   const agencyInfo = seed.agencyInfo ?? null;
   const agencies = seed.agencies ?? [];
+  const plan = seed.plan ?? null;
   const currentUser = seed.currentUser ?? null;
 
   const notify = useCallback((message: string) => {
@@ -249,7 +254,13 @@ export function StoreProvider({
         .then((result) => {
           if (!result.ok) {
             console.error("save failed:", result.error);
-            notify(t.dash.common.saveFailed);
+            // The one refusal the reader can act on: the tier is full, and
+            // the fix is a bigger one, not a retry.
+            notify(
+              /plan limit reached/.test(result.error ?? "")
+                ? t.dash.common.planLimit
+                : t.dash.common.saveFailed
+            );
           }
           router.refresh();
         })
@@ -861,6 +872,7 @@ export function StoreProvider({
       tickets,
       activity,
       recent,
+      plan,
       agencyInfo,
       agencies,
       currentUser,
@@ -895,7 +907,7 @@ export function StoreProvider({
       remindedKeys,
     }),
     [
-      buildings, tickets, activity, recent, agencyInfo, agencies, currentUser, toasts, agencyId, addBuilding, notify, dismissToast, addApartment, updateApartment2, deleteApartment, updateTenant, endLease,
+      buildings, tickets, activity, recent, plan, agencyInfo, agencies, currentUser, toasts, agencyId, addBuilding, notify, dismissToast, addApartment, updateApartment2, deleteApartment, updateTenant, endLease,
       setBuildingPhoto, removeBuildingPhoto, addLease,
       recordPayment, markReminded, addTicket, updateTicket, deleteTicket, assignTicket,
       resolveTicket, photosFor, addPhoto, updatePhoto, deletePhoto, technicians,

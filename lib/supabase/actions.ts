@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { AGENCY_COOKIE, AGENCY_COOKIE_MAX_AGE } from "@/lib/agency";
-import { invitationEmail, isEmailConfigured, sendEmail } from "@/lib/email";
+import { invitationEmail, isEmailConfigured, planRequestEmail, planRequestReceiptEmail, sendEmail } from "@/lib/email";
+import { formatMoney } from "@/lib/data";
+import { isPlanCode, planName, type BillingCycle } from "@/lib/pricing";
 import { toE164 } from "@/lib/phone";
 import { isSiteUrlReachable, siteUrl } from "@/lib/site-url";
 import { validateImage } from "@/lib/uploads";
@@ -1037,4 +1039,90 @@ export async function updateBuilding(
   if (error) return { ok: false, error: error.message };
   revalidateDashboard(locale);
   return { ok: true };
+}
+
+
+/**
+ * An owner chooses a tier and a billing cycle.
+ *
+ * There is no card form yet, so this is the whole checkout: the choice is
+ * recorded at the list price for the agency's country, the team is emailed
+ * to invoice it, and the owner is told how to pay by mobile money. The plan
+ * itself does not move here; the team moves it once the money has arrived,
+ * which is why the subscription row cannot be written by anyone else.
+ */
+export async function requestPlan(
+  locale: string,
+  input: { agencyId: string; plan: string; cycle: string }
+): Promise<ActionResult & { amount?: string | null }> {
+  if (!isPlanCode(input.plan)) return { ok: false, error: "unknown plan" };
+  const cycle: BillingCycle = input.cycle === "annual" ? "annual" : "monthly";
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("request_plan", {
+    target_agency: input.agencyId,
+    plan_code: input.plan,
+    cycle_in: cycle,
+  });
+  if (error) return { ok: false, error: error.message };
+  const row = data?.[0];
+  if (!row) return { ok: false, error: "the request was not recorded" };
+
+  const amount = row.due === null || row.due === undefined
+    ? null
+    : formatMoney(Number(row.due), row.paid_in);
+
+  // The request is on record whatever happens to the mail, so a mail outage
+  // is logged and never shown as a failed request.
+  if (isEmailConfigured()) {
+    const [{ data: auth }, { data: agency }] = await Promise.all([
+      supabase.auth.getUser(),
+      supabase.from("agencies").select("name, country, city, email").eq("id", input.agencyId).maybeSingle(),
+    ]);
+    const { data: me } = await supabase
+      .from("memberships")
+      .select("full_name")
+      .eq("agency_id", input.agencyId)
+      .eq("user_id", auth.user?.id ?? "")
+      .maybeSingle();
+
+    const ownerEmail = auth.user?.email ?? "";
+    const fr = locale === "fr";
+    const cycleLabel = cycle === "annual" ? (fr ? "annuel" : "annual") : fr ? "mensuel" : "monthly";
+    const label = planName(input.plan, locale);
+
+    const toTeam = planRequestEmail({
+      agencyName: agency?.name ?? "",
+      country: agency?.country ?? "",
+      city: agency?.city ?? "",
+      contactEmail: agency?.email || ownerEmail,
+      requestedBy: me?.full_name || ownerEmail,
+      planLabel: label,
+      cycleLabel,
+      amount,
+      locale,
+    });
+    const sales = process.env.SALES_EMAIL || "hello@chartahome.com";
+    const sentTeam = await sendEmail({ to: sales, ...toTeam });
+    if (!sentTeam.ok) console.error("plan request email failed:", sentTeam.error);
+
+    if (ownerEmail) {
+      const receipt = planRequestReceiptEmail({
+        agencyName: agency?.name ?? "",
+        ownerName: me?.full_name || ownerEmail.split("@")[0],
+        planLabel: label,
+        cycleLabel,
+        amount,
+        orangeNumber: process.env.MOBILE_MONEY_ORANGE ?? "",
+        mtnNumber: process.env.MOBILE_MONEY_MTN ?? "",
+        settingsUrl: `${siteUrl()}/${locale}/dashboard/settings`,
+        locale,
+      });
+      const sentOwner = await sendEmail({ to: ownerEmail, ...receipt });
+      if (!sentOwner.ok) console.error("plan receipt email failed:", sentOwner.error);
+    }
+  }
+
+  revalidateDashboard(locale);
+  return { ok: true, id: row.request_id, amount };
 }

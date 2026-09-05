@@ -52,9 +52,9 @@ const ICONS = {
 function DashboardChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { t, path, locale } = useI18n();
+  const { t, path, locale, f } = useI18n();
   const [collapsed, setCollapsed] = useState(false);
-  const { buildings, currentUser } = useStore();
+  const { buildings, currentUser, plan } = useStore();
   const hasBuildings = buildings.length > 0;
 
   // Initials from whatever name is on the membership. One word gives one
@@ -223,22 +223,54 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
 
-        {!collapsed && (
-          <div className="relative m-4 rounded-2xl border border-white/70 bg-white/45 p-4 backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
-            <p className="text-sm font-semibold text-azure-800 dark:text-soft-500">
-              {t.dash.shell.growthPlan}
-            </p>
-            <p className="mt-1 text-xs leading-relaxed text-onyx/55 dark:text-white/50">
-              {t.dash.shell.trialEnds}
-            </p>
-            <Link
-              href={path("/dashboard/settings")}
-              className="mt-3 block rounded-full bg-onyx py-2 text-center text-xs font-bold text-white transition hover:bg-azure-900 dark:bg-soft-500 dark:text-azure-950 dark:hover:bg-soft-400"
-            >
-              {t.dash.shell.managePlan}
-            </Link>
-          </div>
-        )}
+        {/* The subscription as it is, from the row. It said "21 days" for
+            every agency on every day, which is the kind of number people
+            stop reading. Absent until the catalogue migration is pasted. */}
+        {!collapsed && plan && (() => {
+          const sh = t.dash.shell;
+          const used = buildings.reduce((n, b) => n + b.apartments.length, 0);
+          const day = (iso: string) =>
+            new Date(iso).toLocaleDateString(locale === "fr" ? "fr-FR" : "en-GB", {
+              day: "numeric", month: "long", year: "numeric",
+            });
+          const status =
+            plan.status === "trialing" && plan.trialEndsAt ? f(sh.trialUntil, { date: day(plan.trialEndsAt) })
+            : plan.status === "active" && plan.currentPeriodEnd ? f(sh.activeUntil, { date: day(plan.currentPeriodEnd) })
+            : plan.status === "past_due" ? sh.pastDue
+            : plan.status === "cancelled" ? sh.cancelled
+            : "";
+          const seats = plan.maxApartments === null
+            ? f(sh.apartmentsUnlimited, { used })
+            : f(sh.apartmentsUsed, { used, max: plan.maxApartments });
+          const pct = plan.maxApartments ? Math.min(100, Math.round((used / plan.maxApartments) * 100)) : 0;
+          return (
+            <div className="relative m-4 rounded-2xl border border-white/70 bg-white/45 p-4 backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
+              <p className="text-sm font-semibold text-azure-800 dark:text-soft-500">
+                {f(sh.planName, { plan: t.plans.tiers[plan.code].name })}
+              </p>
+              {status && (
+                <p className="mt-1 text-xs leading-relaxed text-onyx/55 dark:text-white/50" suppressHydrationWarning>
+                  {status}
+                </p>
+              )}
+              <p className="mt-2 text-[11px] font-semibold text-onyx/60 dark:text-white/55">{seats}</p>
+              {plan.maxApartments !== null && (
+                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-azure-900/10 dark:bg-white/10">
+                  <div
+                    className={`h-full rounded-full ${pct >= 100 ? "bg-azure-950 dark:bg-soft-500" : "bg-azure-700 dark:bg-soft-400"}`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              )}
+              <Link
+                href={path("/dashboard/settings")}
+                className="mt-3 block rounded-full bg-onyx py-2 text-center text-xs font-bold text-white transition hover:bg-azure-900 dark:bg-soft-500 dark:text-azure-950 dark:hover:bg-soft-400"
+              >
+                {sh.managePlan}
+              </Link>
+            </div>
+          );
+        })()}
 
         <div className={`m-3 flex items-center gap-2 ${collapsed ? "flex-col" : ""}`}>
           <Link

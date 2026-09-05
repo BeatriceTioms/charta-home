@@ -6,6 +6,7 @@ import { createAdminClient, createClient } from "./server";
 import { isSupabaseConfigured } from "./config";
 import { isEmailConfigured, passwordResetEmail, sendEmail, welcomeEmail } from "@/lib/email";
 import { siteUrl } from "@/lib/site-url";
+import { currencyFor, isPlanCode } from "@/lib/pricing";
 
 /**
  * `demo` means no Supabase project is configured yet, so the caller should
@@ -46,6 +47,10 @@ export async function signUp(
   const agencyName = String(formData.get("agency") ?? "").trim();
   const country = String(formData.get("country") ?? "Guinea");
   const city = String(formData.get("city") ?? "Conakry");
+  // The tier chosen on the pricing page, carried through the form. Anything
+  // else, including nothing, starts the trial on Growth as before.
+  const chosen = formData.get("plan");
+  const plan = isPlanCode(chosen) ? chosen : "growth";
 
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -64,9 +69,12 @@ export async function signUp(
     agency_name: agencyName,
     agency_country: country,
     agency_city: city,
-    agency_currency: country === "Guinea" ? "GNF" : "USD",
+    // Was GNF for Guinea and dollars for everyone else, so an agency in
+    // Douala was billing its tenants in a currency none of them hold.
+    agency_currency: currencyFor(country),
     agency_locale: locale === "en" ? "en" : "fr",
     owner_name: fullName,
+    plan_code: plan,
   });
   if (rpcError) return { error: rpcError.message };
 

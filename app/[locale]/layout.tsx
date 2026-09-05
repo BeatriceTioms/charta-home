@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PLAN_CODES, PRICING_COUNTRIES, priceFor } from "@/lib/pricing";
 import { notFound } from "next/navigation";
 import { getDictionary, isLocale, locales } from "@/lib/i18n";
 import { I18nProvider } from "@/lib/i18n/context";
@@ -140,11 +141,21 @@ function structuredData(locale: string) {
         operatingSystem: "Web",
         inLanguage: locale === "fr" ? "fr-GN" : "en",
         description: t.meta.home.description,
-        offers: [
-          { "@type": "Offer", name: "Starter", price: "29", priceCurrency: "USD", description: t.plans.starter.blurb },
-          { "@type": "Offer", name: "Growth", price: "79", priceCurrency: "USD", description: t.plans.growth.blurb },
-          { "@type": "Offer", name: "Agency", price: "199", priceCurrency: "USD", description: t.plans.agency.blurb },
-        ],
+        // One offer per tier and country, in the currency it is sold in.
+        // Enterprise has no number and so no offer.
+        offers: PRICING_COUNTRIES.flatMap((country) =>
+          PLAN_CODES.flatMap((code) => {
+            const price = priceFor(country, code, "monthly");
+            if (!price) return [];
+            return [{
+              "@type": "Offer",
+              name: `${t.plans.tiers[code].name} · ${country}`,
+              price: String(price.amount),
+              priceCurrency: price.currency,
+              description: t.plans.tiers[code].blurb,
+            }];
+          })
+        ),
       },
     ],
   };

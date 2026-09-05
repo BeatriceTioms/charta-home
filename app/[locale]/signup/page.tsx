@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import { AuthShell } from "@/components/auth/AuthShell";
 import {
   AuthHeading,
@@ -15,9 +15,14 @@ import { COUNTRIES } from "@/lib/countries";
 import { useI18n } from "@/lib/i18n/context";
 import { signUp } from "@/lib/supabase/auth-actions";
 import { authErrorMessage } from "@/lib/auth-errors";
+import { isPlanCode } from "@/lib/pricing";
 
-export default function SignupPage() {
-  const { t, path, locale } = useI18n();
+function SignupForm() {
+  const { t, path, locale, f } = useI18n();
+  // The tier picked on the pricing page. Carried through as a hidden
+  // field, so the trial starts on the plan they were looking at.
+  const chosen = useSearchParams().get("plan");
+  const plan = isPlanCode(chosen) ? chosen : null;
   const router = useRouter();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [failure, setFailure] = useState<string>();
@@ -67,6 +72,14 @@ export default function SignupPage() {
     <AuthShell variant="signup">
       <AuthHeading title={t.auth.signup.title} subtitle={t.auth.signup.subtitle} />
       <form className="space-y-5" onSubmit={submit} noValidate>
+        {plan && (
+          <>
+            <input type="hidden" name="plan" value={plan} />
+            <p className="rounded-2xl bg-soft-100 px-4 py-3 text-sm text-azure-900">
+              {f(t.auth.signup.chosenPlan, { plan: t.plans.tiers[plan].name })}
+            </p>
+          </>
+        )}
         <div className="grid gap-5 sm:grid-cols-2">
           <TextField
             label={t.auth.signup.name}
@@ -150,5 +163,14 @@ export default function SignupPage() {
         </Link>
       </p>
     </AuthShell>
+  );
+}
+
+/** useSearchParams needs a boundary above it, or the page cannot prerender. */
+export default function SignupPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignupForm />
+    </Suspense>
   );
 }

@@ -161,17 +161,13 @@ check(
 const [audit] = await asUser(userA.id, `select count(*)::int as n from audit_log where agency_id = '${a1.id}'`);
 check("money changes are written to the audit log", audit.n > 0, `${audit.n} entries`);
 
-// --- plan limit: growth allows 5 buildings
-let limitHeld = false;
-try {
-  for (let i = 0; i < 6; i++) {
-    await asUser(userA.id, `insert into buildings (agency_id, name, city) values ('${a1.id}', 'Extra ${i}', 'Conakry')`);
-  }
-} catch (err) {
-  limitHeld = /plan limit reached/.test(err.message);
+// --- buildings are not restricted. A tier is a band of apartments, and the
+// apartment ceiling is exercised further down with an agency built for it.
+for (let i = 0; i < 6; i++) {
+  await asUser(userA.id, `insert into buildings (agency_id, name, city) values ('${a1.id}', 'Extra ${i}', 'Conakry')`);
 }
 const [count] = await asUser(userA.id, `select count(*)::int as n from buildings where agency_id = '${a1.id}'`);
-check("plan limit stops the 6th building on Growth", limitHeld && count.n === 5, `${count.n} buildings, error raised=${limitHeld}`);
+check("buildings are not capped by the plan", count.n === 7, `${count.n} buildings`);
 
 // --- technicians, reassignment and performance
 const [techA] = await asUser(userA.id, `
@@ -762,6 +758,128 @@ const seenByB = await asUser(userB.id, `select name from buildings where agency_
 outsiderBlocked = seenByB.length === 0;
 check("a second agency is invisible to somebody outside it", outsiderBlocked,
   `${seenByB.length} rows leaked`);
+
+/* ------------------------------------------------------ the pricing model --
+ * Five tiers, each a band of apartments, priced per country. The ceiling is
+ * the one thing a tier restricts, and it is enforced in the database so it
+ * holds whatever the client says.
+ */
+const tiers = await asUser(userA.id, `select code, min_apartments, max_apartments from plans order by rank`);
+check("five tiers, in order",
+  tiers.map((t) => t.code).join(",") === "starter,growth,pro,business,enterprise",
+  tiers.map((t) => t.code).join(","));
+const contiguous = tiers.every((t, i) =>
+  i === 0 ? t.min_apartments === 1 : t.min_apartments === tiers[i - 1].max_apartments + 1);
+check("the bands are contiguous and start at one",
+  contiguous && tiers[tiers.length - 1].max_apartments === null,
+  tiers.map((t) => `${t.min_apartments}..${t.max_apartments ?? "∞"}`).join(" "));
+
+const prices = await asUser(userA.id, `select plan, country, currency, monthly, annual from plan_prices order by country, plan`);
+const gn = prices.filter((p) => p.country === "Guinea");
+const cm = prices.filter((p) => p.country === "Cameroon");
+check("a full list for each country, in its own currency",
+  gn.length === 5 && cm.length === 5 && gn.every((p) => p.currency === "GNF") && cm.every((p) => p.currency === "XAF"),
+  `${gn.length} GNF rows, ${cm.length} XAF rows`);
+check("a year is ten months, everywhere",
+  prices.filter((p) => p.monthly !== null).every((p) => Number(p.annual) === Number(p.monthly) * 10),
+  "two months free on every tier");
+check("Guinea Pro is 500 000 GNF a month",
+  Number(gn.find((p) => p.plan === "pro")?.monthly) === 500000);
+check("Cameroon Business is 55 000 XAF a month",
+  Number(cm.find((p) => p.plan === "business")?.monthly) === 55000);
+check("Enterprise has no number in either country",
+  prices.filter((p) => p.plan === "enterprise").every((p) => p.monthly === null && p.annual === null),
+  "priced by conversation");
+
+// A Starter agency, built to hit the ceiling.
+const [userC] = await q(`insert into auth.users (email) values ('fatou@petite.gn') returning id`);
+const [c1] = await asUser(userC.id, `
+  select public.create_agency_for_current_user('Petite Agence','Guinea','Conakry','GNF','fr','Fatou Camara','starter') as id`);
+const [subC] = await asUser(userC.id, `select plan, status from subscriptions where agency_id = '${c1.id}'`);
+check("signup can start the trial on the tier chosen on the pricing page",
+  subC?.plan === "starter" && subC?.status === "trialing", `${subC?.plan} / ${subC?.status}`);
+
+const [bFatou] = await asUser(userC.id, `
+  insert into buildings (agency_id, name, city) values ('${c1.id}', 'Immeuble Fatou', 'Ratoma') returning id`);
+let inserted = 0;
+let capMessage = "";
+try {
+  for (let i = 1; i <= 31; i++) {
+    await asUser(userC.id, `
+      insert into apartments (agency_id, building_id, label, rooms, bathrooms, sqm, base_rent)
+      values ('${c1.id}', '${bFatou.id}', 'Apt ${i}', 2, 1, 60, 900000)`);
+    inserted++;
+  }
+} catch (err) {
+  capMessage = err.message;
+}
+const [aptCount] = await asUser(userC.id, `select count(*)::int as n from apartments where agency_id = '${c1.id}'`);
+check("Starter stops the 31st apartment",
+  inserted === 30 && /plan limit reached: 30 apartments allowed on the starter plan/.test(capMessage),
+  capMessage || `${inserted} inserted without refusal`);
+check("and keeps the thirty it allowed", aptCount.n === 30, `${aptCount.n} apartments`);
+
+let unknownPlanRefused = false;
+try {
+  await asUser(userC.id, `select public.create_agency_for_current_user('X','Guinea','Conakry','GNF','fr','Y','platinum')`);
+} catch (err) {
+  unknownPlanRefused = /unknown plan/.test(err.message);
+}
+check("a tier that does not exist is refused at signup", unknownPlanRefused);
+
+// The plan is what they pay for, so the owner cannot move it themselves.
+await asUser(userC.id, `update subscriptions set plan = 'enterprise' where agency_id = '${c1.id}'`);
+const [afterPromote] = await asUser(userC.id, `select plan from subscriptions where agency_id = '${c1.id}'`);
+check("an owner cannot promote their own subscription",
+  afterPromote.plan === "starter", `plan is ${afterPromote.plan}`);
+
+// Choosing a plan records the list price for the agency's country.
+const [reqM] = await asUser(userC.id, `select * from public.request_plan('${c1.id}', 'pro', 'monthly')`);
+check("a request is recorded at the list price",
+  reqM.paid_in === "GNF" && Number(reqM.due) === 500000, `${reqM.due} ${reqM.paid_in}`);
+const [reqY] = await asUser(userC.id, `select * from public.request_plan('${c1.id}', 'business', 'annual')`);
+check("a yearly request is ten months of the tier",
+  Number(reqY.due) === 8500000, `${reqY.due} ${reqY.paid_in}`);
+const mine = await asUser(userC.id, `select plan, cycle, status from plan_requests where agency_id = '${c1.id}' order by created_at`);
+check("the agency can read its own requests, all pending",
+  mine.length === 2 && mine.every((r) => r.status === "pending"),
+  mine.map((r) => `${r.plan}/${r.cycle}/${r.status}`).join(", "));
+
+const [userD] = await q(`insert into auth.users (email) values ('paul@douala.cm') returning id`);
+const [d1] = await asUser(userD.id, `
+  select public.create_agency_for_current_user('Douala Immo','Cameroon','Douala','XAF','fr','Paul Ngassa','growth') as id`);
+const [reqD] = await asUser(userD.id, `select * from public.request_plan('${d1.id}', 'business', 'monthly')`);
+check("Cameroon is priced from its own list, in XAF",
+  reqD.paid_in === "XAF" && Number(reqD.due) === 55000, `${reqD.due} ${reqD.paid_in}`);
+const [reqE] = await asUser(userD.id, `select * from public.request_plan('${d1.id}', 'enterprise', 'monthly')`);
+check("Enterprise is a quote, not a price", reqE.due === null && reqE.paid_in === "XAF");
+
+const [userE] = await q(`insert into auth.users (email) values ('aicha@bamako.ml') returning id`);
+const [e1] = await asUser(userE.id, `
+  select public.create_agency_for_current_user('Bamako Immo','Mali','Bamako','XOF','fr','Aïcha Traoré','starter') as id`);
+const [reqX] = await asUser(userE.id, `select * from public.request_plan('${e1.id}', 'pro', 'monthly')`);
+check("a country without a list gets a quote in its own currency",
+  reqX.due === null && reqX.paid_in === "XOF", `${reqX.due} ${reqX.paid_in}`);
+
+await q(`insert into memberships (user_id, agency_id, role, full_name) values ('${manager.id}', '${c1.id}', 'manager', 'Karim')`);
+let managerBlocked = false;
+try {
+  await asUser(manager.id, `select * from public.request_plan('${c1.id}', 'pro', 'monthly')`);
+} catch (err) {
+  managerBlocked = /only the owner/.test(err.message);
+}
+check("a manager cannot choose the plan", managerBlocked);
+
+let cycleRefused = false;
+try {
+  await asUser(userC.id, `select * from public.request_plan('${c1.id}', 'pro', 'weekly')`);
+} catch (err) {
+  cycleRefused = /unknown billing cycle/.test(err.message);
+}
+check("a cycle that does not exist is refused", cycleRefused);
+
+const [leak] = await asUser(userB.id, `select count(*)::int as n from plan_requests where agency_id = '${c1.id}'`);
+check("requests are invisible outside the agency", leak.n === 0, `${leak.n} rows leaked`);
 
 await db.close();
 

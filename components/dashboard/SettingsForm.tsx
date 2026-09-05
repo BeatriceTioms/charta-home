@@ -12,6 +12,16 @@ import type { AgencyMember, MemberRole, ReminderRuleRow, ReportChannel } from "@
 import type { getSettingsData } from "@/lib/supabase/queries";
 import { Card, CardTitle, PageTitle } from "@/components/dashboard/ui";
 import { Field, Modal, ModalActions, fieldCls } from "@/components/dashboard/Modal";
+import { formatMoney } from "@/lib/data";
+import {
+  PLAN_BANDS,
+  PLAN_CODES,
+  isPricingCountry,
+  planForApartments,
+  priceFor,
+  type BillingCycle,
+  type PlanCode,
+} from "@/lib/pricing";
 
 type SettingsData = Awaited<ReturnType<typeof getSettingsData>>;
 
@@ -305,9 +315,228 @@ function MessageModal({
   );
 }
 
+/* --------------------------------------------------------------- the plan --
+ * What the agency is on and what it may ask for. There is no card form yet:
+ * the owner picks a tier and a cycle, the request is recorded and mailed,
+ * and the agency pays by mobile money. The subscription itself only moves
+ * when the team moves it, so nothing here writes to it.
+ */
+
+function PlanSummary({ canEdit, onChoose }: { canEdit: boolean; onChoose: () => void }) {
+  const { t, f, locale } = useI18n();
+  const { plan, buildings } = useStore();
+  const pc = t.dash.settings.planCard;
+  const used = buildings.reduce((n, b) => n + b.apartments.length, 0);
+  const day = (iso: string) =>
+    new Date(iso).toLocaleDateString(locale === "fr" ? "fr-FR" : "en-GB", {
+      day: "numeric", month: "long", year: "numeric",
+    });
+
+  const status = !plan ? ""
+    : plan.status === "trialing" && plan.trialEndsAt ? f(pc.trialUntil, { date: day(plan.trialEndsAt) })
+    : plan.status === "active" && plan.currentPeriodEnd ? f(pc.activeUntil, { date: day(plan.currentPeriodEnd) })
+    : plan.status === "active" ? pc.active
+    : plan.status === "past_due" ? pc.pastDue
+    : plan.status === "cancelled" ? pc.cancelled
+    : "";
+
+  const max = plan?.maxApartments ?? null;
+  const left = max === null ? null : Math.max(0, max - used);
+  const next = plan ? PLAN_CODES[Math.min(PLAN_CODES.indexOf(plan.code) + 1, PLAN_CODES.length - 1)] : null;
+  const nextMax = next ? PLAN_BANDS[next].max : null;
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-2xl border border-azure-900/10 bg-soft-50 p-5 dark:border-white/10 dark:bg-white/5">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-onyx/40 dark:text-white/35">{pc.current}</p>
+        <p className="mt-1 text-lg font-bold text-azure-950 dark:text-white">
+          {plan ? t.plans.tiers[plan.code].name : "…"}
+        </p>
+        {status && (
+          <p className="mt-1 text-sm text-onyx/70 dark:text-white/70" suppressHydrationWarning>{status}</p>
+        )}
+        {plan && (
+          <p className="mt-3 text-sm font-semibold text-azure-950 dark:text-white">
+            {max === null ? f(pc.apartmentsUnlimited, { used }) : f(pc.apartments, { used, max })}
+          </p>
+        )}
+        {left !== null && left === 0 && (
+          <p className="mt-2 rounded-xl bg-azure-950 px-3 py-2 text-xs font-semibold text-white dark:bg-soft-500 dark:text-azure-950">
+            {pc.atLimit}
+          </p>
+        )}
+        {left !== null && left > 0 && left <= 5 && nextMax && (
+          <p className="mt-2 text-xs text-onyx/60 dark:text-white/55">
+            {f(pc.nearLimit, { left, max: nextMax })}
+          </p>
+        )}
+      </div>
+
+      {plan?.pending && (
+        <div className="rounded-2xl border border-azure-900/10 bg-white/70 p-5 dark:border-white/10 dark:bg-white/5">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-azure-800 dark:text-soft-500">{pc.pendingTitle}</p>
+          <p className="mt-1.5 text-sm leading-relaxed text-onyx/70 dark:text-white/70" suppressHydrationWarning>
+            {plan.pending.amount === null
+              ? f(pc.pendingQuote, {
+                  plan: t.plans.tiers[plan.pending.plan].name,
+                  date: day(plan.pending.createdAt),
+                })
+              : f(pc.pending, {
+                  plan: t.plans.tiers[plan.pending.plan].name,
+                  cycle: plan.pending.cycle === "annual" ? pc.annual : pc.monthly,
+                  amount: formatMoney(plan.pending.amount, plan.pending.currency),
+                  date: day(plan.pending.createdAt),
+                })}
+          </p>
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={onChoose}
+          disabled={!canEdit}
+          className="rounded-full bg-onyx px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-azure-900 disabled:opacity-40 dark:bg-soft-500 dark:text-azure-950 dark:hover:bg-soft-400"
+        >
+          {pc.choose}
+        </button>
+        {!canEdit && <span className="text-xs text-onyx/50 dark:text-white/45">{pc.ownerOnly}</span>}
+      </div>
+    </div>
+  );
+}
+
+function PlanModal({
+  agencyId,
+  country,
+  onClose,
+}: {
+  agencyId: string;
+  country: string;
+  onClose: () => void;
+}) {
+  const { t, f, locale } = useI18n();
+  const { plan, buildings, notify } = useStore();
+  const router = useRouter();
+  const pc = t.dash.settings.planCard;
+  const p = t.plans;
+  const used = buildings.reduce((n, b) => n + b.apartments.length, 0);
+  const recommended = planForApartments(Math.max(1, used));
+
+  const [cycle, setCycle] = useState<BillingCycle>("monthly");
+  const [choice, setChoice] = useState<PlanCode>(recommended);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string>();
+
+  const bandOf = (code: PlanCode) => {
+    const band = PLAN_BANDS[code];
+    return band.max === null ? f(p.bandOpen, { min: band.min }) : f(p.band, { min: band.min, max: band.max });
+  };
+
+  return (
+    <Modal title={pc.modalTitle} subtitle={pc.modalSubtitle} onClose={onClose}>
+      <form
+        className="space-y-4"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setSending(true);
+          setError(undefined);
+          const result = await sb.requestPlan(locale, { agencyId, plan: choice, cycle });
+          setSending(false);
+          if (!result.ok) {
+            setError(result.error);
+            return;
+          }
+          notify(pc.sent);
+          onClose();
+          router.refresh();
+        }}
+      >
+        {!isPricingCountry(country) && (
+          <p className="rounded-2xl bg-soft-200/60 px-4 py-3 text-xs leading-relaxed text-azure-900 dark:bg-white/10 dark:text-white/70">
+            {f(pc.noPriceList, { country })}
+          </p>
+        )}
+
+        <div role="radiogroup" aria-label={p.cycleLabel} className="inline-flex rounded-full border border-azure-900/15 p-1 dark:border-white/15">
+          {(["monthly", "annual"] as const).map((c) => (
+            <button
+              key={c}
+              type="button"
+              role="radio"
+              aria-checked={cycle === c}
+              onClick={() => setCycle(c)}
+              className={`flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold transition ${
+                cycle === c ? "bg-onyx text-white dark:bg-soft-500 dark:text-azure-950" : "text-azure-900 dark:text-white"
+              }`}
+            >
+              {c === "monthly" ? p.monthly : p.annual}
+              {c === "annual" && (
+                <span className="rounded-full bg-soft-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-azure-950">
+                  {p.annualSaving}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        <div role="radiogroup" aria-label={pc.modalTitle} className="space-y-2">
+          {PLAN_CODES.map((code) => {
+            const price = priceFor(country, code, cycle);
+            const active = code === choice;
+            const current = plan?.code === code;
+            return (
+              <button
+                key={code}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                onClick={() => setChoice(code)}
+                className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition ${
+                  active
+                    ? "border-azure-950 bg-azure-950 text-white dark:border-soft-500 dark:bg-soft-500 dark:text-azure-950"
+                    : "border-azure-900/10 hover:bg-azure-900/5 dark:border-white/10 dark:hover:bg-white/10"
+                }`}
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-2">
+                    <span className="text-sm font-bold">{p.tiers[code].name}</span>
+                    {current && (
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${active ? "bg-white/20" : "bg-azure-900/10 dark:bg-white/10"}`}>
+                        {pc.currentTag}
+                      </span>
+                    )}
+                  </span>
+                  <span className={`block text-xs ${active ? "opacity-75" : "text-onyx/50 dark:text-white/45"}`}>
+                    {bandOf(code)}
+                    {code === recommended && ` · ${f(pc.recommended, { count: used })}`}
+                  </span>
+                </span>
+                <span className="shrink-0 text-right text-sm font-bold">
+                  {price ? formatMoney(price.amount, price.currency) : p.quote}
+                  {price && (
+                    <span className={`block text-[11px] font-medium ${active ? "opacity-75" : "text-onyx/45 dark:text-white/40"}`}>
+                      {cycle === "annual" ? p.perYear : p.perMonth}
+                    </span>
+                  )}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {error && <p className="text-xs font-semibold text-red-600">{error}</p>}
+
+        <ModalActions onCancel={onClose} submitLabel={sending ? t.dash.common.saving : pc.send} />
+      </form>
+    </Modal>
+  );
+}
+
 export function SettingsForm({ data }: { data: SettingsData }) {
   const { t, f, locale } = useI18n();
   const { notify, currentUser } = useStore();
+  const [choosingPlan, setChoosingPlan] = useState(false);
   const router = useRouter();
   const s = t.dash.settings;
 
@@ -824,20 +1053,7 @@ export function SettingsForm({ data }: { data: SettingsData }) {
         {/* plan */}
         <Card>
           <CardTitle>{s.plan}</CardTitle>
-          <div className="rounded-2xl border border-azure-900/10 bg-soft-50 p-5 dark:border-white/10 dark:bg-white/5">
-            <p className="text-lg font-bold text-azure-950 dark:text-white">
-              {t.dash.shell.growthPlan}
-            </p>
-            <p className="mt-1.5 text-sm text-onyx/70 dark:text-white/70">{s.trialNotice}</p>
-            <div className="mt-4 flex flex-wrap gap-3">
-              <button
-                onClick={() => notify(s.changePlan)}
-                className="rounded-full bg-onyx px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-azure-900 dark:bg-soft-500 dark:text-azure-950 dark:hover:bg-soft-400"
-              >
-                {s.changePlan}
-              </button>
-            </div>
-          </div>
+          <PlanSummary canEdit={canEdit} onChoose={() => setChoosingPlan(true)} />
           <p className="mt-5 text-xs leading-relaxed text-onyx/50 dark:text-white/45">{s.dataNotice}</p>
           <ExportButton
             label={s.exportData}
@@ -872,6 +1088,10 @@ export function SettingsForm({ data }: { data: SettingsData }) {
           }}
           onClose={() => setEditingMessage(null)}
         />
+      )}
+
+      {choosingPlan && (
+        <PlanModal agencyId={agencyId} country={country} onClose={() => setChoosingPlan(false)} />
       )}
 
       {inviting && (

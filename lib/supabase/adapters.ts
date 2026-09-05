@@ -1,5 +1,6 @@
 import { periodValue, type ActivityItem, type Building, type LeaseCycle, type Payment, type PaymentRecord, type RecentEvent, type RentStatus, type Technician, type Ticket } from "@/lib/data";
 import { requestedAgencyId } from "@/lib/agency";
+import { isPlanCode, PLAN_BANDS, type PlanInfo } from "@/lib/pricing";
 import { isSupabaseConfigured } from "./config";
 import { createClient } from "./server";
 import type { MemberRole } from "./types";
@@ -66,6 +67,8 @@ export type Portfolio = {
   activity: ActivityItem[];
   /** What actually happened, newest first, with real timestamps. */
   recent: RecentEvent[];
+  /** The subscription, its ceiling, and any request awaiting payment. */
+  plan: PlanInfo | null;
 };
 
 /**
@@ -532,6 +535,56 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
     .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
     .slice(0, 12);
 
+  /* ------------------------------------------------------------- the plan
+   * Tolerant reads, in the pattern of the rest of this file. The catalogue
+   * arrives with a migration, and a deployment reaches Vercel before that
+   * migration is pasted in; a failed read here leaves the plan unknown, and
+   * the sidebar says nothing, rather than taking the dashboard down with it.
+   */
+  const [{ data: subscription }, { data: pendingRows }] = await Promise.all([
+    supabase
+      .from("subscriptions")
+      .select("plan, status, trial_ends_at, current_period_end")
+      .eq("agency_id", agencyId)
+      .maybeSingle(),
+    supabase
+      .from("plan_requests")
+      .select("plan, cycle, currency, amount, created_at")
+      .eq("agency_id", agencyId)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(1),
+  ]);
+
+  let plan: PlanInfo | null = null;
+  if (subscription && isPlanCode(subscription.plan)) {
+    const { data: tier } = await supabase
+      .from("plans")
+      .select("max_apartments")
+      .eq("code", subscription.plan)
+      .maybeSingle();
+    const pendingRow = pendingRows?.[0];
+    plan = {
+      code: subscription.plan,
+      status: subscription.status,
+      trialEndsAt: subscription.trial_ends_at ?? null,
+      currentPeriodEnd: subscription.current_period_end ?? null,
+      // The database is the authority; the bundled table only stands in
+      // while the migration is still to be pasted.
+      maxApartments: tier ? tier.max_apartments : PLAN_BANDS[subscription.plan].max,
+      pending:
+        pendingRow && isPlanCode(pendingRow.plan)
+          ? {
+              plan: pendingRow.plan,
+              cycle: pendingRow.cycle === "annual" ? "annual" : "monthly",
+              currency: pendingRow.currency,
+              amount: pendingRow.amount === null ? null : Number(pendingRow.amount),
+              createdAt: String(pendingRow.created_at),
+            }
+          : null,
+    };
+  }
+
   const agencyInfo = {
     name: agencyRow.name,
     city: agencyRow.city,
@@ -543,5 +596,5 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
     registration: details?.registration ?? "",
   };
 
-  return { agencyId, agencies, agencyInfo, currentUser, buildings, tickets, technicians, activity, recent };
+  return { agencyId, agencies, agencyInfo, currentUser, buildings, tickets, technicians, activity, recent, plan };
 }

@@ -162,3 +162,29 @@ rest, lives in [go-live-checklist.md](./go-live-checklist.md). In short:
   send API; the TODO marks the spot.
 - Subscription billing is manual. See the architecture notes on why a payment
   provider should wait until the first paying agencies are known.
+
+## Choosing a plan
+
+There is no card form yet. An owner picks a tier and a billing cycle in
+Settings, `request_plan` records the choice at the list price for the agency's
+country (`plan_prices`), and two emails go out: one to the inbox below, one to
+the owner with the mobile money details. The plan itself only moves when you
+move it, once the money has arrived:
+
+```sql
+update subscriptions
+   set plan = 'pro', status = 'active', current_period_end = now() + interval '1 month'
+ where agency_id = '<agency>';
+update plan_requests set status = 'paid' where id = '<request>';
+```
+
+Environment, in `.env.local` and on Vercel:
+
+```
+SALES_EMAIL=hello@chartahome.com   # where a plan request lands
+MOBILE_MONEY_ORANGE=               # printed in the owner's confirmation
+MOBILE_MONEY_MTN=                  # leave blank and the mail says you will reply with it
+```
+
+The only thing a tier restricts is the number of apartments, enforced by
+`apartments_plan_limit` on insert. Buildings and team members are not capped.

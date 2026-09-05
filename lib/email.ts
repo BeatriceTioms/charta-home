@@ -424,3 +424,135 @@ export function reminderDigestEmail(input: {
     text,
   };
 }
+
+
+/* ------------------------------------------------------- choosing a plan --
+ * There is no card form. An owner picks a tier in settings, the team gets the
+ * request, and the agency pays by Orange Money or MTN MoMo. Two messages: one
+ * to the inbox that will chase the payment, one to the owner saying what they
+ * asked for and how to pay it.
+ */
+
+/** To the team. Everything needed to invoice without opening the dashboard. */
+export function planRequestEmail(input: {
+  agencyName: string;
+  country: string;
+  city: string;
+  contactEmail: string;
+  requestedBy: string;
+  planLabel: string;
+  cycleLabel: string;
+  /** Already formatted, or null for a quote. */
+  amount: string | null;
+  locale: string;
+}): Message {
+  const fr = input.locale === "fr";
+  const subject = fr
+    ? `Demande de formule : ${input.agencyName} · ${input.planLabel} ${input.cycleLabel}`
+    : `Plan request: ${input.agencyName} · ${input.planLabel} ${input.cycleLabel}`;
+
+  const rows: [string, string][] = [
+    [fr ? "Agence" : "Agency", input.agencyName],
+    [fr ? "Pays" : "Country", `${input.country} · ${input.city}`],
+    [fr ? "Contact" : "Contact", input.contactEmail],
+    [fr ? "Demandé par" : "Requested by", input.requestedBy],
+    [fr ? "Formule" : "Plan", input.planLabel],
+    [fr ? "Cycle" : "Cycle", input.cycleLabel],
+    [fr ? "Montant" : "Amount", input.amount ?? (fr ? "Sur devis" : "Quote")],
+  ];
+  const table = `<table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:14px;">${rows
+    .map(
+      ([k, v]) =>
+        `<tr><td style="padding:6px 0;color:#7b858c;width:40%;">${esc(k)}</td><td style="padding:6px 0;color:#020202;font-weight:600;">${esc(v)}</td></tr>`
+    )
+    .join("")}</table>`;
+
+  const body = fr
+    ? `<p style="margin:0 0 14px;">Une agence a choisi une formule et attend les coordonnées de paiement mobile money.</p>${table}`
+    : `<p style="margin:0 0 14px;">An agency has chosen a plan and is waiting for the mobile money details.</p>${table}`;
+
+  const footer = fr
+    ? "Répondez directement à l'adresse de contact. La formule s'active une fois le paiement reçu."
+    : "Reply to the contact address directly. The plan goes live once the payment has arrived.";
+
+  const text = rows.map(([k, v]) => `${k}: ${v}`).join("\n");
+
+  return {
+    subject,
+    html: layout({ locale: input.locale, preheader: subject, heading: subject, body, footer }),
+    text: `${text}\n\n${footer}`,
+  };
+}
+
+/** To the owner. What they asked for, and where the money goes. */
+export function planRequestReceiptEmail(input: {
+  agencyName: string;
+  ownerName: string;
+  planLabel: string;
+  cycleLabel: string;
+  amount: string | null;
+  orangeNumber: string;
+  mtnNumber: string;
+  settingsUrl: string;
+  locale: string;
+}): Message {
+  const fr = input.locale === "fr";
+  const first = input.ownerName.split(" ")[0] || input.ownerName;
+  const subject = fr
+    ? `Votre demande de formule ${input.planLabel}`
+    : `Your ${input.planLabel} plan request`;
+
+  const numbers = [
+    input.orangeNumber && ["Orange Money", input.orangeNumber],
+    input.mtnNumber && ["MTN MoMo", input.mtnNumber],
+  ].filter(Boolean) as [string, string][];
+
+  const amountLine = input.amount
+    ? fr
+      ? `<p style="margin:0 0 12px;">Montant : <strong>${esc(input.amount)}</strong> (${esc(input.planLabel)}, ${esc(input.cycleLabel)}).</p>`
+      : `<p style="margin:0 0 12px;">Amount: <strong>${esc(input.amount)}</strong> (${esc(input.planLabel)}, ${esc(input.cycleLabel)}).</p>`
+    : fr
+      ? `<p style="margin:0 0 12px;">La formule <strong>${esc(input.planLabel)}</strong> est établie sur devis. Nous revenons vers vous dans la journée avec une proposition.</p>`
+      : `<p style="margin:0 0 12px;">The <strong>${esc(input.planLabel)}</strong> plan is quoted. We will come back to you within the day with a proposal.</p>`;
+
+  // The numbers are printed only when the team has set them. A blank one is
+  // not a place to invent a phone number.
+  const howToPay =
+    numbers.length > 0
+      ? (fr
+          ? `<p style="margin:0 0 8px;">Réglez par mobile money, en indiquant <strong>${esc(input.agencyName)}</strong> en référence :</p>`
+          : `<p style="margin:0 0 8px;">Pay by mobile money, giving <strong>${esc(input.agencyName)}</strong> as the reference:</p>`) +
+        `<ul style="margin:0 0 12px;padding-left:18px;">${numbers
+          .map(([k, v]) => `<li style="margin:4px 0;">${esc(k)} : <strong>${esc(v)}</strong></li>`)
+          .join("")}</ul>`
+      : fr
+        ? `<p style="margin:0 0 12px;">Nous vous envoyons dans la journée le numéro Orange Money ou MTN MoMo sur lequel régler.</p>`
+        : `<p style="margin:0 0 12px;">We will send you the Orange Money or MTN MoMo number to pay to within the day.</p>`;
+
+  const closing = fr
+    ? `<p style="margin:0;">La formule s'active dès réception du paiement. En attendant, rien ne change dans votre tableau de bord.</p>`
+    : `<p style="margin:0;">The plan goes live as soon as the payment arrives. Until then nothing changes in your dashboard.</p>`;
+
+  const body = `${amountLine}${howToPay}${closing}`;
+  const footer = fr
+    ? "Vous n'avez pas fait cette demande ? Répondez à ce message et nous l'annulons."
+    : "Did not make this request? Reply to this message and we will cancel it.";
+
+  const textNumbers = numbers.map(([k, v]) => `${k}: ${v}`).join("\n");
+  const text = fr
+    ? `Bonjour ${first},\n\nVotre demande : ${input.planLabel}, ${input.cycleLabel}${input.amount ? `, ${input.amount}` : " (sur devis)"}.\n\n${textNumbers || "Nous vous envoyons le numéro mobile money dans la journée."}\n\nVos paramètres : ${input.settingsUrl}\n\n${footer}`
+    : `Hello ${first},\n\nYour request: ${input.planLabel}, ${input.cycleLabel}${input.amount ? `, ${input.amount}` : " (quoted)"}.\n\n${textNumbers || "We will send the mobile money number within the day."}\n\nYour settings: ${input.settingsUrl}\n\n${footer}`;
+
+  return {
+    subject,
+    html: layout({
+      locale: input.locale,
+      preheader: subject,
+      heading: fr ? `Merci, ${first}` : `Thank you, ${first}`,
+      body,
+      cta: { label: fr ? "Voir mes paramètres" : "See my settings", href: input.settingsUrl },
+      footer,
+    }),
+    text,
+  };
+}
