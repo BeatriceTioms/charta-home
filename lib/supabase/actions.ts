@@ -1126,3 +1126,36 @@ export async function requestPlan(
   revalidateDashboard(locale);
   return { ok: true, id: row.request_id, amount };
 }
+
+
+/**
+ * The owner types the code the desk sent them.
+ *
+ * Everything that matters is checked in the database under a row lock: the
+ * code exists, belongs to an agency this person owns, has not been used and
+ * has not expired. The message comes back as a short key so the settings
+ * page can say it in the reader's language.
+ */
+export async function redeemPlanCode(
+  locale: string,
+  code: string
+): Promise<
+  | { ok: true; plan: string; until: string }
+  | { ok: false; error: "not_found" | "used" | "expired" | "owner" | "other"; detail: string }
+> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("redeem_plan_code", { code_in: code });
+  if (error) {
+    const m = error.message;
+    const key = /not found/.test(m) ? "not_found"
+      : /already used/.test(m) ? "used"
+      : /expired/.test(m) ? "expired"
+      : /only the owner/.test(m) ? "owner"
+      : "other";
+    return { ok: false, error: key, detail: m };
+  }
+  const row = data?.[0];
+  if (!row) return { ok: false, error: "other", detail: "no row returned" };
+  revalidateDashboard(locale);
+  return { ok: true, plan: row.new_plan, until: row.active_until };
+}

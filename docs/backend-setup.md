@@ -188,3 +188,23 @@ MOBILE_MONEY_MTN=                  # leave blank and the mail says you will repl
 
 The only thing a tier restricts is the number of apartments, enforced by
 `apartments_plan_limit` on insert. Buildings and team members are not capped.
+
+## The platform desk
+
+`/admin` lists every agency, its plan and status, apartments against the
+ceiling, what it has collected, and any request waiting for payment. It is
+only reachable by people in `platform_admins`, which nothing but the service
+role writes:
+
+```bash
+npm run admin:grant -- you@chartahome.com
+```
+
+The flow, end to end: the agency pays by mobile money and sends the receipt
+over WhatsApp or email. The desk checks it and presses **Issue a code** on
+that agency, picking the tier and cycle. The code is eight characters, bound
+to that agency, valid for one hour and dead the moment it is used; the desk
+sends it by WhatsApp (a ready link) or by email (a button). The owner types
+it under Settings, Plan and billing, and the subscription goes active, with
+the period running on from the current one so paying early costs nothing.
+Issuing a second code for an agency expires the first.

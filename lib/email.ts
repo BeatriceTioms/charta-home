@@ -556,3 +556,49 @@ export function planRequestReceiptEmail(input: {
     text,
   };
 }
+
+/** The code itself, to the owner, once the desk has seen the payment. */
+export function planCodeEmail(input: {
+  agencyName: string;
+  ownerName: string;
+  code: string;
+  planLabel: string;
+  cycleLabel: string;
+  /** Already formatted for the reader. */
+  validUntil: string;
+  settingsUrl: string;
+  locale: string;
+}): Message {
+  const fr = input.locale === "fr";
+  const first = input.ownerName.split(" ")[0] || input.ownerName;
+  const subject = fr
+    ? `Votre code d'activation ${input.planLabel} : ${input.code}`
+    : `Your ${input.planLabel} activation code: ${input.code}`;
+
+  const codeBlock = `<p style="margin:18px 0;text-align:center;"><span style="display:inline-block;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:26px;letter-spacing:6px;font-weight:700;color:#003152;background:#eef7f8;border-radius:14px;padding:14px 22px;">${esc(input.code)}</span></p>`;
+
+  const body = fr
+    ? `<p style="margin:0 0 12px;">Paiement bien reçu pour <strong>${esc(input.agencyName)}</strong>. Voici votre code pour activer la formule <strong>${esc(input.planLabel)}</strong> (${esc(input.cycleLabel)}) :</p>${codeBlock}
+       <p style="margin:0 0 12px;">Saisissez le dans Paramètres, Formule et facturation. Il est valable jusqu'à <strong>${esc(input.validUntil)}</strong> et ne sert qu'une fois.</p>`
+    : `<p style="margin:0 0 12px;">Payment received for <strong>${esc(input.agencyName)}</strong>. Here is your code to activate the <strong>${esc(input.planLabel)}</strong> plan (${esc(input.cycleLabel)}):</p>${codeBlock}
+       <p style="margin:0 0 12px;">Enter it in Settings, Plan and billing. It is valid until <strong>${esc(input.validUntil)}</strong> and works once.</p>`;
+
+  const footer = fr
+    ? "Le code a expiré ? Répondez à ce message et nous en émettons un autre."
+    : "Code expired? Reply to this message and we will issue another.";
+
+  return {
+    subject,
+    html: layout({
+      locale: input.locale,
+      preheader: subject,
+      heading: fr ? `Merci, ${first}` : `Thank you, ${first}`,
+      body,
+      cta: { label: fr ? "Saisir mon code" : "Enter my code", href: input.settingsUrl },
+      footer,
+    }),
+    text: fr
+      ? `Paiement bien reçu pour ${input.agencyName}.\n\nVotre code ${input.planLabel} (${input.cycleLabel}) : ${input.code}\nValable jusqu'à ${input.validUntil}, une seule fois.\n\nSaisissez le ici : ${input.settingsUrl}\n\n${footer}`
+      : `Payment received for ${input.agencyName}.\n\nYour ${input.planLabel} (${input.cycleLabel}) code: ${input.code}\nValid until ${input.validUntil}, once.\n\nEnter it here: ${input.settingsUrl}\n\n${footer}`,
+  };
+}

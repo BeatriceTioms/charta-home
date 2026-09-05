@@ -357,6 +357,36 @@ export type PlanPriceRow = {
   annual: number | null;
 };
 
+/** One line of the platform desk: an agency, its plan, its money, its asks. */
+export type AdminAgencyRow = {
+  agency_id: string;
+  agency_name: string;
+  agency_country: string;
+  agency_city: string;
+  agency_currency: string;
+  signed_up_at: string;
+  owner_name: string | null;
+  owner_email: string | null;
+  agency_whatsapp: string | null;
+  member_count: number;
+  current_plan: PlanTier | null;
+  plan_status: SubscriptionStatus | null;
+  trial_until: string | null;
+  period_until: string | null;
+  apartments_used: number;
+  apartments_max: number | null;
+  collected_total: number;
+  collected_year: number;
+  pending_request_id: string | null;
+  pending_plan: PlanTier | null;
+  pending_cycle: BillingCycle | null;
+  pending_amount: number | null;
+  pending_currency: string | null;
+  pending_at: string | null;
+  open_code: string | null;
+  open_code_until: string | null;
+};
+
 /** An owner's choice of tier, waiting for its mobile money payment. */
 export type PlanRequestRow = {
   id: string;
@@ -463,6 +493,16 @@ export type Database = {
       v_reminder_targets: { Row: ReminderTargetRow; Relationships: [] };
     };
     Functions: {
+      is_platform_admin: { Args: Record<string, never>; Returns: boolean };
+      admin_list_agencies: { Args: Record<string, never>; Returns: AdminAgencyRow[] };
+      admin_issue_plan_code: {
+        Args: { target_agency: string; plan_code: string; cycle_in: string };
+        Returns: { issued_code: string; valid_until: string }[];
+      };
+      redeem_plan_code: {
+        Args: { code_in: string };
+        Returns: { new_plan: string; active_until: string }[];
+      };
       request_plan: {
         Args: { target_agency: string; plan_code: string; cycle_in: string };
         Returns: { request_id: string; paid_in: string; due: number | null }[];

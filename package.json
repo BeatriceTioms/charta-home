@@ -27,7 +27,8 @@
     "uploads:check": "node scripts/verify-uploads.mjs",
     "switcher:check": "node scripts/verify-switcher.mjs",
     "activity:check": "node --experimental-strip-types --no-warnings scripts/verify-activity.mjs",
-    "pricing:check": "node --experimental-strip-types --no-warnings scripts/verify-pricing.mjs"
+    "pricing:check": "node --experimental-strip-types --no-warnings scripts/verify-pricing.mjs",
+    "admin:grant": "node scripts/grant-admin.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

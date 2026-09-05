@@ -324,8 +324,31 @@ function MessageModal({
 
 function PlanSummary({ canEdit, onChoose }: { canEdit: boolean; onChoose: () => void }) {
   const { t, f, locale } = useI18n();
-  const { plan, buildings } = useStore();
+  const { plan, buildings, notify } = useStore();
+  const router = useRouter();
   const pc = t.dash.settings.planCard;
+
+  // The code the desk sent after seeing the payment. Checked entirely in the
+  // database; this only carries it there and says what came back.
+  const [code, setCode] = useState("");
+  const [redeeming, setRedeeming] = useState(false);
+  const [codeError, setCodeError] = useState<string>();
+  const redeem = async () => {
+    const trimmed = code.trim();
+    if (!trimmed) return;
+    setRedeeming(true);
+    setCodeError(undefined);
+    const result = await sb.redeemPlanCode(locale, trimmed);
+    setRedeeming(false);
+    if (!result.ok) {
+      setCodeError(pc.codeErrors[result.error]);
+      return;
+    }
+    setCode("");
+    const tier = t.plans.tiers[result.plan as PlanCode]?.name ?? result.plan;
+    notify(f(pc.redeemed, { plan: tier, date: day(result.until) }));
+    router.refresh();
+  };
   const used = buildings.reduce((n, b) => n + b.apartments.length, 0);
   const day = (iso: string) =>
     new Date(iso).toLocaleDateString(locale === "fr" ? "fr-FR" : "en-GB", {
@@ -388,6 +411,33 @@ function PlanSummary({ canEdit, onChoose }: { canEdit: boolean; onChoose: () => 
                   date: day(plan.pending.createdAt),
                 })}
           </p>
+        </div>
+      )}
+
+      {canEdit && (
+        <div className="rounded-2xl border border-azure-900/10 p-4 dark:border-white/10">
+          <Field label={pc.codeLabel} hint={pc.codeHint} hintAfter error={codeError}>
+            <div className="flex gap-2">
+              <input
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), redeem())}
+                placeholder={pc.codePlaceholder}
+                maxLength={8}
+                autoComplete="off"
+                spellCheck={false}
+                className={`${fieldCls} font-mono uppercase tracking-[0.3em]`}
+              />
+              <button
+                type="button"
+                onClick={redeem}
+                disabled={redeeming || code.trim().length < 8}
+                className="shrink-0 rounded-full bg-onyx px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-azure-900 disabled:opacity-40 dark:bg-soft-500 dark:text-azure-950 dark:hover:bg-soft-400"
+              >
+                {redeeming ? pc.redeeming : pc.redeem}
+              </button>
+            </div>
+          </Field>
         </div>
       )}
 

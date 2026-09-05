@@ -61,3 +61,18 @@ export async function allowedPagesFor(
   if (error || !data) return null;
   return (data.allowed_pages as string[] | null) ?? null;
 }
+
+/**
+ * Whether this person sits at the platform's own desk.
+ *
+ * Asked of the database on every request to /admin, because the answer is a
+ * row somebody at Charta Home inserted by hand and nothing in the browser can
+ * be trusted to say it. A failure reads as "no", which is the safe direction
+ * for a page that sees every agency.
+ */
+export async function isPlatformAdmin(
+  supabase: ReturnType<typeof createServerClient>
+): Promise<boolean> {
+  const { data, error } = await supabase.rpc("is_platform_admin");
+  return !error && data === true;
+}

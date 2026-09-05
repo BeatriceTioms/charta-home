@@ -50,9 +50,14 @@ const [manager] = await q(`insert into auth.users (email) values ('karim@horizon
 
 const asUser = async (id, sql, params) => {
   await db.exec(`set role authenticated; set request.jwt.claim.sub = '${id}';`);
-  const rows = params ? await q(sql, params) : await q(sql);
-  await db.exec(`reset role; reset request.jwt.claim.sub;`);
-  return rows;
+  try {
+    return params ? await q(sql, params) : await q(sql);
+  } finally {
+    // A refused statement is often the point of the test. The session has
+    // to come back as itself either way, or the next superuser statement
+    // runs as `authenticated` and fails for a reason nobody was testing.
+    await db.exec(`reset role; reset request.jwt.claim.sub;`);
+  }
 };
 
 const results = [];
@@ -880,6 +885,91 @@ check("a cycle that does not exist is refused", cycleRefused);
 
 const [leak] = await asUser(userB.id, `select count(*)::int as n from plan_requests where agency_id = '${c1.id}'`);
 check("requests are invisible outside the agency", leak.n === 0, `${leak.n} rows leaked`);
+
+/* ------------------------------------------------------ the platform desk --
+ * Somebody at Charta Home sees every agency and turns a receipt into a plan
+ * by issuing a code. The code is bound to one agency, lasts an hour, and
+ * dies on use; only that agency's owner can redeem it.
+ */
+let deskRefused = false;
+try { await asUser(userA.id, `select * from public.admin_list_agencies()`); }
+catch (err) { deskRefused = /not a platform admin/.test(err.message); }
+check("an agency owner is not the platform desk", deskRefused);
+let issueRefused = false;
+try { await asUser(userA.id, `select * from public.admin_issue_plan_code('${c1.id}', 'pro', 'monthly')`); }
+catch (err) { issueRefused = /not a platform admin/.test(err.message); }
+check("and cannot issue codes", issueRefused);
+
+const [desk] = await q(`insert into auth.users (email) values ('desk@chartahome.com') returning id`);
+await q(`insert into platform_admins (user_id) values ('${desk.id}')`);
+const board = await asUser(desk.id, `select * from public.admin_list_agencies()`);
+check("the desk sees every agency", board.length >= 5, `${board.length} agencies`);
+const rowC = board.find((r) => r.agency_id === c1.id);
+check("with its plan, its count against the ceiling, and its ask",
+  rowC?.current_plan === "starter" && rowC?.apartments_used === 30 && rowC?.apartments_max === 30 && rowC?.pending_plan === "business",
+  `${rowC?.current_plan} ${rowC?.apartments_used}/${rowC?.apartments_max}, asks ${rowC?.pending_plan}`);
+const rowA = board.find((r) => r.agency_id === a1.id);
+check("and what it has collected, and who owns it",
+  Number(rowA?.collected_total) > 0 && rowA?.owner_name === "Amina Sow",
+  `${rowA?.collected_total} ${rowA?.agency_currency}, owner ${rowA?.owner_name}`);
+const [direct] = await asUser(userC.id, `select count(*)::int as n from plan_codes`);
+check("nobody reads codes off the table", direct.n === 0);
+
+const [issued] = await asUser(desk.id, `select * from public.admin_issue_plan_code('${c1.id}', 'business', 'annual')`);
+check("a code is eight characters that can be read out over the phone",
+  /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$/.test(issued.issued_code), issued.issued_code);
+const [ttl] = await q(`select extract(epoch from (expires_at - now())) / 60 as minutes from plan_codes where code = '${issued.issued_code}'`);
+check("and lives for an hour", Number(ttl.minutes) > 59 && Number(ttl.minutes) <= 60, `${Number(ttl.minutes).toFixed(1)} min`);
+const [seen] = await asUser(desk.id, `select open_code from public.admin_list_agencies() where agency_id = '${c1.id}'`);
+check("the desk sees the open code against the agency", seen?.open_code === issued.issued_code);
+
+let managerRedeem = false;
+try { await asUser(manager.id, `select * from public.redeem_plan_code('${issued.issued_code}')`); }
+catch (err) { managerRedeem = /only the owner/.test(err.message); }
+check("a manager of the agency cannot redeem its code", managerRedeem);
+let strangerRedeem = false;
+try { await asUser(userB.id, `select * from public.redeem_plan_code('${issued.issued_code}')`); }
+catch (err) { strangerRedeem = /only the owner/.test(err.message); }
+check("nor can the owner of another agency", strangerRedeem);
+let unknownRedeem = false;
+try { await asUser(userC.id, `select * from public.redeem_plan_code('ZZZZZZZZ')`); }
+catch (err) { unknownRedeem = /not found/.test(err.message); }
+check("a code that was never issued is refused", unknownRedeem);
+
+// Typed as people type: lower case, with a space either side.
+const [used] = await asUser(userC.id, `select * from public.redeem_plan_code(' ${issued.issued_code.toLowerCase()} ')`);
+const [subAfter] = await asUser(userC.id, `select plan, status from subscriptions where agency_id = '${c1.id}'`);
+check("the owner redeems it and the plan goes live",
+  used.new_plan === "business" && subAfter.plan === "business" && subAfter.status === "active",
+  `${subAfter.plan} / ${subAfter.status}`);
+const [yearOut] = await q(`select (current_period_end - now()) > interval '364 days' as ok from subscriptions where agency_id = '${c1.id}'`);
+check("a yearly code runs a year", yearOut.ok === true);
+const [desk_settled] = await q(`select status from plan_requests where id = '${reqY.request_id}'`);
+check("the request it settles is marked paid", desk_settled.status === "paid", desk_settled.status);
+let twice = false;
+try { await asUser(userC.id, `select * from public.redeem_plan_code('${issued.issued_code}')`); }
+catch (err) { twice = /already used/.test(err.message); }
+check("the code dies the moment it is used", twice);
+
+const [old] = await asUser(desk.id, `select * from public.admin_issue_plan_code('${c1.id}', 'pro', 'monthly')`);
+await q(`update plan_codes set expires_at = now() - interval '1 minute' where code = '${old.issued_code}'`);
+let stale = false;
+try { await asUser(userC.id, `select * from public.redeem_plan_code('${old.issued_code}')`); }
+catch (err) { stale = /expired/.test(err.message); }
+check("an hour on, the code is refused", stale);
+
+const [desk_first] = await asUser(desk.id, `select * from public.admin_issue_plan_code('${c1.id}', 'pro', 'monthly')`);
+const [desk_second] = await asUser(desk.id, `select * from public.admin_issue_plan_code('${c1.id}', 'pro', 'monthly')`);
+let superseded = false;
+try { await asUser(userC.id, `select * from public.redeem_plan_code('${desk_first.issued_code}')`); }
+catch (err) { superseded = /expired/.test(err.message); }
+check("issuing again retires the code before it", superseded);
+const [before] = await q(`select current_period_end from subscriptions where agency_id = '${c1.id}'`);
+await asUser(userC.id, `select * from public.redeem_plan_code('${desk_second.issued_code}')`);
+const [desk_after] = await q(`select current_period_end, plan from subscriptions where agency_id = '${c1.id}'`);
+const added = (new Date(desk_after.current_period_end) - new Date(before.current_period_end)) / 86400000;
+check("a renewal runs on from the current period rather than from today",
+  desk_after.plan === "pro" && added > 27 && added < 32, `${Math.round(added)} days added to a period that had not ended`);
 
 await db.close();
 

@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { defaultLocale, locales } from "./lib/i18n";
-import { allowedPagesFor, refreshSession } from "./lib/supabase/middleware";
+import { allowedPagesFor, isPlatformAdmin, refreshSession } from "./lib/supabase/middleware";
 
 const PUBLIC_FILE = /\.(png|jpg|jpeg|svg|ico|webp|txt|xml|json|webmanifest)$/;
 
@@ -41,9 +41,27 @@ export async function middleware(request: NextRequest) {
 
   const locale = pathname.split("/")[1];
   const isDashboard = pathname.startsWith(`/${locale}/dashboard`);
+  const isAdmin = pathname === `/${locale}/admin` || pathname.startsWith(`/${locale}/admin/`);
   const isAuthPage = ["/login", "/signup", "/forgot-password", "/reset-password"].some(
     (p) => pathname === `/${locale}${p}`
   );
+
+  // The platform's own desk. Signed out goes to sign in; signed in but not
+  // staff goes to their own dashboard, without being told the page exists.
+  if (configured && isAdmin) {
+    if (!user) {
+      const url = request.nextUrl.clone();
+      url.pathname = `/${locale}/login`;
+      url.searchParams.set("next", pathname);
+      return NextResponse.redirect(url);
+    }
+    if (!supabase || !(await isPlatformAdmin(supabase))) {
+      const url = request.nextUrl.clone();
+      url.pathname = `/${locale}/dashboard`;
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+  }
 
   if (configured && isDashboard && !user) {
     const url = request.nextUrl.clone();
