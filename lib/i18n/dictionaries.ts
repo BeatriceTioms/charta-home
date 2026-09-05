@@ -1241,6 +1241,8 @@ export const fr = {
   admin: {
     title: "Administration",
     subtitle: "Toutes les agences, leur formule et ce qu'elles ont encaissé.",
+    role: "Administrateur",
+    signOut: "Se déconnecter",
     kpis: { agencies: "Agences", active: "Formules actives", trialing: "En essai", collected: "Encaissé sur la plateforme" },
     columns: { agency: "Agence", owner: "Propriétaire", plan: "Formule", apartments: "Appartements", collected: "Encaissé", request: "Demande", code: "Code" },
     status: { trialing: "Essai", active: "Active", past_due: "En retard", cancelled: "Résiliée", none: "Sans formule" },
@@ -2523,6 +2525,8 @@ export const en: Dictionary = {
   admin: {
     title: "Administration",
     subtitle: "Every agency, its plan, and what it has collected.",
+    role: "Administrator",
+    signOut: "Sign out",
     kpis: { agencies: "Agencies", active: "Active plans", trialing: "On trial", collected: "Collected across the platform" },
     columns: { agency: "Agency", owner: "Owner", plan: "Plan", apartments: "Apartments", collected: "Collected", request: "Request", code: "Code" },
     status: { trialing: "Trial", active: "Active", past_due: "Overdue", cancelled: "Cancelled", none: "No plan" },

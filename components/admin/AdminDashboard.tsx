@@ -9,6 +9,7 @@ import { formatMoney } from "@/lib/data";
 import { useI18n } from "@/lib/i18n/context";
 import { PLAN_CODES, type BillingCycle, type PlanCode } from "@/lib/pricing";
 import * as admin from "@/lib/supabase/admin-actions";
+import { signOut } from "@/lib/supabase/auth-actions";
 import type { AdminAgencyRow } from "@/lib/supabase/types";
 
 /**
@@ -20,7 +21,13 @@ import type { AdminAgencyRow } from "@/lib/supabase/types";
  * active plan. The desk sends the code itself, over WhatsApp or by email;
  * nothing is activated without a person having looked at the payment.
  */
-export function AdminDashboard({ rows }: { rows: AdminAgencyRow[] }) {
+export function AdminDashboard({
+  rows,
+  me,
+}: {
+  rows: AdminAgencyRow[];
+  me: { email: string; hasAgency: boolean };
+}) {
   const { t, f, path, locale } = useI18n();
   const a = t.admin;
   const router = useRouter();
@@ -46,9 +53,24 @@ export function AdminDashboard({ rows }: { rows: AdminAgencyRow[] }) {
       <header className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 pt-6 sm:px-8">
         <span className="dark:hidden"><Logo href={path("/dashboard")} textClassName="text-lg" markClassName="h-8 w-8" /></span>
         <span className="hidden dark:block"><Logo dark href={path("/dashboard")} textClassName="text-lg" markClassName="h-8 w-8" /></span>
-        <Link href={path("/dashboard")} className="text-sm font-semibold text-azure-800 hover:underline dark:text-soft-500">
-          {t.dash.nav.dashboard}
-        </Link>
+        <div className="flex items-center gap-3">
+          <span className="hidden text-right sm:block">
+            <span className="block text-sm font-semibold">{me.email}</span>
+            <span className="block text-[11px] font-bold uppercase tracking-wider text-azure-800 dark:text-soft-500">{a.role}</span>
+          </span>
+          {me.hasAgency && (
+            <Link href={path("/dashboard")} className="rounded-full border border-azure-900/15 px-4 py-2 text-xs font-bold text-azure-900 transition hover:bg-azure-900/5 dark:border-white/15 dark:text-white dark:hover:bg-white/10">
+              {t.dash.nav.dashboard}
+            </Link>
+          )}
+          <button
+            type="button"
+            onClick={async () => { await signOut(locale); router.push(path("/login")); }}
+            className="rounded-full bg-onyx px-4 py-2 text-xs font-bold text-white transition hover:bg-azure-900 dark:bg-soft-500 dark:text-azure-950 dark:hover:bg-soft-400"
+          >
+            {a.signOut}
+          </button>
+        </div>
       </header>
 
       <main className="mx-auto max-w-7xl px-5 py-10 sm:px-8">

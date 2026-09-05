@@ -29,6 +29,19 @@ export async function signIn(
 
   if (error) return { error: error.message };
 
+  // Where the middleware sent them from, if anywhere. Only a path on this
+  // site is honoured: an absolute address here would be an open redirect.
+  const next = String(formData.get("next") ?? "");
+  if (next.startsWith(`/${locale}/`) && !next.startsWith("//")) {
+    revalidatePath(next, "layout");
+    redirect(next);
+  }
+
+  // Charta Home's own staff are not agencies. They have no portfolio to
+  // land on, so they land on the desk.
+  const { data: staff } = await supabase.rpc("is_platform_admin");
+  if (staff === true) redirect(`/${locale}/admin`);
+
   revalidatePath(`/${locale}/dashboard`, "layout");
   redirect(`/${locale}/dashboard`);
 }

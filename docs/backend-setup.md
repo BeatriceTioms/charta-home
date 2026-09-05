@@ -194,11 +194,20 @@ The only thing a tier restricts is the number of apartments, enforced by
 `/admin` lists every agency, its plan and status, apartments against the
 ceiling, what it has collected, and any request waiting for payment. It is
 only reachable by people in `platform_admins`, which nothing but the service
-role writes:
+role writes.
+
+Staff are not agencies. They never go through signup, own no portfolio,
+and land on the desk when they sign in. To add one:
 
 ```bash
-npm run admin:grant -- you@chartahome.com
+npm run admin:grant -- desk@chartahome.com
 ```
+
+If no account exists for the address, one is created without a password
+and Supabase emails an invitation; the person chooses their password from
+that link. The script never sees a password. Supabase must allow the reset
+page as a redirect (Authentication, URL Configuration, Redirect URLs), or
+the link opens the landing page instead.
 
 The flow, end to end: the agency pays by mobile money and sends the receipt
 over WhatsApp or email. The desk checks it and presses **Issue a code** on

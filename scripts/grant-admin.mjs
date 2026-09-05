@@ -1,7 +1,12 @@
 /**
  * Makes somebody a platform admin.
  *
- *   npm run admin:grant -- amina@chartahome.com
+ *   npm run admin:grant -- desk@chartahome.com
+ *
+ * Staff are not agencies, so they never go through signup. If no account
+ * exists for the address, one is created with no password and Supabase
+ * sends the person an invitation; they choose their own password from it.
+ * Nothing here ever sees or sets a password.
  *
  * Runs with the service role, because the table has no policies on purpose:
  * this is the one thing about the platform that no signed in user, however
@@ -27,7 +32,15 @@ if (!url || !key) {
   console.error("  NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing from .env");
   process.exit(1);
 }
+const site = env.NEXT_PUBLIC_SITE_URL || "https://chartahome.com";
 const headers = { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" };
+
+// The desk has to exist before anybody can sit at it.
+const probe = await fetch(`${url}/rest/v1/platform_admins?select=user_id&limit=1`, { headers });
+if (!probe.ok) {
+  console.error("  the platform_admins table is not on this project yet. Paste supabase/bundle.sql into the SQL editor first.");
+  process.exit(1);
+}
 
 // The auth admin API pages; the account we want is almost always on the first.
 let user = null;
@@ -38,9 +51,23 @@ for (let page = 1; page <= 20 && !user; page++) {
   user = users.find((u) => (u.email ?? "").toLowerCase() === email) ?? null;
   if (users.length < 200) break;
 }
+
+let invited = false;
 if (!user) {
-  console.error(`  no account with the address ${email}. They need to sign up first.`);
-  process.exit(1);
+  // Creates the account and mails an invitation in one call. The link lands
+  // on the site's reset page, where the person sets their own password.
+  const r = await fetch(`${url}/auth/v1/invite`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ email, data: { platform_admin: true }, redirect_to: `${site}/fr/reset-password` }),
+  });
+  const body = await r.json();
+  if (!r.ok) {
+    console.error(`  could not invite ${email}: ${r.status} ${body.msg ?? body.message ?? JSON.stringify(body)}`);
+    process.exit(1);
+  }
+  user = body;
+  invited = true;
 }
 
 const r = await fetch(`${url}/rest/v1/platform_admins`, {
@@ -53,3 +80,6 @@ if (!r.ok) {
   process.exit(1);
 }
 console.log(`  ${email} now sits at the platform desk. /admin is theirs.`);
+if (invited) {
+  console.log(`  An invitation has been emailed to ${email}. They choose their password from it, then sign in.`);
+}

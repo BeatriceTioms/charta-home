@@ -24,6 +24,12 @@ export default function LoginPage() {
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const data = new FormData(e.currentTarget);
+    // Where the middleware turned them away from, so signing in lands there
+    // rather than on the dashboard. Read at submit rather than at render, so
+    // the page needs no client only bailout; the server checks it is a path
+    // on this site before following it.
+    const returnTo = new URLSearchParams(window.location.search).get("next");
+    if (returnTo) data.set("next", returnTo);
     const email = String(data.get("email") ?? "").trim();
     const password = String(data.get("password") ?? "");
 
