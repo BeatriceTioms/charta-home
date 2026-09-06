@@ -387,6 +387,29 @@ export type AdminAgencyRow = {
   open_code_until: string | null;
 };
 
+/** One agency in full, as the desk reads it. */
+export type AdminAgencyDetail = {
+  agency: {
+    id: string; name: string; country: string; city: string; currency: string; locale: string;
+    whatsapp: string | null; address: string | null; email: string | null; registration: string | null;
+    joined_at: string;
+  };
+  subscription: {
+    plan: PlanTier; status: SubscriptionStatus; started_at: string;
+    trial_until: string | null; period_until: string | null;
+    max_apartments: number | null; monthly_price: number | null; annual_price: number | null;
+  } | null;
+  members: { user_id: string; name: string | null; email: string | null; role: MemberRole; joined_at: string }[];
+  buildings: { id: string; name: string; city: string; apartments: number; occupied: number; created_at: string }[];
+  money: {
+    apartments: number; tenants: number;
+    collected_total: number; collected_year: number; collected_month: number;
+    payments: number; last_payment_at: string | null;
+  };
+  requests: { id: string; plan: PlanTier; cycle: BillingCycle; currency: string; amount: number | null; status: "pending" | "paid" | "cancelled"; created_at: string }[];
+  codes: { code: string; plan: PlanTier; cycle: BillingCycle; issued_at: string; issued_by: string | null; expires_at: string; used_at: string | null; state: "used" | "expired" | "open" }[];
+};
+
 /** One subscription, with what it costs where the agency is and its activations. */
 export type AdminSubscriptionRow = {
   agency_id: string;
@@ -519,6 +542,7 @@ export type Database = {
       is_platform_admin: { Args: Record<string, never>; Returns: boolean };
       admin_list_agencies: { Args: Record<string, never>; Returns: AdminAgencyRow[] };
       admin_list_subscriptions: { Args: Record<string, never>; Returns: AdminSubscriptionRow[] };
+      admin_agency_detail: { Args: { target_agency: string }; Returns: AdminAgencyDetail };
       admin_issue_plan_code: {
         Args: { target_agency: string; plan_code: string; cycle_in: string };
         Returns: { issued_code: string; valid_until: string }[];

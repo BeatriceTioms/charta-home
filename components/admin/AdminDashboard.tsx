@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { Field, Modal, ModalActions, fieldCls } from "@/components/dashboard/Modal";
 import { formatMoney } from "@/lib/data";
@@ -23,7 +24,7 @@ import { CurrencyToggle } from "./CurrencyToggle";
  * having looked at the payment.
  */
 export function AdminDashboard({ rows, me }: { rows: AdminAgencyRow[]; me: AdminIdentity }) {
-  const { t, f, locale } = useI18n();
+  const { t, f, locale, path } = useI18n();
   const a = t.admin;
   const [target, setTarget] = useState<AdminAgencyRow | null>(null);
   const [fx, setFx] = useState<FxCurrency>("GNF");
@@ -84,7 +85,9 @@ export function AdminDashboard({ rows, me }: { rows: AdminAgencyRow[]; me: Admin
               return (
                 <tr key={r.agency_id} className="border-t border-azure-900/8 align-top dark:border-white/8">
                   <td className="px-4 py-4">
-                    <p className="font-bold">{r.agency_name}</p>
+                    <Link href={path(`/admin/agencies/${r.agency_id}`)} className="font-bold text-azure-950 underline-offset-2 hover:underline dark:text-white">
+                      {r.agency_name}
+                    </Link>
                     <p className="text-xs text-onyx/50 dark:text-white/45">{r.agency_city}</p>
                   </td>
                   <td className="px-4 py-4">
@@ -158,7 +161,7 @@ export function StatusChip({ status, label }: { status: string | null; label: st
   );
 }
 
-function IssueCodeModal({ row, onClose }: { row: AdminAgencyRow; onClose: () => void }) {
+export function IssueCodeModal({ row, onClose }: { row: AdminAgencyRow; onClose: () => void }) {
   const { t, f, locale } = useI18n();
   const a = t.admin;
   const tag = locale === "fr" ? "fr-FR" : "en-GB";

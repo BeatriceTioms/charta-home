@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { formatMoney } from "@/lib/data";
 import { FX_AS_OF, convert, rateLine, type FxCurrency } from "@/lib/fx";
@@ -22,7 +23,7 @@ const FILTERS: Filter[] = ["all", "active", "trialing", "past_due", "cancelled"]
  * currency the desk picks.
  */
 export function AdminSubscriptions({ rows, me }: { rows: AdminSubscriptionRow[]; me: AdminIdentity }) {
-  const { t, f, locale } = useI18n();
+  const { t, f, locale, path } = useI18n();
   const a = t.admin;
   const s = a.subscriptions;
   const [filter, setFilter] = useState<Filter>("all");
@@ -96,7 +97,9 @@ export function AdminSubscriptions({ rows, me }: { rows: AdminSubscriptionRow[];
             {shown.map((r) => (
               <tr key={r.agency_id} className="border-t border-azure-900/8 align-top dark:border-white/8">
                 <td className="px-4 py-4">
-                  <p className="font-bold">{r.agency_name}</p>
+                  <Link href={path(`/admin/agencies/${r.agency_id}`)} className="font-bold text-azure-950 underline-offset-2 hover:underline dark:text-white">
+                    {r.agency_name}
+                  </Link>
                   <p className="text-xs text-onyx/50 dark:text-white/45">{r.owner_name ?? ""}</p>
                   <p className="text-[11px] text-onyx/40 dark:text-white/35">{r.owner_email ?? ""}</p>
                 </td>

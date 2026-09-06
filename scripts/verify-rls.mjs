@@ -987,6 +987,29 @@ check("a trial shows the price it would pay, and no activations yet",
   every_subB?.plan_status === "trialing" && Number(every_subB?.monthly_price) === 450000 && every_subB?.activations === 0 && every_subB?.last_activation_at === null,
   `${every_subB?.agency_country} ${every_subB?.current_plan}: ${every_subB?.monthly_price}, ${every_subB?.activations} activations`);
 
+/* ------------------------------------------------------- one agency, in full */
+let detailRefused = false;
+try { await asUser(userC.id, `select public.admin_agency_detail('${c1.id}')`); }
+catch (err) { detailRefused = /not a platform admin/.test(err.message); }
+check("an agency cannot read its own desk file", detailRefused);
+const [{ admin_agency_detail: file }] = await asUser(desk.id, `select public.admin_agency_detail('${c1.id}')`);
+check("the desk reads the agency in one document",
+  file?.agency?.id === c1.id && file.subscription?.plan === "pro" && file.subscription?.status === "active",
+  `${file?.agency?.name}: ${file?.subscription?.plan}/${file?.subscription?.status}`);
+check("with its people and its buildings",
+  Array.isArray(file.members) && file.members.some((m) => m.role === "owner") && file.members.some((m) => m.role === "manager") && file.buildings.length >= 1 && file.money.apartments === 30,
+  `${file.members.length} members, ${file.buildings.length} buildings, ${file.money.apartments} apartments`);
+check("every code ever issued, with its state",
+  file.codes.length >= 4 && file.codes.filter((c) => c.state === "used").length === 2 && file.codes.filter((c) => c.state === "expired").length >= 2 && file.codes.every((c) => /^[A-Z2-9]{8}$/.test(c.code)),
+  file.codes.map((c) => `${c.plan}/${c.cycle}:${c.state}`).join(", "));
+check("every request, with what became of it",
+  file.requests.length >= 1 && file.requests.some((r) => r.status === "paid") && file.requests.every((r) => r.plan && r.cycle),
+  file.requests.map((r) => `${r.plan}/${r.cycle}:${r.status}`).join(", "));
+let unknownAgency = false;
+try { await asUser(desk.id, `select public.admin_agency_detail('00000000-0000-0000-0000-000000000000')`); }
+catch (err) { unknownAgency = /unknown agency/.test(err.message); }
+check("an agency that does not exist is an error, not an empty page", unknownAgency);
+
 await db.close();
 
 const failed = results.filter((r) => !r.pass);

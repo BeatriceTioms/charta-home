@@ -5,7 +5,7 @@ import { isEmailConfigured, planCodeEmail, sendEmail } from "@/lib/email";
 import { isPlanCode, planName, type BillingCycle } from "@/lib/pricing";
 import { siteUrl } from "@/lib/site-url";
 import { createClient } from "./server";
-import type { AdminAgencyRow, AdminSubscriptionRow } from "./types";
+import type { AdminAgencyDetail, AdminAgencyRow, AdminSubscriptionRow } from "./types";
 
 /**
  * The platform desk's writes. Every one goes through a function that refuses
@@ -39,6 +39,13 @@ export async function adminIdentity(): Promise<{ email: string; hasAgency: boole
     .select("agency_id", { count: "exact", head: true })
     .eq("user_id", auth.user?.id ?? "");
   return { email: auth.user?.email ?? "", hasAgency: (count ?? 0) > 0 };
+}
+
+export async function agencyDetail(agencyId: string): Promise<AdminAgencyDetail | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_agency_detail", { target_agency: agencyId });
+  if (error || !data) return null;
+  return data as AdminAgencyDetail;
 }
 
 export async function issuePlanCode(
