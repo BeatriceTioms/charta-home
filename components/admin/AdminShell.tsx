@@ -41,7 +41,7 @@ export function AdminShell({
         <div className="flex items-center gap-6">
           <span className="dark:hidden"><Logo href={path("/admin")} textClassName="text-lg" markClassName="h-8 w-8" /></span>
           <span className="hidden dark:block"><Logo dark href={path("/admin")} textClassName="text-lg" markClassName="h-8 w-8" /></span>
-          <nav className="flex gap-1 rounded-full border border-white/70 bg-white/55 p-1 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.05]">
+          <nav className="flex gap-1 rounded-full border border-azure-900/10 bg-white/80 p-1 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.05]">
             {tabs.map((x) => (
               <Link
                 key={x.key}
@@ -90,7 +90,7 @@ export function AdminShell({
 /** One glass tile. */
 export function Tile({ label, value, foot, aside }: { label: string; value: string; foot?: string; aside?: React.ReactNode }) {
   return (
-    <div className="rounded-3xl border border-white/70 bg-white/55 p-5 shadow-lg shadow-azure-900/5 backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.05] dark:shadow-none">
+    <div className="rounded-3xl border border-azure-900/10 bg-white/80 p-5 shadow-lg shadow-azure-900/10 backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.05] dark:shadow-none">
       <div className="flex items-start justify-between gap-3">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-onyx/40 dark:text-white/35">{label}</p>
         {aside}

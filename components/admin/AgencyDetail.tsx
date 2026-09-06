@@ -56,7 +56,7 @@ export function AgencyDetail({ doc, me }: { doc: AdminAgencyDetail; me: AdminIde
     open_code_until: codes.find((c) => c.state === "open")?.expires_at ?? null,
   };
 
-  const card = "rounded-3xl border border-white/70 bg-white/55 p-6 shadow-lg shadow-azure-900/5 backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.05] dark:shadow-none";
+  const card = "rounded-3xl border border-azure-900/10 bg-white/80 p-6 shadow-lg shadow-azure-900/5 backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.05] dark:shadow-none";
   const label = "text-[11px] font-semibold uppercase tracking-wider text-onyx/40 dark:text-white/35";
   const muted = "text-xs text-onyx/50 dark:text-white/45";
   const notSet = <span className="text-onyx/40 dark:text-white/35">{d.notSet}</span>;

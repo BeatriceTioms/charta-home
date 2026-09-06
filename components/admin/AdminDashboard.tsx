@@ -60,7 +60,7 @@ export function AdminDashboard({ rows, me }: { rows: AdminAgencyRow[]; me: Admin
         />
       </div>
 
-      <div className="mt-8 overflow-x-auto rounded-3xl border border-white/70 bg-white/55 shadow-lg shadow-azure-900/5 backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.05] dark:shadow-none">
+      <div className="mt-8 overflow-x-auto rounded-3xl border border-azure-900/10 bg-white/80 shadow-lg shadow-azure-900/5 backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.05] dark:shadow-none">
         <table className="w-full min-w-[1240px] text-left text-sm">
           <thead>
             <tr className="text-[11px] font-semibold uppercase tracking-wider text-onyx/40 dark:text-white/35">
@@ -110,13 +110,7 @@ export function AdminDashboard({ rows, me }: { rows: AdminAgencyRow[]; me: Admin
                   <td className="px-4 py-4 font-semibold">
                     {r.apartments_used}{r.apartments_max !== null ? ` / ${r.apartments_max}` : ""}
                   </td>
-                  <td className="px-4 py-4">
-                    <p className="font-semibold">{formatMoney(Number(r.collected_total), r.agency_currency)}</p>
-                    <p className="text-[11px] text-onyx/50 dark:text-white/45">{f(a.thisYear, { amount: formatMoney(Number(r.collected_year), r.agency_currency) })}</p>
-                    {r.agency_currency !== fx && (
-                      <p className="text-[11px] text-onyx/40 dark:text-white/35">≈ {formatMoney(convert(Number(r.collected_total), r.agency_currency, fx), fx)}</p>
-                    )}
-                  </td>
+                  <td className="px-4 py-4 font-semibold">{formatMoney(Number(r.collected_total), r.agency_currency)}</td>
                   <td className="px-4 py-4">
                     <p className={r.pending_plan ? "font-semibold" : "text-onyx/45 dark:text-white/40"}>{request}</p>
                     {r.pending_at && <p className="text-[11px] text-onyx/50 dark:text-white/45" suppressHydrationWarning>{f(a.requestedOn, { date: day(r.pending_at) })}</p>}

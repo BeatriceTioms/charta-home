@@ -82,7 +82,7 @@ export function AdminSubscriptions({ rows, me }: { rows: AdminSubscriptionRow[];
         ))}
       </div>
 
-      <div className="mt-4 overflow-x-auto rounded-3xl border border-white/70 bg-white/55 shadow-lg shadow-azure-900/5 backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.05] dark:shadow-none">
+      <div className="mt-4 overflow-x-auto rounded-3xl border border-azure-900/10 bg-white/80 shadow-lg shadow-azure-900/5 backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.05] dark:shadow-none">
         <table className="w-full min-w-[1180px] text-left text-sm">
           <thead>
             <tr className="text-[11px] font-semibold uppercase tracking-wider text-onyx/40 dark:text-white/35">
