@@ -255,12 +255,18 @@ export function StoreProvider({
         .then((result) => {
           if (!result.ok) {
             console.error("save failed:", result.error);
-            // The one refusal the reader can act on: the tier is full, and
-            // the fix is a bigger one, not a retry.
+            // The refusals the reader can act on, in their own words. The
+            // tier is full and the fix is a bigger one; a number or an
+            // address that cannot be read wants retyping, not a retry.
+            const code = result.error ?? "";
             notify(
-              /plan limit reached/.test(result.error ?? "")
+              /plan limit reached/.test(code)
                 ? t.dash.common.planLimit
-                : t.dash.common.saveFailed
+                : code === "lease-bad-phone"
+                  ? t.dash.apartment.leaseModal.errorBadPhone
+                  : code === "lease-bad-email"
+                    ? t.dash.apartment.leaseModal.errorBadEmail
+                    : t.dash.common.saveFailed
             );
           }
           router.refresh();
