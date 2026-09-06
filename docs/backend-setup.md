@@ -203,11 +203,16 @@ and land on the desk when they sign in. To add one:
 npm run admin:grant -- desk@chartahome.com
 ```
 
-If no account exists for the address, one is created without a password
-and Supabase emails an invitation; the person chooses their password from
-that link. The script never sees a password. Supabase must allow the reset
-page as a redirect (Authentication, URL Configuration, Redirect URLs), or
-the link opens the landing page instead.
+If no account exists for the address, one is created without a password.
+Either way the script issues a link to set one and sends it through Resend
+when `RESEND_API_KEY` and `EMAIL_FROM` are in `.env`; without them it prints
+the link for you to pass on directly. The link is good for an hour, and
+running the script again issues a fresh one. Supabase's own mailer is not
+used: it is rate limited to a few messages an hour, sends from a shared
+address that Gmail files as spam, and its links die after a day. The
+script never sees a password. Supabase must allow the reset page as a
+redirect (Authentication, URL Configuration, Redirect URLs), or the link
+opens the landing page instead.
 
 The flow, end to end: the agency pays by mobile money and sends the receipt
 over WhatsApp or email. The desk checks it and presses **Issue a code** on
