@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Field, Modal, ModalActions, fieldCls } from "@/components/dashboard/Modal";
 import { formatMoney } from "@/lib/data";
-import { FX_AS_OF, convert, rateLine, type FxCurrency } from "@/lib/fx";
+import { convert, type FxCurrency } from "@/lib/fx";
 import { useI18n } from "@/lib/i18n/context";
 import { PLAN_CODES, type BillingCycle, type PlanCode } from "@/lib/pricing";
 import * as admin from "@/lib/supabase/admin-actions";
@@ -45,7 +45,7 @@ export function AdminDashboard({ rows, me }: { rows: AdminAgencyRow[]; me: Admin
   const active = rows.filter((r) => r.plan_status === "active").length;
   const trialing = rows.filter((r) => r.plan_status === "trialing").length;
 
-  const head = [a.columns.agency, a.columns.country, a.columns.joined, a.columns.owner, a.columns.plan, a.columns.apartments, a.columns.collected, a.columns.request, a.columns.code, ""];
+  const head = [a.columns.agency, a.columns.country, a.columns.currency, a.columns.joined, a.columns.owner, a.columns.plan, a.columns.apartments, a.columns.collected, a.columns.request, a.columns.code, ""];
 
   return (
     <AdminShell me={me} tab="agencies" title={a.title} subtitle={a.subtitle}>
@@ -56,7 +56,6 @@ export function AdminDashboard({ rows, me }: { rows: AdminAgencyRow[]; me: Admin
         <Tile
           label={a.kpis.collected}
           value={formatMoney(collected, fx)}
-          foot={f(a.fx.note, { rates: rateLine(), date: day(FX_AS_OF) })}
           aside={<CurrencyToggle value={fx} onChange={setFx} />}
         />
       </div>
@@ -95,8 +94,8 @@ export function AdminDashboard({ rows, me }: { rows: AdminAgencyRow[]; me: Admin
                       <CountryFlag country={r.agency_country} />
                       <span className="font-semibold">{r.agency_country}</span>
                     </span>
-                    <p className="text-[11px] text-onyx/45 dark:text-white/40">{r.agency_currency}</p>
                   </td>
+                  <td className="px-4 py-4 font-semibold">{r.agency_currency}</td>
                   <td className="px-4 py-4 font-semibold" suppressHydrationWarning>{day(r.signed_up_at)}</td>
                   <td className="px-4 py-4">
                     <p className="font-semibold">{r.owner_name ?? ""}</p>

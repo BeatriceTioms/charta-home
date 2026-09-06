@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { formatMoney } from "@/lib/data";
-import { FX_AS_OF, convert, rateLine, type FxCurrency } from "@/lib/fx";
+import { convert, type FxCurrency } from "@/lib/fx";
 import { useI18n } from "@/lib/i18n/context";
 import { ANNUAL_MONTHS, PLAN_CODES, type PlanCode } from "@/lib/pricing";
 import type { AdminSubscriptionRow, SubscriptionStatus } from "@/lib/supabase/types";
@@ -50,7 +50,7 @@ export function AdminSubscriptions({ rows, me }: { rows: AdminSubscriptionRow[];
       return sum + convert(perMonth, r.agency_currency, fx);
     }, 0);
 
-  const head = [s.columns.agency, a.columns.country, s.columns.plan, s.columns.status, s.columns.started, s.columns.trialUntil, s.columns.periodUntil, s.columns.price, s.columns.activations, s.columns.requests];
+  const head = [s.columns.agency, a.columns.country, a.columns.currency, s.columns.plan, s.columns.status, s.columns.started, s.columns.trialUntil, s.columns.periodUntil, s.columns.price, s.columns.activations, s.columns.requests];
 
   return (
     <AdminShell me={me} tab="subscriptions" title={s.title} subtitle={s.subtitle}>
@@ -61,7 +61,6 @@ export function AdminSubscriptions({ rows, me }: { rows: AdminSubscriptionRow[];
         <Tile
           label={s.monthlyRevenue}
           value={formatMoney(monthly, fx)}
-          foot={f(a.fx.note, { rates: rateLine(), date: day(FX_AS_OF) })}
           aside={<CurrencyToggle value={fx} onChange={setFx} />}
         />
       </div>
@@ -110,6 +109,7 @@ export function AdminSubscriptions({ rows, me }: { rows: AdminSubscriptionRow[];
                   </span>
                   <p className="text-[11px] text-onyx/45 dark:text-white/40">{r.agency_city}</p>
                 </td>
+                <td className="px-4 py-4 font-semibold">{r.agency_currency}</td>
                 <td className="px-4 py-4 font-semibold">{tierName(r.current_plan)}</td>
                 <td className="px-4 py-4"><StatusChip status={r.plan_status} label={r.plan_status ? a.status[r.plan_status] : a.status.none} /></td>
                 <td className="px-4 py-4" suppressHydrationWarning>{day(r.started_at)}</td>

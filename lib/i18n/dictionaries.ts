@@ -1245,8 +1245,7 @@ export const fr = {
     signOut: "Se déconnecter",
     tabs: { agencies: "Agences", subscriptions: "Abonnements" },
     kpis: { agencies: "Agences", active: "Formules actives", trialing: "En essai", collected: "Encaissé sur la plateforme" },
-    fx: { note: "Taux de référence au {date} : {rates}" },
-    columns: { agency: "Agence", country: "Pays", joined: "Inscrit le", owner: "Propriétaire", plan: "Formule", apartments: "Appartements", collected: "Encaissé", request: "Demande", code: "Code" },
+    columns: { agency: "Agence", country: "Pays", currency: "Devise", joined: "Inscrit le", owner: "Propriétaire", plan: "Formule", apartments: "Appartements", collected: "Encaissé", request: "Demande", code: "Code" },
     subscriptions: {
       title: "Abonnements",
       subtitle: "Chaque abonnement, ce qu'il coûte là où se trouve l'agence, et chaque activation passée par lui.",
@@ -2586,8 +2585,7 @@ export const en: Dictionary = {
     signOut: "Sign out",
     tabs: { agencies: "Agencies", subscriptions: "Subscriptions" },
     kpis: { agencies: "Agencies", active: "Active plans", trialing: "On trial", collected: "Collected across the platform" },
-    fx: { note: "Reference rates on {date}: {rates}" },
-    columns: { agency: "Agency", country: "Country", joined: "Joined", owner: "Owner", plan: "Plan", apartments: "Apartments", collected: "Collected", request: "Request", code: "Code" },
+    columns: { agency: "Agency", country: "Country", currency: "Currency", joined: "Joined", owner: "Owner", plan: "Plan", apartments: "Apartments", collected: "Collected", request: "Request", code: "Code" },
     subscriptions: {
       title: "Subscriptions",
       subtitle: "Every subscription, what it costs where the agency is, and every activation that has run through it.",
