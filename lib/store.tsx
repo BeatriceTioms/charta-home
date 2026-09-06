@@ -83,7 +83,7 @@ type StoreValue = {
   updateTenant: (
     buildingId: string,
     apartmentId: string,
-    input: { name: string; phone: string; rent: number; cycle: LeaseCycle; until?: string }
+    input: { name: string; phone: string; email?: string; rent: number; cycle: LeaseCycle; until?: string }
   ) => void;
   endLease: (
     buildingId: string,
@@ -98,6 +98,7 @@ type StoreValue = {
     input: {
       name: string;
       phone: string;
+      email?: string;
       rent: number;
       cycle: LeaseCycle;
       since: string;
@@ -364,6 +365,7 @@ export function StoreProvider({
         tenant: {
           name: input.name,
           phone: input.phone,
+          email: input.email?.trim() || undefined,
           since: input.since,
           until: input.until || undefined,
         },
@@ -376,6 +378,7 @@ export function StoreProvider({
           apartmentId,
           residentName: input.name,
           residentPhone: input.phone,
+          residentEmail: input.email,
           rent: input.rent,
           cycle: input.cycle,
           startsOn: input.since,
@@ -434,6 +437,7 @@ export function StoreProvider({
               ...apartment.tenant,
               name: input.name,
               phone: input.phone,
+              email: input.email === undefined ? apartment.tenant.email : input.email.trim() || undefined,
               until: input.until || undefined,
             }
           : undefined,
@@ -449,6 +453,8 @@ export function StoreProvider({
             residentId: apartment.residentId!,
             fullName: input.name,
             phone: input.phone.replace(/\s/g, ""),
+            // Undefined leaves the address alone; an emptied field clears it.
+            email: input.email === undefined ? undefined : input.email.trim().toLowerCase() || null,
           })
         );
       }

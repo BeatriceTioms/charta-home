@@ -88,6 +88,7 @@ function LeaseModal({
     addLease(building.id, apartmentId, {
       name,
       phone: String(data.get("phone") ?? ""),
+      email: String(data.get("email") ?? ""),
       rent: Number(data.get("rent") ?? defaultRent),
       // Monthly is what nearly every tenancy is. A different term is set on
       // the tenant's own form, once they exist.
@@ -129,6 +130,9 @@ function LeaseModal({
             quarterly or yearly term is set once the tenancy exists. */}
         <Field label={m.rent} hint={f(m.rentHint, { asking: fmt(defaultRent) })} hintAfter>
           <input name="rent" type="number" min={0} step={50} defaultValue={defaultRent} className={fieldCls} />
+        </Field>
+        <Field label={m.email} hint={m.emailHint} hintAfter>
+          <input name="email" type="email" inputMode="email" autoComplete="off" placeholder={m.emailPlaceholder} className={fieldCls} />
         </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label={m.startDate}>
@@ -231,6 +235,7 @@ function EditTenantModal({
     updateTenant(building.id, apartment.id, {
       name,
       phone: String(data.get("phone") ?? ""),
+      email: String(data.get("email") ?? ""),
       rent: Number(data.get("rent") ?? apartment.rent),
       cycle,
       until: String(data.get("end") ?? ""),
@@ -247,6 +252,9 @@ function EditTenantModal({
         </Field>
         <Field label={m.phone}>
           <input name="phone" defaultValue={apartment.tenant?.phone} className={fieldCls} />
+        </Field>
+        <Field label={m.email} hint={m.emailHint} hintAfter>
+          <input name="email" type="email" inputMode="email" defaultValue={apartment.tenant?.email ?? ""} className={fieldCls} />
         </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label={f(m.rentFor, { cycle: cycleLabel(cycle, t.dash.rent) })}>
@@ -594,6 +602,16 @@ export default function ApartmentPage() {
                       <a href={`tel:${apartment.tenant.phone.replace(/\s/g, "")}`} className="hover:underline">
                         {apartment.tenant.phone}
                       </a>
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt className="shrink-0 text-onyx/45 dark:text-white/45">{t.dash.apartment.email}</dt>
+                    <dd className="min-w-0 truncate text-right font-medium text-azure-950 dark:text-white">
+                      {apartment.tenant.email ? (
+                        <a href={`mailto:${apartment.tenant.email}`} className="hover:underline">{apartment.tenant.email}</a>
+                      ) : (
+                        <span className="text-onyx/40 dark:text-white/35">{t.dash.apartment.noEmail}</span>
+                      )}
                     </dd>
                   </div>
                   <div className="flex justify-between gap-3">

@@ -8,7 +8,7 @@ import {
   sendText,
   toWaNumber,
 } from "@/lib/whatsapp";
-import { isEmailConfigured, reminderDigestEmail, sendEmail } from "@/lib/email";
+import { isEmailConfigured, reminderDigestEmail, rentReminderEmail, sendEmail } from "@/lib/email";
 import { siteUrl } from "@/lib/site-url";
 
 /** One line of the hand over list an agency receives. */
@@ -79,7 +79,9 @@ export async function GET(request: Request) {
   today.setUTCHours(0, 0, 0, 0);
 
   const configured = isWhatsAppConfigured();
+  const mailer = isEmailConfigured();
   let sent = 0;
+  let emailed = 0;
   let failed = 0;
   let skipped = 0;
   let handedOver = 0;
@@ -100,7 +102,8 @@ export async function GET(request: Request) {
       if (daysFromDue < rule.offset_days) continue;
 
       const target = targetByCharge.get(charge.rent_charge_id);
-      if (!target?.resident_phone) {
+      // No way to reach them at all, and nothing for the agency to forward.
+      if (!target || (!target.resident_phone && !target.resident_email)) {
         skipped++;
         continue;
       }
@@ -124,9 +127,58 @@ export async function GET(request: Request) {
         apartment: target.apartment_label ?? "",
       });
 
-      // Nothing can reach the tenant automatically yet, so the reminder is
-      // gathered for the agency to send by hand and the claim is kept, which
-      // is what stops the same tenant appearing in tomorrow's list as well.
+      // Email is the one channel that works without anybody's approval. A
+      // tenant with an address gets the reminder directly, in the agency's
+      // own words; the agency is not asked to forward what was already sent.
+      let reached = false;
+      if (target.resident_email && mailer) {
+        const locale = target.agency_locale === "en" ? "en" : "fr";
+        const message = rentReminderEmail({
+          agencyName: target.agency_name ?? "",
+          agencyWhatsapp: target.agency_whatsapp,
+          agencyEmail: target.agency_email,
+          tenantName: target.resident_name ?? "",
+          apartmentLabel: target.apartment_label ?? "",
+          amount: formatMoney(Number(charge.amount), target.currency),
+          dueLabel: new Date(charge.due_on).toLocaleDateString(locale === "fr" ? "fr-FR" : "en-GB"),
+          daysFromDue,
+          body,
+          locale,
+        });
+        const result = await sendEmail({ to: target.resident_email, ...message });
+        if (result.ok) {
+          reached = true;
+          emailed++;
+          await supabase
+            .from("reminder_events")
+            .update({ status: "sent", channel: "email" })
+            .eq("rent_charge_id", charge.rent_charge_id)
+            .eq("rule_id", rule.id);
+        } else {
+          console.error(`reminder email to ${target.resident_email} failed: ${result.error}`);
+        }
+      }
+
+      // WhatsApp needs a number. Without one, email was the whole answer.
+      if (!target.resident_phone) {
+        if (!reached) {
+          // The address bounced or nothing is configured; let tomorrow retry.
+          await supabase
+            .from("reminder_events")
+            .delete()
+            .eq("rent_charge_id", charge.rent_charge_id)
+            .eq("rule_id", rule.id);
+          failed++;
+        }
+        continue;
+      }
+
+      // Nothing else can reach the tenant automatically yet, so the reminder
+      // is gathered for the agency to send by hand and the claim is kept,
+      // which is what stops the same tenant appearing in tomorrow's list as
+      // well. Not when the email already went: the agency is not asked to
+      // forward what the tenant has just received.
+      if (!configured && reached) continue;
       if (!configured) {
         await supabase
           .from("reminder_events")
@@ -168,6 +220,9 @@ export async function GET(request: Request) {
           .eq("rent_charge_id", charge.rent_charge_id)
           .eq("rule_id", rule.id);
         sent++;
+      } else if (reached) {
+        // The email went, so the reminder is delivered; WhatsApp was extra.
+        console.error(`whatsapp reminder failed for charge ${charge.rent_charge_id}: ${result.error}`);
       } else {
         // Drop the claim so tomorrow's run tries again, and record why.
         await supabase
@@ -211,6 +266,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     considered: charges?.length ?? 0,
     sent,
+    emailed,
     failed,
     skipped,
     handedOver,

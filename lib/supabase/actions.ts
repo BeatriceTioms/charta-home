@@ -143,6 +143,8 @@ export async function createLease(
     apartmentId: string;
     residentName: string;
     residentPhone: string;
+    /** Where rent reminders go. Optional, and checked for shape when given. */
+    residentEmail?: string;
     rent: number;
     cycle: LeaseCycle;
     startsOn: string;
@@ -156,6 +158,12 @@ export async function createLease(
   const phone = toE164(input.residentPhone);
   if (input.residentPhone.trim() && !phone) {
     return { ok: false, error: "lease-bad-phone" };
+  }
+  // An address that cannot be an address would sit silently until the first
+  // reminder bounced, which is weeks away and nobody's fault by then.
+  const email = (input.residentEmail ?? "").trim().toLowerCase();
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return { ok: false, error: "lease-bad-email" };
   }
 
   const supabase = await createClient();
@@ -171,6 +179,7 @@ export async function createLease(
     starts_on_in: input.startsOn,
     deposit_in: input.deposit ?? 0,
     ends_on_in: input.endsOn || null,
+    resident_email: email || null,
   });
   if (error) return { ok: false, error: error.message };
   revalidateDashboard(locale);

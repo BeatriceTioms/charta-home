@@ -101,6 +101,7 @@ export type ApartmentState = {
   resident_phone: string | null;
   lease_started_on: string | null;
   lease_ends_on: string | null;
+  resident_email: string | null;
   is_occupied: boolean;
   rent_state: ChargeState;
 };
@@ -280,6 +281,9 @@ export type ReminderTargetRow = {
   currency: string;
   resident_name: string;
   resident_phone: string | null;
+  resident_email: string | null;
+  agency_locale: string;
+  agency_email: string | null;
   apartment_label: string;
 };
 
@@ -572,6 +576,7 @@ export type Database = {
           target_apartment: string;
           resident_name: string;
           resident_phone: string | null;
+          resident_email?: string | null;
           rent: number;
           cycle_in?: LeaseCycle;
           starts_on_in?: string;

@@ -602,3 +602,77 @@ export function planCodeEmail(input: {
       : `Payment received for ${input.agencyName}.\n\nYour ${input.planLabel} (${input.cycleLabel}) code: ${input.code}\nValid until ${input.validUntil}, once.\n\nEnter it here: ${input.settingsUrl}\n\n${footer}`,
   };
 }
+
+/**
+ * The rent reminder, to the tenant.
+ *
+ * The body is the agency's own wording from its settings, already filled in,
+ * so what the tenant reads is what the agency wrote. Around it: the figures
+ * that matter, and the agency's own number, because a tenant who wants to
+ * say "I paid yesterday" should be able to say it to the agency and not to
+ * a no reply address.
+ */
+export function rentReminderEmail(input: {
+  agencyName: string;
+  agencyWhatsapp: string | null;
+  agencyEmail: string | null;
+  tenantName: string;
+  apartmentLabel: string;
+  amount: string;
+  dueLabel: string;
+  /** Days past the due date; negative is before it. */
+  daysFromDue: number;
+  /** The agency's message, placeholders already filled. */
+  body: string;
+  locale: string;
+}): Message {
+  const fr = input.locale === "fr";
+  const overdue = input.daysFromDue > 0;
+  const first = input.tenantName.split(" ")[0] || input.tenantName;
+
+  const subject = overdue
+    ? fr ? `Loyer en retard · ${input.apartmentLabel} · ${input.amount}` : `Rent overdue · ${input.apartmentLabel} · ${input.amount}`
+    : fr ? `Rappel de loyer · ${input.apartmentLabel} · ${input.amount}` : `Rent reminder · ${input.apartmentLabel} · ${input.amount}`;
+
+  const rows: [string, string][] = [
+    [fr ? "Logement" : "Unit", input.apartmentLabel],
+    [fr ? "Montant" : "Amount", input.amount],
+    [fr ? "Échéance" : "Due", input.dueLabel],
+    [fr ? "Agence" : "Agency", input.agencyName],
+  ];
+  const table = `<table role="presentation" style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;">${rows
+    .map(([k, v]) => `<tr><td style="padding:6px 0;color:#7b858c;">${esc(k)}</td><td style="padding:6px 0;text-align:right;font-weight:600;color:#003152;">${esc(v)}</td></tr>`)
+    .join("")}</table>`;
+
+  const contact = [
+    input.agencyWhatsapp ? (fr ? `WhatsApp : ${input.agencyWhatsapp}` : `WhatsApp: ${input.agencyWhatsapp}`) : "",
+    input.agencyEmail ? (fr ? `Email : ${input.agencyEmail}` : `Email: ${input.agencyEmail}`) : "",
+  ].filter(Boolean);
+
+  const paragraphs = input.body
+    .split(/\n{2,}/)
+    .map((p) => `<p style="margin:0 0 12px;white-space:pre-line;">${esc(p)}</p>`)
+    .join("");
+
+  const html = layout({
+    locale: input.locale,
+    preheader: subject,
+    heading: fr ? `Bonjour ${first}` : `Hello ${first}`,
+    body: `${paragraphs}${table}${contact.length ? `<p style="margin:0;color:#7b858c;">${fr ? "Déjà réglé, ou une question ? Écrivez à l'agence." : "Already paid, or a question? Write to the agency."}<br>${contact.map(esc).join("<br>")}</p>` : ""}`,
+    footer: fr
+      ? `Envoyé par Charta Home pour le compte de ${input.agencyName}.`
+      : `Sent by Charta Home on behalf of ${input.agencyName}.`,
+  });
+
+  const text = [
+    input.body,
+    "",
+    ...rows.map(([k, v]) => `${k}: ${v}`),
+    "",
+    ...contact,
+    "",
+    fr ? `Envoyé par Charta Home pour le compte de ${input.agencyName}.` : `Sent by Charta Home on behalf of ${input.agencyName}.`,
+  ].join("\n");
+
+  return { subject, html, text };
+}

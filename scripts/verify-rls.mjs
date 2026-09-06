@@ -1010,6 +1010,30 @@ try { await asUser(desk.id, `select public.admin_agency_detail('00000000-0000-00
 catch (err) { unknownAgency = /unknown agency/.test(err.message); }
 check("an agency that does not exist is an error, not an empty page", unknownAgency);
 
+/* ------------------------------------------------------ a tenant's email */
+const [aptE] = await asUser(userA.id, `
+  insert into apartments (agency_id, building_id, label, rooms, bathrooms, sqm, base_rent)
+  values ('${a1.id}', '${bA.id}', 'Apt Mail', 2, 1, 60, 900000) returning id`);
+const [leaseE] = await asUser(userA.id, `
+  select public.create_lease('${aptE.id}', 'Fatou Camara', '+224620998877', 900000, 'monthly', date '2026-09-01', 0, null, ' Fatou.Camara@Example.com ') as id`);
+const [resE] = await asUser(userA.id, `select r.email::text as email from residents r join leases l on l.resident_id = r.id where l.id = '${leaseE.id}'`);
+check("a tenant's email is stored, trimmed and lower cased", resE?.email === "fatou.camara@example.com", String(resE?.email));
+const [stateE] = await asUser(userA.id, `select resident_email from v_apartment_state where apartment_id = '${aptE.id}'`);
+check("the dashboard's view carries it", stateE?.resident_email === "fatou.camara@example.com");
+const [targetE] = await asUser(userA.id, `select resident_email, agency_locale from v_reminder_targets where rent_charge_id = (select id from rent_charges where lease_id = '${leaseE.id}' limit 1)`);
+check("and so does the reminder job's, with the agency's language",
+  targetE?.resident_email === "fatou.camara@example.com" && targetE?.agency_locale === "fr", `${targetE?.resident_email} / ${targetE?.agency_locale}`);
+let badEmail = false;
+try { await asUser(userA.id, `select public.create_lease('${aptE.id}', 'X', null, 1, 'monthly', current_date, 0, null, 'not an address')`); }
+catch (err) { badEmail = /residents_email_shape/.test(err.message); }
+check("an address that is not an address is refused", badEmail);
+const [aptE2] = await asUser(userA.id, `
+  insert into apartments (agency_id, building_id, label, rooms, bathrooms, sqm, base_rent)
+  values ('${a1.id}', '${bA.id}', 'Apt Mail 2', 2, 1, 60, 900000) returning id`);
+await asUser(userA.id, `select public.create_lease('${aptE2.id}', 'Fatou Camara', '+224620998877', 900000, 'monthly', date '2026-09-01', 0, null, null)`);
+const [kept] = await asUser(userA.id, `select email::text as email from residents where phone_e164 = '+224620998877'`);
+check("a second lease with no address does not erase the one on file", kept?.email === "fatou.camara@example.com", String(kept?.email));
+
 await db.close();
 
 const failed = results.filter((r) => !r.pass);

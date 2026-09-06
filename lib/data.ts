@@ -88,7 +88,7 @@ export type Apartment = {
   sqm: number;
   rent: number;
   cycle: LeaseCycle;
-  tenant?: { name: string; phone: string; since: string; until?: string };
+  tenant?: { name: string; phone: string; email?: string; since: string; until?: string };
   rentStatus: RentStatus;
   /**
    * What this flat returned this year: what it took, what it cost to keep,

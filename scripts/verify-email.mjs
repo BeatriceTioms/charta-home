@@ -8,7 +8,7 @@
  */
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { invitationEmail, isEmailConfigured, passwordResetEmail, reminderDigestEmail, sendEmail, welcomeEmail } from "../lib/email.ts";
+import { invitationEmail, isEmailConfigured, passwordResetEmail, reminderDigestEmail, rentReminderEmail, sendEmail, welcomeEmail } from "../lib/email.ts";
 
 const results = [];
 const check = (name, pass, detail = "") => {
@@ -221,6 +221,43 @@ const enDigest = reminderDigestEmail({
 check("the digest renders in English too",
   enDigest.subject.includes("rent reminder") && enDigest.html.includes("Overdue"),
   enDigest.subject);
+
+
+/* ------------------------------------------------- the reminder to the tenant
+ * The only message a tenant ever receives from Charta Home. The body is the
+ * agency's own wording, which is why it has to survive being put into html
+ * without becoming html.
+ */
+const reminder = rentReminderEmail({
+  agencyName: "Horizon <b>Realty</b>",
+  agencyWhatsapp: "+224 620 00 00 00",
+  agencyEmail: "contact@horizon.gn",
+  tenantName: "Mariam Diallo",
+  apartmentLabel: "Apt 2A",
+  amount: "1 500 000 GNF",
+  dueLabel: "01/09/2026",
+  daysFromDue: 5,
+  body: "Bonjour Mariam,\n\nVotre loyer de 1 500 000 GNF pour Apt 2A était attendu le 01/09/2026.\n\n<script>alert(1)</script>",
+  locale: "fr",
+});
+check("the tenant reminder says it is overdue when it is",
+  reminder.subject.startsWith("Loyer en retard"), reminder.subject);
+check("the agency's own wording cannot become markup",
+  !reminder.html.includes("<script>") && reminder.html.includes("&lt;script&gt;") && reminder.html.includes("Horizon &lt;b&gt;Realty"),
+  "the message body and the agency name are both escaped");
+check("the tenant is greeted by first name", reminder.html.includes("Bonjour Mariam"), "not the full name");
+check("the figures and the way to reply are there",
+  reminder.html.includes("1 500 000 GNF") && reminder.html.includes("01/09/2026") && reminder.html.includes("+224 620 00 00 00") && reminder.text.includes("contact@horizon.gn"),
+  "amount, due date, agency WhatsApp and email");
+check("paragraph breaks in the agency's message survive",
+  (reminder.html.match(/<p style="margin:0 0 12px;white-space:pre-line;">/g) ?? []).length === 3, "three paragraphs");
+const upcoming = rentReminderEmail({
+  agencyName: "Horizon", agencyWhatsapp: null, agencyEmail: null, tenantName: "T", apartmentLabel: "1",
+  amount: "1 GNF", dueLabel: "01/10/2026", daysFromDue: -3, body: "Hello", locale: "en",
+});
+check("a reminder before the due date is a reminder, not a warning",
+  upcoming.subject.startsWith("Rent reminder") && !upcoming.html.includes("Write to the agency"),
+  `${upcoming.subject}; no contact block when the agency has none`);
 
 const failed = results.filter((r) => !r.pass);
 console.log(`\n${results.length - failed.length}/${results.length} checks passed`);

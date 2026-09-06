@@ -228,7 +228,10 @@ export function TenantsPanel() {
                     </div>
                   </td>
                   <td className="whitespace-nowrap py-4 pr-4 text-onyx/70 dark:text-white/70">
-                    {apt.tenant!.phone}
+                    <p>{apt.tenant!.phone}</p>
+                    {apt.tenant!.email && (
+                      <p className="text-xs text-onyx/45 dark:text-white/45">{apt.tenant!.email}</p>
+                    )}
                   </td>
                   <td className="whitespace-nowrap py-4 pr-4 font-semibold text-azure-950 dark:text-white">
                     {apt.label}

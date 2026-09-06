@@ -384,6 +384,7 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
           ? {
               name: u.resident_name,
               phone: readablePhone(u.resident_phone),
+              email: u.resident_email ?? undefined,
               since: u.lease_started_on ? periodOf(u.lease_started_on) : "",
               // Absent on an open ended lease, which is the common case.
               until: u.lease_ends_on ? periodOf(u.lease_ends_on) : undefined,
