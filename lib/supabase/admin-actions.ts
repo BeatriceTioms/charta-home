@@ -5,7 +5,7 @@ import { isEmailConfigured, planCodeEmail, sendEmail } from "@/lib/email";
 import { isPlanCode, planName, type BillingCycle } from "@/lib/pricing";
 import { siteUrl } from "@/lib/site-url";
 import { createClient } from "./server";
-import type { AdminAgencyRow } from "./types";
+import type { AdminAgencyRow, AdminSubscriptionRow } from "./types";
 
 /**
  * The platform desk's writes. Every one goes through a function that refuses
@@ -18,6 +18,27 @@ export async function listAgencies(): Promise<AdminAgencyRow[] | null> {
   const { data, error } = await supabase.rpc("admin_list_agencies");
   if (error) return null;
   return (data ?? []) as AdminAgencyRow[];
+}
+
+export async function listSubscriptions(): Promise<AdminSubscriptionRow[] | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_list_subscriptions");
+  if (error) return null;
+  return (data ?? []) as AdminSubscriptionRow[];
+}
+
+/**
+ * Who is sitting at the desk. Staff are not agencies, so most have no
+ * dashboard to go back to; the frame offers that link only to one who does.
+ */
+export async function adminIdentity(): Promise<{ email: string; hasAgency: boolean }> {
+  const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getUser();
+  const { count } = await supabase
+    .from("memberships")
+    .select("agency_id", { count: "exact", head: true })
+    .eq("user_id", auth.user?.id ?? "");
+  return { email: auth.user?.email ?? "", hasAgency: (count ?? 0) > 0 };
 }
 
 export async function issuePlanCode(

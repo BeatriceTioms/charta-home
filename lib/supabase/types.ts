@@ -387,6 +387,29 @@ export type AdminAgencyRow = {
   open_code_until: string | null;
 };
 
+/** One subscription, with what it costs where the agency is and its activations. */
+export type AdminSubscriptionRow = {
+  agency_id: string;
+  agency_name: string;
+  agency_country: string;
+  agency_city: string;
+  agency_currency: string;
+  owner_name: string | null;
+  owner_email: string | null;
+  current_plan: PlanTier | null;
+  plan_status: SubscriptionStatus | null;
+  started_at: string;
+  trial_until: string | null;
+  period_until: string | null;
+  monthly_price: number | null;
+  annual_price: number | null;
+  activations: number;
+  last_activation_at: string | null;
+  last_activation_plan: PlanTier | null;
+  last_activation_cycle: BillingCycle | null;
+  pending_requests: number;
+};
+
 /** An owner's choice of tier, waiting for its mobile money payment. */
 export type PlanRequestRow = {
   id: string;
@@ -495,6 +518,7 @@ export type Database = {
     Functions: {
       is_platform_admin: { Args: Record<string, never>; Returns: boolean };
       admin_list_agencies: { Args: Record<string, never>; Returns: AdminAgencyRow[] };
+      admin_list_subscriptions: { Args: Record<string, never>; Returns: AdminSubscriptionRow[] };
       admin_issue_plan_code: {
         Args: { target_agency: string; plan_code: string; cycle_in: string };
         Returns: { issued_code: string; valid_until: string }[];

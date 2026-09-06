@@ -971,6 +971,22 @@ const added = (new Date(desk_after.current_period_end) - new Date(before.current
 check("a renewal runs on from the current period rather than from today",
   desk_after.plan === "pro" && added > 27 && added < 32, `${Math.round(added)} days added to a period that had not ended`);
 
+/* ------------------------------------------------------ every subscription */
+let every_subsRefused = false;
+try { await asUser(userA.id, `select * from public.admin_list_subscriptions()`); }
+catch (err) { every_subsRefused = /not a platform admin/.test(err.message); }
+check("the subscription list is the desk's alone", every_subsRefused);
+const every_subs = await asUser(desk.id, `select * from public.admin_list_subscriptions()`);
+check("the desk sees one row per subscription", every_subs.length >= 5 && new Set(every_subs.map((r) => r.agency_id)).size === every_subs.length, `${every_subs.length} rows`);
+const every_subC = every_subs.find((r) => r.agency_id === c1.id);
+check("with the price where the agency is, and every activation",
+  every_subC?.current_plan === "pro" && every_subC?.plan_status === "active" && Number(every_subC?.monthly_price) === 500000 && Number(every_subC?.annual_price) === 5000000 && every_subC?.activations === 2 && every_subC?.last_activation_plan === "pro" && every_subC?.last_activation_cycle === "monthly",
+  `${every_subC?.current_plan}/${every_subC?.plan_status} ${every_subC?.monthly_price} GNF, ${every_subC?.activations} activations, last ${every_subC?.last_activation_plan} ${every_subC?.last_activation_cycle}`);
+const every_subB = every_subs.find((r) => r.agency_id === a2.id);
+check("a trial shows the price it would pay, and no activations yet",
+  every_subB?.plan_status === "trialing" && Number(every_subB?.monthly_price) === 450000 && every_subB?.activations === 0 && every_subB?.last_activation_at === null,
+  `${every_subB?.agency_country} ${every_subB?.current_plan}: ${every_subB?.monthly_price}, ${every_subB?.activations} activations`);
+
 await db.close();
 
 const failed = results.filter((r) => !r.pass);
