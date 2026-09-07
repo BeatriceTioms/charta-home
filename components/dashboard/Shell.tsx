@@ -333,15 +333,7 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
               </span>
             </div>
             <div className="flex min-w-0 flex-1 items-center">
-              <div className="hidden max-w-md flex-1 items-center gap-2.5 rounded-full border border-white/70 bg-white/50 px-4 py-2 backdrop-blur-xl md:flex dark:border-white/10 dark:bg-white/5">
-                <svg viewBox="0 0 24 24" className="h-4 w-4 text-onyx/35 dark:text-white/35" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" />
-                </svg>
-                <input
-                  placeholder={t.dash.shell.search}
-                  className="w-full bg-transparent text-sm text-azure-950 outline-none placeholder:text-onyx/30 dark:text-white dark:placeholder:text-white/30"
-                />
-              </div>
+              {/* The search box searched nothing; a field that does nothing teaches people to ignore fields. */}
             </div>
             <div className="flex items-center gap-3">
               <LanguageSwitcher tone="dashboard" />

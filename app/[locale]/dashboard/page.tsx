@@ -280,7 +280,7 @@ export default function DashboardPage() {
                 className="h-[360px] w-full object-cover"
               />
             ) : (
-              <PhotoPlaceholder icon="building" className="h-[360px] w-full" />
+              <PhotoPlaceholder icon="none" className="h-[360px] w-full" />
             )}
             <div className="absolute inset-0 bg-gradient-to-r from-onyx/85 via-onyx/45 to-onyx/10" />
             <div className="absolute inset-0 flex flex-col justify-between p-8">

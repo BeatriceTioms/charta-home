@@ -671,19 +671,17 @@ export default function ApartmentPage() {
               </h2>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="mt-4 space-y-2">
               {figures.map((x) => (
-                <div key={x.label} className="rounded-2xl border border-azure-900/8 bg-white/50 p-4 dark:border-white/8 dark:bg-white/[0.04]">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-onyx/40 dark:text-white/35">{x.label}</p>
-                  <p className="mt-1 text-lg font-bold text-azure-950 dark:text-white">{x.value}</p>
-                  {x.foot && <p className="mt-0.5 text-[11px] text-onyx/50 dark:text-white/45" suppressHydrationWarning>{x.foot}</p>}
+                <div key={x.label} className="flex items-center justify-between gap-4 rounded-xl border border-azure-900/8 bg-white/50 px-4 py-2.5 dark:border-white/8 dark:bg-white/[0.04]">
+                  <span className="min-w-0">
+                    <span className="block text-[11px] font-semibold uppercase tracking-wider text-onyx/40 dark:text-white/35">{x.label}</span>
+                    {x.foot && <span className="block truncate text-[11px] text-onyx/50 dark:text-white/45" suppressHydrationWarning>{x.foot}</span>}
+                  </span>
+                  <span className="shrink-0 text-base font-bold text-azure-950 dark:text-white">{x.value}</span>
                 </div>
               ))}
             </div>
-
-            <p className="mt-6 text-xs font-semibold uppercase tracking-wide text-onyx/40 dark:text-white/40">
-              {t.dash.apartment.buildingActivity} · {t.dash.apartment.onDuty}
-            </p>
             <div className="mt-2.5 flex -space-x-2">
               {team.map((x) => (
                 <span
