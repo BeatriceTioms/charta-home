@@ -5,7 +5,7 @@ import { useState } from "react";
 import { formatMoney } from "@/lib/data";
 import { convert, type FxCurrency } from "@/lib/fx";
 import { useI18n } from "@/lib/i18n/context";
-import { ANNUAL_MONTHS, PLAN_CODES, type PlanCode } from "@/lib/pricing";
+import { ANNUAL_MONTHS, PLAN_CODES, tierName, type PlanCode } from "@/lib/pricing";
 import type { AdminSubscriptionRow, SubscriptionStatus } from "@/lib/supabase/types";
 import { StatusChip } from "./AdminDashboard";
 import { AdminShell, Tile, type AdminIdentity } from "./AdminShell";
@@ -32,8 +32,8 @@ export function AdminSubscriptions({ rows, me }: { rows: AdminSubscriptionRow[];
   const tag = locale === "fr" ? "fr-FR" : "en-GB";
   const day = (iso: string | null) =>
     iso ? new Date(iso).toLocaleDateString(tag, { day: "numeric", month: "short", year: "numeric" }) : "";
-  const tierName = (code: string | null) =>
-    code && (PLAN_CODES as readonly string[]).includes(code) ? t.plans.tiers[code as PlanCode].name : (code ?? "");
+  const tierLabel = (code: string | null, country = "") =>
+    code && (PLAN_CODES as readonly string[]).includes(code) ? tierName(code as PlanCode, country, t.plans.tiers[code as PlanCode].name) : (code ?? "");
 
   const shown = filter === "all" ? rows : rows.filter((r) => r.plan_status === filter);
   const count = (st: SubscriptionStatus) => rows.filter((r) => r.plan_status === st).length;
@@ -110,7 +110,7 @@ export function AdminSubscriptions({ rows, me }: { rows: AdminSubscriptionRow[];
                   <p className="text-[11px] text-onyx/45 dark:text-white/40">{r.agency_city}</p>
                 </td>
                 <td className="px-4 py-4 font-semibold">{r.agency_currency}</td>
-                <td className="px-4 py-4 font-semibold">{tierName(r.current_plan)}</td>
+                <td className="px-4 py-4 font-semibold">{tierLabel(r.current_plan, r.agency_country)}</td>
                 <td className="px-4 py-4"><StatusChip status={r.plan_status} label={r.plan_status ? a.status[r.plan_status] : a.status.none} /></td>
                 <td className="px-4 py-4" suppressHydrationWarning>{day(r.started_at)}</td>
                 <td className="px-4 py-4" suppressHydrationWarning>{day(r.trial_until)}</td>
@@ -127,7 +127,7 @@ export function AdminSubscriptions({ rows, me }: { rows: AdminSubscriptionRow[];
                   <p className="font-semibold">{r.activations}</p>
                   {r.last_activation_at && (
                     <p className="text-[11px] text-onyx/50 dark:text-white/45" suppressHydrationWarning>
-                      {f(s.lastActivation, { plan: tierName(r.last_activation_plan), cycle: (r.last_activation_cycle === "annual" ? a.annual : a.monthly).toLowerCase(), date: day(r.last_activation_at) })}
+                      {f(s.lastActivation, { plan: tierLabel(r.last_activation_plan, r.agency_country), cycle: (r.last_activation_cycle === "annual" ? a.annual : a.monthly).toLowerCase(), date: day(r.last_activation_at) })}
                     </p>
                   )}
                 </td>

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { PLAN_CODES, PRICING_COUNTRIES, priceFor } from "@/lib/pricing";
+import { PLAN_CODES, PRICING_COUNTRIES, priceFor, tierName } from "@/lib/pricing";
 import { notFound } from "next/navigation";
 import { getDictionary, isLocale, locales } from "@/lib/i18n";
 import { I18nProvider } from "@/lib/i18n/context";
@@ -149,7 +149,7 @@ function structuredData(locale: string) {
             if (!price) return [];
             return [{
               "@type": "Offer",
-              name: `${t.plans.tiers[code].name} · ${country}`,
+              name: `${tierName(code, country, t.plans.tiers[code].name)} · ${country}`,
               price: String(price.amount),
               priceCurrency: price.currency,
               description: t.plans.tiers[code].blurb,

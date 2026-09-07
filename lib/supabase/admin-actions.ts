@@ -92,7 +92,7 @@ export async function emailPlanCode(
     agencyName: agency.agency_name,
     ownerName: agency.owner_name || agency.owner_email.split("@")[0],
     code: input.code,
-    planLabel: planName(input.plan, locale),
+    planLabel: planName(input.plan, locale, agency.agency_country),
     cycleLabel: input.cycle === "annual" ? (fr ? "annuel" : "yearly") : fr ? "mensuel" : "monthly",
     validUntil: new Date(input.validUntil).toLocaleString(tag, { dateStyle: "long", timeStyle: "short" }),
     settingsUrl: `${siteUrl()}/${locale}/dashboard/settings`,

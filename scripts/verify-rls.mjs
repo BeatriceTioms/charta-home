@@ -765,36 +765,35 @@ check("a second agency is invisible to somebody outside it", outsiderBlocked,
   `${seenByB.length} rows leaked`);
 
 /* ------------------------------------------------------ the pricing model --
- * Five tiers, each a band of apartments, priced per country. The ceiling is
+ * Three tiers, each a band of apartments, priced per country. The ceiling is
  * the one thing a tier restricts, and it is enforced in the database so it
  * holds whatever the client says.
  */
 const tiers = await asUser(userA.id, `select code, min_apartments, max_apartments from plans order by rank`);
-check("five tiers, in order",
-  tiers.map((t) => t.code).join(",") === "starter,growth,pro,business,enterprise",
+check("three tiers, in order",
+  tiers.map((t) => t.code).join(",") === "starter,growth,business",
   tiers.map((t) => t.code).join(","));
 const contiguous = tiers.every((t, i) =>
   i === 0 ? t.min_apartments === 1 : t.min_apartments === tiers[i - 1].max_apartments + 1);
-check("the bands are contiguous and start at one",
-  contiguous && tiers[tiers.length - 1].max_apartments === null,
+check("the bands are contiguous, start at one and stop at two hundred and fifty",
+  contiguous && tiers[tiers.length - 1].max_apartments === 250,
   tiers.map((t) => `${t.min_apartments}..${t.max_apartments ?? "∞"}`).join(" "));
 
 const prices = await asUser(userA.id, `select plan, country, currency, monthly, annual from plan_prices order by country, plan`);
 const gn = prices.filter((p) => p.country === "Guinea");
 const cm = prices.filter((p) => p.country === "Cameroon");
 check("a full list for each country, in its own currency",
-  gn.length === 5 && cm.length === 5 && gn.every((p) => p.currency === "GNF") && cm.every((p) => p.currency === "XAF"),
+  gn.length === 3 && cm.length === 3 && gn.every((p) => p.currency === "GNF") && cm.every((p) => p.currency === "XAF"),
   `${gn.length} GNF rows, ${cm.length} XAF rows`);
 check("a year is ten months, everywhere",
   prices.filter((p) => p.monthly !== null).every((p) => Number(p.annual) === Number(p.monthly) * 10),
   "two months free on every tier");
-check("Guinea Pro is 500 000 GNF a month",
-  Number(gn.find((p) => p.plan === "pro")?.monthly) === 500000);
+check("Guinea Professional is 450 000 GNF a month",
+  Number(gn.find((p) => p.plan === "growth")?.monthly) === 450000);
 check("Cameroon Business is 55 000 XAF a month",
   Number(cm.find((p) => p.plan === "business")?.monthly) === 55000);
-check("Enterprise has no number in either country",
-  prices.filter((p) => p.plan === "enterprise").every((p) => p.monthly === null && p.annual === null),
-  "priced by conversation");
+check("nothing is on quote in a listed country",
+  prices.every((p) => p.monthly !== null && p.annual !== null), "three numbers each");
 
 // A Starter agency, built to hit the ceiling.
 const [userC] = await q(`insert into auth.users (email) values ('fatou@petite.gn') returning id`);
@@ -833,15 +832,15 @@ try {
 check("a tier that does not exist is refused at signup", unknownPlanRefused);
 
 // The plan is what they pay for, so the owner cannot move it themselves.
-await asUser(userC.id, `update subscriptions set plan = 'enterprise' where agency_id = '${c1.id}'`);
+await asUser(userC.id, `update subscriptions set plan = 'business' where agency_id = '${c1.id}'`);
 const [afterPromote] = await asUser(userC.id, `select plan from subscriptions where agency_id = '${c1.id}'`);
 check("an owner cannot promote their own subscription",
   afterPromote.plan === "starter", `plan is ${afterPromote.plan}`);
 
 // Choosing a plan records the list price for the agency's country.
-const [reqM] = await asUser(userC.id, `select * from public.request_plan('${c1.id}', 'pro', 'monthly')`);
+const [reqM] = await asUser(userC.id, `select * from public.request_plan('${c1.id}', 'growth', 'monthly')`);
 check("a request is recorded at the list price",
-  reqM.paid_in === "GNF" && Number(reqM.due) === 500000, `${reqM.due} ${reqM.paid_in}`);
+  reqM.paid_in === "GNF" && Number(reqM.due) === 450000, `${reqM.due} ${reqM.paid_in}`);
 const [reqY] = await asUser(userC.id, `select * from public.request_plan('${c1.id}', 'business', 'annual')`);
 check("a yearly request is ten months of the tier",
   Number(reqY.due) === 8500000, `${reqY.due} ${reqY.paid_in}`);
@@ -856,20 +855,22 @@ const [d1] = await asUser(userD.id, `
 const [reqD] = await asUser(userD.id, `select * from public.request_plan('${d1.id}', 'business', 'monthly')`);
 check("Cameroon is priced from its own list, in XAF",
   reqD.paid_in === "XAF" && Number(reqD.due) === 55000, `${reqD.due} ${reqD.paid_in}`);
-const [reqE] = await asUser(userD.id, `select * from public.request_plan('${d1.id}', 'enterprise', 'monthly')`);
-check("Enterprise is a quote, not a price", reqE.due === null && reqE.paid_in === "XAF");
+let goneTier = false;
+try { await asUser(userD.id, `select * from public.request_plan('${d1.id}', 'enterprise', 'monthly')`); }
+catch (err) { goneTier = /unknown plan/.test(err.message); }
+check("a tier the sheet does not have cannot be requested", goneTier, "enterprise is gone");
 
 const [userE] = await q(`insert into auth.users (email) values ('aicha@bamako.ml') returning id`);
 const [e1] = await asUser(userE.id, `
   select public.create_agency_for_current_user('Bamako Immo','Mali','Bamako','XOF','fr','Aïcha Traoré','starter') as id`);
-const [reqX] = await asUser(userE.id, `select * from public.request_plan('${e1.id}', 'pro', 'monthly')`);
+const [reqX] = await asUser(userE.id, `select * from public.request_plan('${e1.id}', 'growth', 'monthly')`);
 check("a country without a list gets a quote in its own currency",
   reqX.due === null && reqX.paid_in === "XOF", `${reqX.due} ${reqX.paid_in}`);
 
 await q(`insert into memberships (user_id, agency_id, role, full_name) values ('${manager.id}', '${c1.id}', 'manager', 'Karim')`);
 let managerBlocked = false;
 try {
-  await asUser(manager.id, `select * from public.request_plan('${c1.id}', 'pro', 'monthly')`);
+  await asUser(manager.id, `select * from public.request_plan('${c1.id}', 'growth', 'monthly')`);
 } catch (err) {
   managerBlocked = /only the owner/.test(err.message);
 }
@@ -877,7 +878,7 @@ check("a manager cannot choose the plan", managerBlocked);
 
 let cycleRefused = false;
 try {
-  await asUser(userC.id, `select * from public.request_plan('${c1.id}', 'pro', 'weekly')`);
+  await asUser(userC.id, `select * from public.request_plan('${c1.id}', 'growth', 'weekly')`);
 } catch (err) {
   cycleRefused = /unknown billing cycle/.test(err.message);
 }
@@ -896,7 +897,7 @@ try { await asUser(userA.id, `select * from public.admin_list_agencies()`); }
 catch (err) { deskRefused = /not a platform admin/.test(err.message); }
 check("an agency owner is not the platform desk", deskRefused);
 let issueRefused = false;
-try { await asUser(userA.id, `select * from public.admin_issue_plan_code('${c1.id}', 'pro', 'monthly')`); }
+try { await asUser(userA.id, `select * from public.admin_issue_plan_code('${c1.id}', 'growth', 'monthly')`); }
 catch (err) { issueRefused = /not a platform admin/.test(err.message); }
 check("and cannot issue codes", issueRefused);
 
@@ -951,15 +952,15 @@ try { await asUser(userC.id, `select * from public.redeem_plan_code('${issued.is
 catch (err) { twice = /already used/.test(err.message); }
 check("the code dies the moment it is used", twice);
 
-const [old] = await asUser(desk.id, `select * from public.admin_issue_plan_code('${c1.id}', 'pro', 'monthly')`);
+const [old] = await asUser(desk.id, `select * from public.admin_issue_plan_code('${c1.id}', 'growth', 'monthly')`);
 await q(`update plan_codes set expires_at = now() - interval '1 minute' where code = '${old.issued_code}'`);
 let stale = false;
 try { await asUser(userC.id, `select * from public.redeem_plan_code('${old.issued_code}')`); }
 catch (err) { stale = /expired/.test(err.message); }
 check("an hour on, the code is refused", stale);
 
-const [desk_first] = await asUser(desk.id, `select * from public.admin_issue_plan_code('${c1.id}', 'pro', 'monthly')`);
-const [desk_second] = await asUser(desk.id, `select * from public.admin_issue_plan_code('${c1.id}', 'pro', 'monthly')`);
+const [desk_first] = await asUser(desk.id, `select * from public.admin_issue_plan_code('${c1.id}', 'growth', 'monthly')`);
+const [desk_second] = await asUser(desk.id, `select * from public.admin_issue_plan_code('${c1.id}', 'growth', 'monthly')`);
 let superseded = false;
 try { await asUser(userC.id, `select * from public.redeem_plan_code('${desk_first.issued_code}')`); }
 catch (err) { superseded = /expired/.test(err.message); }
@@ -969,7 +970,7 @@ await asUser(userC.id, `select * from public.redeem_plan_code('${desk_second.iss
 const [desk_after] = await q(`select current_period_end, plan from subscriptions where agency_id = '${c1.id}'`);
 const added = (new Date(desk_after.current_period_end) - new Date(before.current_period_end)) / 86400000;
 check("a renewal runs on from the current period rather than from today",
-  desk_after.plan === "pro" && added > 27 && added < 32, `${Math.round(added)} days added to a period that had not ended`);
+  desk_after.plan === "growth" && added > 27 && added < 32, `${Math.round(added)} days added to a period that had not ended`);
 
 /* ------------------------------------------------------ every subscription */
 let every_subsRefused = false;
@@ -980,7 +981,7 @@ const every_subs = await asUser(desk.id, `select * from public.admin_list_subscr
 check("the desk sees one row per subscription", every_subs.length >= 5 && new Set(every_subs.map((r) => r.agency_id)).size === every_subs.length, `${every_subs.length} rows`);
 const every_subC = every_subs.find((r) => r.agency_id === c1.id);
 check("with the price where the agency is, and every activation",
-  every_subC?.current_plan === "pro" && every_subC?.plan_status === "active" && Number(every_subC?.monthly_price) === 500000 && Number(every_subC?.annual_price) === 5000000 && every_subC?.activations === 2 && every_subC?.last_activation_plan === "pro" && every_subC?.last_activation_cycle === "monthly",
+  every_subC?.current_plan === "growth" && every_subC?.plan_status === "active" && Number(every_subC?.monthly_price) === 450000 && Number(every_subC?.annual_price) === 4500000 && every_subC?.activations === 2 && every_subC?.last_activation_plan === "growth" && every_subC?.last_activation_cycle === "monthly",
   `${every_subC?.current_plan}/${every_subC?.plan_status} ${every_subC?.monthly_price} GNF, ${every_subC?.activations} activations, last ${every_subC?.last_activation_plan} ${every_subC?.last_activation_cycle}`);
 const every_subB = every_subs.find((r) => r.agency_id === a2.id);
 check("a trial shows the price it would pay, and no activations yet",
@@ -994,7 +995,7 @@ catch (err) { detailRefused = /not a platform admin/.test(err.message); }
 check("an agency cannot read its own desk file", detailRefused);
 const [{ admin_agency_detail: file }] = await asUser(desk.id, `select public.admin_agency_detail('${c1.id}')`);
 check("the desk reads the agency in one document",
-  file?.agency?.id === c1.id && file.subscription?.plan === "pro" && file.subscription?.status === "active",
+  file?.agency?.id === c1.id && file.subscription?.plan === "growth" && file.subscription?.status === "active",
   `${file?.agency?.name}: ${file?.subscription?.plan}/${file?.subscription?.status}`);
 check("with its people and its buildings",
   Array.isArray(file.members) && file.members.some((m) => m.role === "owner") && file.members.some((m) => m.role === "manager") && file.buildings.length >= 1 && file.money.apartments === 30,
@@ -1033,6 +1034,17 @@ const [aptE2] = await asUser(userA.id, `
 await asUser(userA.id, `select public.create_lease('${aptE2.id}', 'Fatou Camara', '+224620998877', 900000, 'monthly', date '2026-09-01', 0, null, null)`);
 const [kept] = await asUser(userA.id, `select email::text as email from residents where phone_e164 = '+224620998877'`);
 check("a second lease with no address does not erase the one on file", kept?.email === "fatou.camara@example.com", String(kept?.email));
+
+/* -------------------------------------------------- what a flat has been */
+const [hist] = await asUser(userA.id, `select tenants_ever, collected_lifetime, payments_count, first_lease_on, tickets_total, tickets_open from v_apartment_performance where apartment_id = '${apt.id}'`);
+check("the unit knows how many tenants it has had",
+  hist?.tenants_ever >= 1 && (() => { const d = new Date(hist.first_lease_on); return d.getFullYear() === 2026 && d.getMonth() === 7 && d.getDate() === 1; })(),
+  `${hist?.tenants_ever} tenants, first lease ${hist?.first_lease_on}`);
+check("and what it has taken over its life",
+  Number(hist?.collected_lifetime) > 0 && hist?.payments_count >= 1, `${hist?.collected_lifetime} over ${hist?.payments_count} payments`);
+check("and its tickets", typeof hist?.tickets_total === "number" && hist.tickets_open <= hist.tickets_total, `${hist?.tickets_open} open of ${hist?.tickets_total}`);
+const [never] = await asUser(userA.id, `select tenants_ever, first_lease_on from v_apartment_performance where apartment_id = '${aptE2.id}'`);
+check("a flat let once reads as one tenant, not as never let", never?.tenants_ever === 1 && never?.first_lease_on !== null);
 
 await db.close();
 

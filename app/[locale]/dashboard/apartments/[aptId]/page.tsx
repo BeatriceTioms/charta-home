@@ -15,16 +15,6 @@ import { Field, Modal, ModalActions, fieldCls } from "@/components/dashboard/Mod
 import { PhotoGallery } from "@/components/dashboard/PhotoGallery";
 import { ReminderModal } from "@/components/dashboard/ReminderModal";
 
-const WEEK = [
-  { day: 5, key: "wed" },
-  { day: 6, key: "thu" },
-  { day: 7, key: "fri" },
-  { day: 8, key: "sat", active: true },
-  { day: 9, key: "sun" },
-  { day: 10, key: "mon" },
-  { day: 11, key: "tue" },
-];
-
 function LeaseModal({
   apartmentId,
   apartmentLabel,
@@ -335,12 +325,24 @@ export default function ApartmentPage() {
   const photos = apartment.photos ?? [];
   const shown = photos[Math.min(view, Math.max(0, photos.length - 1))];
 
-  const weekdays = WEEK.map((d) => ({
-    ...d,
-    label: new Date(2026, 7, d.day).toLocaleDateString(locale === "fr" ? "fr-FR" : "en-GB", {
-      weekday: "short",
-    }),
-  }));
+  // What the flat has been, from its first lease to today. Every figure is a
+  // record; the strip of weekdays that used to sit here was pinned to one
+  // week in August 2026 and meant nothing.
+  const h = apartment.history;
+  const hist = t.dash.apartment.history;
+  const dayOf = (iso?: string) =>
+    iso ? new Date(iso).toLocaleDateString(locale === "fr" ? "fr-FR" : "en-GB", { day: "numeric", month: "short", year: "numeric" }) : "";
+  const tenure = apartment.tenant && apartment.leaseStartsOn
+    ? f(hist.occupiedSince, { date: dayOf(apartment.leaseStartsOn) })
+    : h.lastLeaseEndedOn
+      ? f(hist.vacantSince, { date: dayOf(h.lastLeaseEndedOn) })
+      : h.firstLeaseOn ? "" : hist.neverLet;
+  const figures: { label: string; value: string; foot?: string }[] = [
+    { label: hist.tenantsEver, value: String(h.tenantsEver), foot: h.firstLeaseOn ? f(hist.since, { date: dayOf(h.firstLeaseOn) }) : hist.neverLet },
+    { label: hist.collectedLifetime, value: fmt(h.collectedLifetime), foot: h.paymentsCount > 0 ? `${f(hist.payments, { count: h.paymentsCount })} · ${f(hist.lastPayment, { date: dayOf(h.lastPaymentOn) })}` : hist.noPayment },
+    { label: hist.collectedYear, value: fmt(apartment.performance.collected), foot: tenure || undefined },
+    { label: hist.expensesLifetime, value: fmt(h.expensesLifetime), foot: `${hist.tickets} ${h.ticketsTotal} · ${f(hist.ticketsOpen, { count: h.ticketsOpen })}` },
+  ];
 
   return (
     <>
@@ -665,28 +667,22 @@ export default function ApartmentPage() {
           <Card>
             <div className="mb-1 flex items-center justify-between">
               <h2 className="text-[15px] font-bold text-azure-950 dark:text-white">
-                {t.dash.apartment.buildingActivity}
+                {hist.title}
               </h2>
             </div>
 
-            <div className="mt-4 grid grid-cols-7 gap-1">
-              {weekdays.map((d) => (
-                <div
-                  key={d.day}
-                  className={`rounded-2xl py-2.5 text-center ${
-                    d.active ? "bg-onyx text-white dark:bg-soft-500 dark:text-azure-950" : "text-onyx/55 dark:text-white/55"
-                  }`}
-                >
-                  <p className="text-sm font-bold">{d.day}</p>
-                  <p className={`text-[10px] ${d.active ? "opacity-70" : "text-onyx/35 dark:text-white/35"}`}>
-                    {d.label}
-                  </p>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              {figures.map((x) => (
+                <div key={x.label} className="rounded-2xl border border-azure-900/8 bg-white/50 p-4 dark:border-white/8 dark:bg-white/[0.04]">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-onyx/40 dark:text-white/35">{x.label}</p>
+                  <p className="mt-1 text-lg font-bold text-azure-950 dark:text-white">{x.value}</p>
+                  {x.foot && <p className="mt-0.5 text-[11px] text-onyx/50 dark:text-white/45" suppressHydrationWarning>{x.foot}</p>}
                 </div>
               ))}
             </div>
 
             <p className="mt-6 text-xs font-semibold uppercase tracking-wide text-onyx/40 dark:text-white/40">
-              {t.dash.apartment.onDuty}
+              {t.dash.apartment.buildingActivity} · {t.dash.apartment.onDuty}
             </p>
             <div className="mt-2.5 flex -space-x-2">
               {team.map((x) => (

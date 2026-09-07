@@ -22,7 +22,7 @@ export const fr = {
     pricing: {
       title: "Tarifs",
       description:
-        "Cinq formules à la taille de votre parc, en francs guinéens et en francs CFA. Un mois offert pour commencer, sans carte bancaire.",
+        "Trois formules à la taille de votre parc, en francs guinéens et en francs CFA. Un mois offert pour commencer, sans carte bancaire.",
     },
     contact: {
       title: "Contact",
@@ -152,7 +152,7 @@ export const fr = {
 
   plans: {
     eyebrow: "Tarifs",
-    title: "Cinq formules, à la taille de votre parc",
+    title: "Trois formules, à la taille de votre parc",
     subtitle:
       "Le prix suit le nombre d'appartements que vous gérez, rien d'autre. Toutes les fonctionnalités dans chaque formule, un mois offert pour commencer, sans carte bancaire.",
     countryLabel: "Votre pays",
@@ -181,10 +181,8 @@ export const fr = {
     ],
     tiers: {
       starter: { name: "Starter", blurb: "Pour une agence qui démarre avec un immeuble ou deux." },
-      growth: { name: "Growth", blurb: "Pour une agence qui grandit et suit plusieurs immeubles." },
-      pro: { name: "Pro", blurb: "Pour une agence installée, autour de cent appartements." },
+      growth: { name: "Growth", blurb: "Pour une agence installée, jusqu'à cent appartements." },
       business: { name: "Business", blurb: "Pour un parc important, sur plusieurs quartiers." },
-      enterprise: { name: "Entreprise", blurb: "Pour les grands gestionnaires, avec un accompagnement dédié." },
     },
     howToPay: {
       title: "Comment on règle",
@@ -755,6 +753,22 @@ export const fr = {
       messageWhatsApp: "Écrire sur WhatsApp",
       vacantBody: "Vacant. Ajoutez un bail pour commencer à encaisser et suivre le rendement.",
       buildingActivity: "Activité de l'immeuble",
+      history: {
+        title: "Ce logement en chiffres",
+        tenantsEver: "Locataires depuis le début",
+        collectedLifetime: "Encaissé depuis le début",
+        collectedYear: "Encaissé cette année",
+        expensesLifetime: "Dépenses depuis le début",
+        payments: "{count} paiements",
+        lastPayment: "dernier le {date}",
+        noPayment: "Aucun paiement",
+        since: "Premier bail le {date}",
+        neverLet: "Jamais loué",
+        tickets: "Tickets",
+        ticketsOpen: "{count} ouverts",
+        vacantSince: "Vacant depuis le {date}",
+        occupiedSince: "Occupé depuis le {date}",
+      },
       onDuty: "En service aujourd'hui",
       maintenance: "Maintenance",
       noTickets: "Aucun ticket pour ce logement.",
@@ -1372,7 +1386,7 @@ export const en: Dictionary = {
     pricing: {
       title: "Pricing",
       description:
-        "Five plans sized to your portfolio, in Guinean and CFA francs. A free month to begin, no credit card required.",
+        "Three plans sized to your portfolio, in Guinean and CFA francs. A free month to begin, no credit card required.",
     },
     contact: {
       title: "Contact",
@@ -1502,7 +1516,7 @@ export const en: Dictionary = {
 
   plans: {
     eyebrow: "Pricing",
-    title: "Five plans, sized to your portfolio",
+    title: "Three plans, sized to your portfolio",
     subtitle:
       "The price follows the number of apartments you manage, nothing else. Every feature in every plan, a free month to begin, no credit card.",
     countryLabel: "Your country",
@@ -1531,10 +1545,8 @@ export const en: Dictionary = {
     ],
     tiers: {
       starter: { name: "Starter", blurb: "For an agency beginning with a building or two." },
-      growth: { name: "Growth", blurb: "For an agency that is growing and runs several buildings." },
-      pro: { name: "Pro", blurb: "For an established agency, around a hundred apartments." },
+      growth: { name: "Growth", blurb: "For an established agency, up to a hundred apartments." },
       business: { name: "Business", blurb: "For a large portfolio, across several districts." },
-      enterprise: { name: "Enterprise", blurb: "For large managers, with dedicated support." },
     },
     howToPay: {
       title: "How you pay",
@@ -2104,6 +2116,22 @@ export const en: Dictionary = {
       messageWhatsApp: "Message on WhatsApp",
       vacantBody: "Vacant. Add a lease to start collecting rent and tracking yield.",
       buildingActivity: "Building activity",
+      history: {
+        title: "This unit in numbers",
+        tenantsEver: "Tenants since the start",
+        collectedLifetime: "Collected since the start",
+        collectedYear: "Collected this year",
+        expensesLifetime: "Spent since the start",
+        payments: "{count} payments",
+        lastPayment: "last on {date}",
+        noPayment: "No payment yet",
+        since: "First lease on {date}",
+        neverLet: "Never let",
+        tickets: "Tickets",
+        ticketsOpen: "{count} open",
+        vacantSince: "Vacant since {date}",
+        occupiedSince: "Occupied since {date}",
+      },
       onDuty: "On duty today",
       maintenance: "Maintenance",
       noTickets: "No tickets for this apartment.",

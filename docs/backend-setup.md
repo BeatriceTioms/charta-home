@@ -173,7 +173,7 @@ move it, once the money has arrived:
 
 ```sql
 update subscriptions
-   set plan = 'pro', status = 'active', current_period_end = now() + interval '1 month'
+   set plan = 'growth', status = 'active', current_period_end = now() + interval '1 month'
  where agency_id = '<agency>';
 update plan_requests set status = 'paid' where id = '<request>';
 ```

@@ -102,6 +102,18 @@ export type Apartment = {
     net: number;
     marginPct: number | null;
   };
+  /** What the unit has been, from its first lease to today. */
+  history: {
+    tenantsEver: number;
+    firstLeaseOn?: string;
+    lastLeaseEndedOn?: string;
+    collectedLifetime: number;
+    paymentsCount: number;
+    lastPaymentOn?: string;
+    expensesLifetime: number;
+    ticketsTotal: number;
+    ticketsOpen: number;
+  };
   payments: Payment[];
 };
 

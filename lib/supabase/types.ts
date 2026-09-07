@@ -15,7 +15,7 @@ export type TicketStatus = "new" | "assigned" | "in_progress" | "resolved" | "ca
 export type TicketPriority = "normal" | "high" | "urgent";
 export type ReportChannel = "whatsapp" | "sms" | "phone" | "email" | "in_person";
 export type EventKind = "viewing" | "work" | "inspection" | "other";
-export type PlanTier = "starter" | "growth" | "pro" | "business" | "enterprise";
+export type PlanTier = "starter" | "growth" | "business";
 export type BillingCycle = "monthly" | "annual";
 export type SubscriptionStatus = "trialing" | "active" | "past_due" | "cancelled";
 
@@ -126,6 +126,16 @@ export type ApartmentPerformance = {
   expenses_ytd: number;
   net_ytd: number;
   net_margin_pct: number | null;
+  /** What the unit has been over its life. */
+  tenants_ever: number;
+  first_lease_on: string | null;
+  last_lease_ended_on: string | null;
+  collected_lifetime: number;
+  payments_count: number;
+  last_payment_on: string | null;
+  expenses_lifetime: number;
+  tickets_total: number;
+  tickets_open: number;
 };
 
 export type ChargeStatusRow = {

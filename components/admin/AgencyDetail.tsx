@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { formatMoney } from "@/lib/data";
 import { useI18n } from "@/lib/i18n/context";
-import { ANNUAL_MONTHS, PLAN_CODES, type PlanCode } from "@/lib/pricing";
+import { ANNUAL_MONTHS, PLAN_CODES, tierName, type PlanCode } from "@/lib/pricing";
 import type { AdminAgencyDetail, AdminAgencyRow } from "@/lib/supabase/types";
 import { IssueCodeModal, StatusChip } from "./AdminDashboard";
 import { AdminShell, Tile, type AdminIdentity } from "./AdminShell";
@@ -31,8 +31,8 @@ export function AgencyDetail({ doc, me }: { doc: AdminAgencyDetail; me: AdminIde
     iso ? new Date(iso).toLocaleDateString(tag, { day: "numeric", month: "short", year: "numeric" }) : "";
   const clock = (iso: string) =>
     new Date(iso).toLocaleTimeString(tag, { hour: "2-digit", minute: "2-digit" });
-  const tierName = (code: string | null | undefined) =>
-    code && (PLAN_CODES as readonly string[]).includes(code) ? t.plans.tiers[code as PlanCode].name : (code ?? "");
+  const tierLabel = (code: string | null | undefined, country = "") =>
+    code && (PLAN_CODES as readonly string[]).includes(code) ? tierName(code as PlanCode, country, t.plans.tiers[code as PlanCode].name) : (code ?? "");
   const cycleWord = (c: string) => (c === "annual" ? a.annual : a.monthly).toLowerCase();
   const money = (n: number | null | undefined, currency = doc.agency.currency) => formatMoney(Number(n ?? 0), currency);
 
@@ -88,7 +88,7 @@ export function AgencyDetail({ doc, me }: { doc: AdminAgencyDetail; me: AdminIde
       <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Tile
           label={d.plan}
-          value={sub ? tierName(sub.plan) : d.noPlan}
+          value={sub ? tierLabel(sub.plan, agency.country) : d.noPlan}
           foot={sub ? `${sub.status === "trialing" && sub.trial_until ? f(a.trialUntil, { date: day(sub.trial_until) }) : sub.period_until ? f(a.activeUntil, { date: day(sub.period_until) }) : ""} · ${plan}` : undefined}
           aside={sub ? <StatusChip status={sub.status} label={a.status[sub.status]} /> : undefined}
         />
@@ -164,7 +164,7 @@ export function AgencyDetail({ doc, me }: { doc: AdminAgencyDetail; me: AdminIde
               <tbody>
                 {requests.map((r) => (
                   <tr key={r.id} className="border-t border-azure-900/8 dark:border-white/8">
-                    <td className="py-3 font-semibold">{tierName(r.plan)} <span className={muted}>{cycleWord(r.cycle)}</span></td>
+                    <td className="py-3 font-semibold">{tierLabel(r.plan, agency.country)} <span className={muted}>{cycleWord(r.cycle)}</span></td>
                     <td className="py-3">{r.amount !== null ? money(r.amount, r.currency) : a.requestQuote.split("·")[1]?.trim()}</td>
                     <td className="py-3"><StatusChip status={r.status === "paid" ? "active" : r.status === "pending" ? "trialing" : "cancelled"} label={d.requestStatus[r.status]} /></td>
                     <td className={`py-3 text-right ${muted}`} suppressHydrationWarning>{day(r.created_at)}</td>
@@ -183,7 +183,7 @@ export function AgencyDetail({ doc, me }: { doc: AdminAgencyDetail; me: AdminIde
                 {codes.map((c) => (
                   <tr key={c.code} className="border-t border-azure-900/8 dark:border-white/8">
                     <td className="py-3 font-mono font-bold tracking-[0.15em]">{c.code}</td>
-                    <td className="py-3 font-semibold">{tierName(c.plan)} <span className={muted}>{cycleWord(c.cycle)}</span></td>
+                    <td className="py-3 font-semibold">{tierLabel(c.plan, agency.country)} <span className={muted}>{cycleWord(c.cycle)}</span></td>
                     <td className="py-3"><StatusChip status={c.state === "used" ? "active" : c.state === "open" ? "trialing" : "cancelled"} label={d.codeState[c.state]} /></td>
                     <td className={`py-3 text-right ${muted}`} suppressHydrationWarning>
                       <span className="block">{day(c.issued_at)} {c.issued_by ? f(d.issuedBy, { who: c.issued_by }) : ""}</span>

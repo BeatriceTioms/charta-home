@@ -402,6 +402,17 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
               ? null
               : Number(perfByApartment.get(u.apartment_id)!.net_margin_pct),
         },
+        history: {
+          tenantsEver: Number(perfByApartment.get(u.apartment_id)?.tenants_ever ?? 0),
+          firstLeaseOn: perfByApartment.get(u.apartment_id)?.first_lease_on ?? undefined,
+          lastLeaseEndedOn: perfByApartment.get(u.apartment_id)?.last_lease_ended_on ?? undefined,
+          collectedLifetime: Number(perfByApartment.get(u.apartment_id)?.collected_lifetime ?? 0),
+          paymentsCount: Number(perfByApartment.get(u.apartment_id)?.payments_count ?? 0),
+          lastPaymentOn: perfByApartment.get(u.apartment_id)?.last_payment_on ?? undefined,
+          expensesLifetime: Number(perfByApartment.get(u.apartment_id)?.expenses_lifetime ?? 0),
+          ticketsTotal: Number(perfByApartment.get(u.apartment_id)?.tickets_total ?? 0),
+          ticketsOpen: Number(perfByApartment.get(u.apartment_id)?.tickets_open ?? 0),
+        },
         payments: u.lease_id ? paymentsByLease.get(u.lease_id) ?? [] : [],
         receipts: u.lease_id ? receiptsByLease.get(u.lease_id) ?? [] : [],
         // Only what the agency actually uploaded.
@@ -572,7 +583,7 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
       currentPeriodEnd: subscription.current_period_end ?? null,
       // The database is the authority; the bundled table only stands in
       // while the migration is still to be pasted.
-      maxApartments: tier ? tier.max_apartments : PLAN_BANDS[subscription.plan].max,
+      maxApartments: tier ? tier.max_apartments : (PLAN_BANDS[subscription.plan]?.max ?? null),
       pending:
         pendingRow && isPlanCode(pendingRow.plan)
           ? {

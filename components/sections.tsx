@@ -9,6 +9,7 @@ import {
   ANNUAL_MONTHS,
   PLAN_BANDS,
   PLAN_CODES,
+  tierName,
   PRICING_COUNTRIES,
   priceFor,
   type BillingCycle,
@@ -307,19 +308,15 @@ function Toggle<T extends string>({
   );
 }
 
-/** The five tiers, priced for one country and one cycle. */
+/** The three tiers, priced for one country and one cycle. */
 export function PricingSection({ standalone = false }: { standalone?: boolean }) {
   const { t, path, f } = useI18n();
   const p = t.plans;
   const [country, setCountry] = useState<PricingCountry>("Guinea");
   const [cycle, setCycle] = useState<BillingCycle>("monthly");
 
-  const bandOf = (code: PlanCode) => {
-    const band = PLAN_BANDS[code];
-    return band.max === null
-      ? f(p.bandOpen, { min: band.min })
-      : f(p.band, { min: band.min, max: band.max });
-  };
+  const bandOf = (code: PlanCode) => f(p.band, { min: PLAN_BANDS[code].min, max: PLAN_BANDS[code].max });
+  const nameOf = (code: PlanCode) => tierName(code, country, p.tiers[code].name);
 
   return (
     <section className={`${standalone ? "bg-white" : "bg-soft-50"} py-24`}>
@@ -346,7 +343,7 @@ export function PricingSection({ standalone = false }: { standalone?: boolean })
           />
         </div>
 
-        <div className="mt-12 grid items-stretch gap-5 md:grid-cols-2 xl:grid-cols-5">
+        <div className="mt-12 grid items-stretch gap-6 md:grid-cols-3">
           {PLAN_CODES.map((code) => {
             const tier = p.tiers[code];
             const price = priceFor(country, code, cycle);
@@ -366,7 +363,7 @@ export function PricingSection({ standalone = false }: { standalone?: boolean })
                   </span>
                 )}
                 <h3 className={`text-lg font-bold ${highlighted ? "text-soft-500" : "text-azure-800"}`}>
-                  {tier.name}
+                  {nameOf(code)}
                 </h3>
                 <p className={`mt-1 text-xs font-semibold ${highlighted ? "text-white/70" : "text-onyx/50"}`}>
                   {bandOf(code)}
@@ -392,14 +389,14 @@ export function PricingSection({ standalone = false }: { standalone?: boolean })
                 </p>
 
                 <Link
-                  href={code === "enterprise" ? path("/contact") : path(`/signup?plan=${code}`)}
+                  href={path(`/signup?plan=${code}`)}
                   className={`mt-6 rounded-full py-2.5 text-center text-sm font-semibold transition ${
                     highlighted
                       ? "bg-soft-500 text-azure-800 hover:bg-soft-400"
                       : "bg-azure-800 text-white hover:bg-azure-900"
                   }`}
                 >
-                  {code === "enterprise" ? p.ctaQuote : p.cta}
+                  {p.cta}
                 </Link>
               </div>
             );
@@ -450,7 +447,7 @@ function HowToPay() {
   );
 }
 
-/** The same five tiers as a table, so the bands and both prices line up. */
+/** The same three tiers as a table, so the bands and both prices line up. */
 export function PlanComparison({ country, cycle }: { country: PricingCountry; cycle: BillingCycle }) {
   const { t, path, f } = useI18n();
   const p = t.plans;
@@ -487,7 +484,7 @@ export function PlanComparison({ country, cycle }: { country: PricingCountry; cy
                         {p.mostPopular}
                       </span>
                     )}
-                    <p className={`text-base font-bold ${hi ? "" : "text-azure-950"}`}>{p.tiers[code].name}</p>
+                    <p className={`text-base font-bold ${hi ? "" : "text-azure-950"}`}>{tierName(code, country, p.tiers[code].name)}</p>
                     <p className={`mt-0.5 text-xs font-medium ${hi ? "text-white/60" : "text-onyx/45"}`}>
                       {cell(code, cycle)}
                       {priceFor(country, code, cycle) && (
@@ -501,10 +498,7 @@ export function PlanComparison({ country, cycle }: { country: PricingCountry; cy
           </thead>
           <tbody>
             {[
-              { label: c.rows.apartments, value: (code: PlanCode) => {
-                const band = PLAN_BANDS[code];
-                return band.max === null ? f(p.bandOpen, { min: band.min }) : f(p.band, { min: band.min, max: band.max });
-              } },
+              { label: c.rows.apartments, value: (code: PlanCode) => f(p.band, { min: PLAN_BANDS[code].min, max: PLAN_BANDS[code].max }) },
               { label: c.rows.monthly, value: (code: PlanCode) => cell(code, "monthly") },
               { label: c.rows.annual, value: (code: PlanCode) => cell(code, "annual") },
               { label: c.rows.everythingElse, value: () => c.values.included },
@@ -532,14 +526,14 @@ export function PlanComparison({ country, cycle }: { country: PricingCountry; cy
               {PLAN_CODES.map((code) => (
                 <td key={code} className={code === "growth" ? "bg-azure-800/[0.04] px-4 py-6" : "px-4 py-6"}>
                   <Link
-                    href={code === "enterprise" ? path("/contact") : path(`/signup?plan=${code}`)}
+                    href={path(`/signup?plan=${code}`)}
                     className={
                       code === "growth"
                         ? "inline-block rounded-full bg-azure-800 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-azure-800/20 transition hover:bg-azure-900"
                         : "inline-block rounded-full border border-azure-800/20 px-4 py-2.5 text-sm font-semibold text-azure-800 transition hover:bg-soft-100"
                     }
                   >
-                    {code === "enterprise" ? p.ctaQuote : `${c.choose} ${p.tiers[code].name}`}
+                    {`${c.choose} ${tierName(code, country, p.tiers[code].name)}`}
                   </Link>
                 </td>
               ))}

@@ -6,7 +6,7 @@ import { Field, Modal, ModalActions, fieldCls } from "@/components/dashboard/Mod
 import { formatMoney } from "@/lib/data";
 import { convert, type FxCurrency } from "@/lib/fx";
 import { useI18n } from "@/lib/i18n/context";
-import { PLAN_CODES, type BillingCycle, type PlanCode } from "@/lib/pricing";
+import { PLAN_CODES, tierName, type BillingCycle, type PlanCode } from "@/lib/pricing";
 import * as admin from "@/lib/supabase/admin-actions";
 import type { AdminAgencyRow } from "@/lib/supabase/types";
 import { AdminShell, Tile, type AdminIdentity } from "./AdminShell";
@@ -34,8 +34,8 @@ export function AdminDashboard({ rows, me }: { rows: AdminAgencyRow[]; me: Admin
     new Date(iso).toLocaleDateString(tag, { day: "numeric", month: "short", year: "numeric" });
   const clock = (iso: string) =>
     new Date(iso).toLocaleTimeString(tag, { hour: "2-digit", minute: "2-digit" });
-  const tierName = (code: string | null) =>
-    code && (PLAN_CODES as readonly string[]).includes(code) ? t.plans.tiers[code as PlanCode].name : (code ?? "");
+  const tierLabel = (code: string | null, country = "") =>
+    code && (PLAN_CODES as readonly string[]).includes(code) ? tierName(code as PlanCode, country, t.plans.tiers[code as PlanCode].name) : (code ?? "");
   const cycleWord = (c: string | null) => (c === "annual" ? a.annual : a.monthly).toLowerCase();
 
   // One figure across three currencies, read in whichever the desk picks. A
@@ -79,8 +79,8 @@ export function AdminDashboard({ rows, me }: { rows: AdminAgencyRow[]; me: Admin
                 : "";
               const request = !r.pending_plan ? a.noRequest
                 : r.pending_amount === null
-                  ? f(a.requestQuote, { plan: tierName(r.pending_plan), cycle: cycleWord(r.pending_cycle) })
-                  : f(a.requestLine, { plan: tierName(r.pending_plan), cycle: cycleWord(r.pending_cycle), amount: formatMoney(Number(r.pending_amount), r.pending_currency ?? r.agency_currency) });
+                  ? f(a.requestQuote, { plan: tierLabel(r.pending_plan, r.agency_country), cycle: cycleWord(r.pending_cycle) })
+                  : f(a.requestLine, { plan: tierLabel(r.pending_plan, r.agency_country), cycle: cycleWord(r.pending_cycle), amount: formatMoney(Number(r.pending_amount), r.pending_currency ?? r.agency_currency) });
               return (
                 <tr key={r.agency_id} className="border-t border-azure-900/8 align-top dark:border-white/8">
                   <td className="px-4 py-4">
@@ -103,7 +103,7 @@ export function AdminDashboard({ rows, me }: { rows: AdminAgencyRow[]; me: Admin
                     <p className="text-[11px] text-onyx/40 dark:text-white/35">{f(a.members, { count: r.member_count })}</p>
                   </td>
                   <td className="px-4 py-4">
-                    <p className="font-semibold">{tierName(r.current_plan)}</p>
+                    <p className="font-semibold">{tierLabel(r.current_plan, r.agency_country)}</p>
                     <StatusChip status={r.plan_status} label={status} />
                     {until && <p className="mt-1 text-[11px] text-onyx/50 dark:text-white/45" suppressHydrationWarning>{until}</p>}
                   </td>
@@ -175,7 +175,7 @@ export function IssueCodeModal({ row, onClose }: { row: AdminAgencyRow; onClose:
     ? f(a.message, {
         owner: (row.owner_name ?? "").split(" ")[0] || "",
         agency: row.agency_name,
-        plan: t.plans.tiers[plan].name,
+        plan: tierName(plan, row.agency_country, t.plans.tiers[plan].name),
         cycle: cycleLabel,
         code: issued.code,
         time: clock(issued.validUntil),
@@ -202,7 +202,7 @@ export function IssueCodeModal({ row, onClose }: { row: AdminAgencyRow; onClose:
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label={a.plan}>
               <select value={plan} onChange={(e) => setPlan(e.target.value as PlanCode)} className={fieldCls}>
-                {PLAN_CODES.map((c) => <option key={c} value={c}>{t.plans.tiers[c].name}</option>)}
+                {PLAN_CODES.map((c) => <option key={c} value={c}>{tierName(c, row.agency_country, t.plans.tiers[c].name)}</option>)}
               </select>
             </Field>
             <Field label={a.cycle}>

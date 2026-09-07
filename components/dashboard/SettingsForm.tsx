@@ -16,6 +16,8 @@ import { formatMoney } from "@/lib/data";
 import {
   PLAN_BANDS,
   PLAN_CODES,
+  isPlanCode,
+  tierName,
   isPricingCountry,
   planForApartments,
   priceFor,
@@ -324,9 +326,10 @@ function MessageModal({
 
 function PlanSummary({ canEdit, onChoose }: { canEdit: boolean; onChoose: () => void }) {
   const { t, f, locale } = useI18n();
-  const { plan, buildings, notify } = useStore();
+  const { plan, buildings, notify, agencyInfo } = useStore();
   const router = useRouter();
   const pc = t.dash.settings.planCard;
+  const nameOf = (code: PlanCode) => tierName(code, agencyInfo?.country ?? "", t.plans.tiers[code].name);
 
   // The code the desk sent after seeing the payment. Checked entirely in the
   // database; this only carries it there and says what came back.
@@ -345,7 +348,7 @@ function PlanSummary({ canEdit, onChoose }: { canEdit: boolean; onChoose: () => 
       return;
     }
     setCode("");
-    const tier = t.plans.tiers[result.plan as PlanCode]?.name ?? result.plan;
+    const tier = isPlanCode(result.plan) ? nameOf(result.plan) : result.plan;
     notify(f(pc.redeemed, { plan: tier, date: day(result.until) }));
     router.refresh();
   };
@@ -366,14 +369,14 @@ function PlanSummary({ canEdit, onChoose }: { canEdit: boolean; onChoose: () => 
   const max = plan?.maxApartments ?? null;
   const left = max === null ? null : Math.max(0, max - used);
   const next = plan ? PLAN_CODES[Math.min(PLAN_CODES.indexOf(plan.code) + 1, PLAN_CODES.length - 1)] : null;
-  const nextMax = next ? PLAN_BANDS[next].max : null;
+  const nextMax = next && next !== plan?.code ? PLAN_BANDS[next].max : null;
 
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border border-azure-900/10 bg-soft-50 p-5 dark:border-white/10 dark:bg-white/5">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-onyx/40 dark:text-white/35">{pc.current}</p>
         <p className="mt-1 text-lg font-bold text-azure-950 dark:text-white">
-          {plan ? t.plans.tiers[plan.code].name : "…"}
+          {plan ? nameOf(plan.code) : "…"}
         </p>
         {status && (
           <p className="mt-1 text-sm text-onyx/70 dark:text-white/70" suppressHydrationWarning>{status}</p>
@@ -401,11 +404,11 @@ function PlanSummary({ canEdit, onChoose }: { canEdit: boolean; onChoose: () => 
           <p className="mt-1.5 text-sm leading-relaxed text-onyx/70 dark:text-white/70" suppressHydrationWarning>
             {plan.pending.amount === null
               ? f(pc.pendingQuote, {
-                  plan: t.plans.tiers[plan.pending.plan].name,
+                  plan: nameOf(plan.pending.plan),
                   date: day(plan.pending.createdAt),
                 })
               : f(pc.pending, {
-                  plan: t.plans.tiers[plan.pending.plan].name,
+                  plan: nameOf(plan.pending.plan),
                   cycle: plan.pending.cycle === "annual" ? pc.annual : pc.monthly,
                   amount: formatMoney(plan.pending.amount, plan.pending.currency),
                   date: day(plan.pending.createdAt),
@@ -478,10 +481,7 @@ function PlanModal({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string>();
 
-  const bandOf = (code: PlanCode) => {
-    const band = PLAN_BANDS[code];
-    return band.max === null ? f(p.bandOpen, { min: band.min }) : f(p.band, { min: band.min, max: band.max });
-  };
+  const bandOf = (code: PlanCode) => f(p.band, { min: PLAN_BANDS[code].min, max: PLAN_BANDS[code].max });
 
   return (
     <Modal title={pc.modalTitle} subtitle={pc.modalSubtitle} onClose={onClose}>
@@ -550,7 +550,7 @@ function PlanModal({
               >
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2">
-                    <span className="text-sm font-bold">{p.tiers[code].name}</span>
+                    <span className="text-sm font-bold">{tierName(code, country, p.tiers[code].name)}</span>
                     {current && (
                       <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${active ? "bg-white/20" : "bg-azure-900/10 dark:bg-white/10"}`}>
                         {pc.currentTag}

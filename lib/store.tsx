@@ -318,6 +318,7 @@ export function StoreProvider({
             cycle: input.cycle,
             rentStatus: "pending",
             performance: { collected: 0, expenses: 0, net: 0, marginPct: null },
+        history: { tenantsEver: 0, collectedLifetime: 0, paymentsCount: 0, expensesLifetime: 0, ticketsTotal: 0, ticketsOpen: 0 },
             payments: [],
             // The first photo doubles as the cover shown in the apartment grid.
             photos: (input.photos ?? []).map((src, n) => ({ id: `${id}-p${n}`, src })),
