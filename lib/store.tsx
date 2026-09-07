@@ -23,7 +23,7 @@ import {
 import { useI18n } from "@/lib/i18n/context";
 import type { PlanInfo } from "@/lib/pricing";
 import * as sb from "@/lib/supabase/actions";
-import type { MemberRole, PaymentMethod } from "@/lib/supabase/types";
+import type { MemberRole, PaymentMethod, ReminderRuleRow } from "@/lib/supabase/types";
 import {
   type ActivityItem,
   type RecentEvent,
@@ -45,6 +45,8 @@ type StoreValue = {
   activity: ActivityItem[];
   /** What actually happened, newest first. */
   recent: RecentEvent[];
+  /** The agency's reminder cadence. */
+  reminderRules: ReminderRuleRow[];
   /** The subscription and its ceiling. Null until the catalogue is in place. */
   plan: PlanInfo | null;
   agencyInfo: {
@@ -176,6 +178,7 @@ export type StoreSeed = {
   technicians: Technician[];
   activity: ActivityItem[];
   recent: RecentEvent[];
+  reminderRules?: ReminderRuleRow[];
   plan?: PlanInfo | null;
 };
 
@@ -215,6 +218,7 @@ export function StoreProvider({
   );
   const [activity, setActivity] = useState<ActivityItem[]>(() => seed.activity);
   const [recent, setRecent] = useState<RecentEvent[]>(() => seed.recent ?? []);
+  const [reminderRules, setReminderRules] = useState<ReminderRuleRow[]>(() => seed.reminderRules ?? []);
   const [remindedKeys, setRemindedKeys] = useState<string[]>([]);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
@@ -245,6 +249,7 @@ export function StoreProvider({
     setTechnicians(seed.technicians.map((x) => ({ ...x })));
     setActivity(seed.activity);
     setRecent(seed.recent ?? []);
+    setReminderRules(seed.reminderRules ?? []);
   }, [seed]);
 
   /** Sends a write to the server, surfaces failure, and pulls back truth. */
@@ -885,6 +890,7 @@ export function StoreProvider({
       tickets,
       activity,
       recent,
+      reminderRules,
       plan,
       agencyInfo,
       agencies,
@@ -920,7 +926,7 @@ export function StoreProvider({
       remindedKeys,
     }),
     [
-      buildings, tickets, activity, recent, plan, agencyInfo, agencies, currentUser, toasts, agencyId, addBuilding, notify, dismissToast, addApartment, updateApartment2, deleteApartment, updateTenant, endLease,
+      buildings, tickets, activity, recent, reminderRules, plan, agencyInfo, agencies, currentUser, toasts, agencyId, addBuilding, notify, dismissToast, addApartment, updateApartment2, deleteApartment, updateTenant, endLease,
       setBuildingPhoto, removeBuildingPhoto, addLease,
       recordPayment, markReminded, addTicket, updateTicket, deleteTicket, assignTicket,
       resolveTicket, photosFor, addPhoto, updatePhoto, deletePhoto, technicians,

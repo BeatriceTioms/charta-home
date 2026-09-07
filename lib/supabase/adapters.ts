@@ -3,7 +3,7 @@ import { requestedAgencyId } from "@/lib/agency";
 import { isPlanCode, PLAN_BANDS, type PlanInfo } from "@/lib/pricing";
 import { isSupabaseConfigured } from "./config";
 import { createClient } from "./server";
-import type { MemberRole } from "./types";
+import type { MemberRole, ReminderRuleRow } from "./types";
 
 /**
  * Turns live rows into the shapes the dashboard already renders.
@@ -67,6 +67,8 @@ export type Portfolio = {
   activity: ActivityItem[];
   /** What actually happened, newest first, with real timestamps. */
   recent: RecentEvent[];
+  /** The agency's reminder cadence, as rows. */
+  reminderRules: ReminderRuleRow[];
   /** The subscription, its ceiling, and any request awaiting payment. */
   plan: PlanInfo | null;
 };
@@ -161,6 +163,7 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
     { data: technicianRows },
     { data: photoRows },
     { data: eventRows },
+    { data: reminderRuleRows },
     { data: paymentEventRows },
     { data: leaseEventRows },
     // Every one of these is filtered by agency now. Row level security answers
@@ -198,6 +201,10 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
       .eq("agency_id", agencyId)
       .order("position"),
     supabase.from("events").select("*").eq("agency_id", agencyId).order("starts_at"),
+    // The reminder cadence. It used to be read only by the settings page,
+    // which had its own loader; it lives on the rent page now, which is a
+    // client component with no loader of its own.
+    supabase.from("reminder_rules").select("*").eq("agency_id", agencyId).order("offset_days"),
     // The recent activity feed used to be assembled from whatever happened to
     // be in the arrays already loaded: any paid unit became "rent received",
     // the last flat in the list became "lease renewed", and the times were
@@ -608,5 +615,6 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
     registration: details?.registration ?? "",
   };
 
-  return { agencyId, agencies, agencyInfo, currentUser, buildings, tickets, technicians, activity, recent, plan };
+  return { agencyId, agencies, agencyInfo, currentUser, buildings, tickets, technicians, activity, recent,
+    reminderRules: (reminderRuleRows ?? []) as ReminderRuleRow[], plan };
 }

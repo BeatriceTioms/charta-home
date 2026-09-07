@@ -13,8 +13,9 @@ import { TenantsPanel } from "@/components/dashboard/TenantsPanel";
 import { ReceiptModal, type ReceiptData } from "@/components/dashboard/ReceiptModal";
 import { Field, Modal, ModalActions, fieldCls } from "@/components/dashboard/Modal";
 import { ReminderModal } from "@/components/dashboard/ReminderModal";
+import { RemindersPanel } from "@/components/dashboard/RemindersPanel";
 
-type Tab = "leases" | "tenants";
+type Tab = "leases" | "tenants" | "reminders";
 type StatusFilter = "all" | RentStatus;
 
 const selectCls =
@@ -252,9 +253,11 @@ export default function RentPage() {
     [leased, status, search]
   );
 
-  const tabs: { key: Tab; label: string; count: number }[] = [
+  const tabs: { key: Tab; label: string; count?: number }[] = [
     { key: "leases", label: t.dash.rent.tabs.leases, count: counts.all },
     { key: "tenants", label: t.dash.rent.tabs.tenants, count: leased.length },
+    // No count: a cadence is not a number of things.
+    { key: "reminders", label: t.dash.rent.tabs.reminders },
   ];
 
   const statuses: { key: StatusFilter; label: string; count: number }[] = [
@@ -361,7 +364,9 @@ export default function RentPage() {
 
       <Tabs tabs={tabs} active={tab} onChange={setTab} />
 
-      {tab === "tenants" ? (
+      {tab === "reminders" ? (
+        <RemindersPanel />
+      ) : tab === "tenants" ? (
         <TenantsPanel />
       ) : (
       <div className="rounded-3xl border border-white/70 bg-white/55 shadow-lg shadow-azure-900/5 backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.05] dark:shadow-none">
