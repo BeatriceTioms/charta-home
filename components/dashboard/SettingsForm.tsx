@@ -252,25 +252,6 @@ function PlanSummary({ canEdit, canPayOnline, onChoose }: { canEdit: boolean; ca
         )}
       </div>
 
-      {plan?.pending && (
-        <div className="rounded-2xl border border-azure-900/10 bg-white/70 p-5 dark:border-white/10 dark:bg-white/5">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-azure-800 dark:text-soft-500">{pc.pendingTitle}</p>
-          <p className="mt-1.5 text-sm leading-relaxed text-onyx/70 dark:text-white/70" suppressHydrationWarning>
-            {plan.pending.amount === null
-              ? f(pc.pendingQuote, {
-                  plan: nameOf(plan.pending.plan),
-                  date: day(plan.pending.createdAt),
-                })
-              : f(canPayOnline ? pc.pendingOnline : pc.pending, {
-                  plan: nameOf(plan.pending.plan),
-                  cycle: plan.pending.cycle === "annual" ? pc.annual : pc.monthly,
-                  amount: formatMoney(plan.pending.amount, plan.pending.currency),
-                  date: day(plan.pending.createdAt),
-                })}
-          </p>
-        </div>
-      )}
-
       {/* A code is the manual path's receipt. An agency that pays through
           the gateway never receives one, so the field would only puzzle. */}
       {canEdit && !canPayOnline && (
