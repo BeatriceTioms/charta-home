@@ -197,6 +197,32 @@ const digest = reminderDigestEmail({
 
 check("the digest counts what is waiting",
   digest.subject.includes("2 rappels"), digest.subject);
+
+/* The agency is told what went out in its name as well as what it still has
+ * to send. Two sections, and the subject leads with the hand that is needed.
+ */
+const both = reminderDigestEmail({
+  agencyName: "Horizon", locale: "fr", dashboardUrl: "https://x.test",
+  items: [
+    { tenantName: "Sofia", apartmentLabel: "2A", amount: "1 GNF", dueLabel: "01/09/2026", isOverdue: false, whatsappUrl: "https://wa.me/1?text=a", sentByEmail: true },
+    { tenantName: "Awa", apartmentLabel: "1B", amount: "2 GNF", dueLabel: "01/09/2026", isOverdue: true, whatsappUrl: null, sentByEmail: true },
+    { tenantName: "Jonas", apartmentLabel: "2B", amount: "3 GNF", dueLabel: "01/08/2026", isOverdue: true, whatsappUrl: "https://wa.me/2?text=b", sentByEmail: false },
+  ],
+});
+check("the agency is told what was sent by email and what it must send itself",
+  both.html.includes("Envoyés par email") && both.html.includes("À envoyer vous même") &&
+    both.text.includes("Envoyés par email") && both.text.includes("À envoyer vous même"),
+  "two sections, in html and in text");
+check("the subject leads with what needs a hand",
+  both.subject.startsWith("1 rappel de loyer à envoyer") && both.subject.includes("2 envoyés"), both.subject);
+check("a tenant with no number gets no WhatsApp button, and the card still reads",
+  (both.html.match(/wa\.me/g) ?? []).length === 2 && both.html.includes("1B · Awa"));
+const allSent = reminderDigestEmail({
+  agencyName: "Horizon", locale: "en", dashboardUrl: "https://x.test",
+  items: [{ tenantName: "T", apartmentLabel: "1", amount: "1 GNF", dueLabel: "01/09/2026", isOverdue: false, whatsappUrl: null, sentByEmail: true }],
+});
+check("a day where everything went by email says so, and asks for nothing",
+  allSent.subject === "1 rent reminder sent today" && !allSent.html.includes("To send yourself"), allSent.subject);
 check("every tenant gets their own send link",
   (digest.html.match(/https:\/\/wa\.me\//g) || []).length === 2,
   "one wa.me link per row");

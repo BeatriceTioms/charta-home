@@ -18,7 +18,10 @@ type DigestItem = {
   amount: string;
   dueLabel: string;
   isOverdue: boolean;
-  whatsappUrl: string;
+  /** Present when the tenant has a number; a follow up by hand is always possible. */
+  whatsappUrl: string | null;
+  /** True when the tenant already received this one by email. */
+  sentByEmail: boolean;
 };
 
 export const dynamic = "force-dynamic";
@@ -154,6 +157,24 @@ export async function GET(request: Request) {
             .update({ status: "sent", channel: "email" })
             .eq("rent_charge_id", charge.rent_charge_id)
             .eq("rule_id", rule.id);
+          // The agency is told what went out in its name, in the same daily
+          // message that lists what it still has to send itself.
+          const forAgency = digest.get(charge.agency_id) ?? {
+            agencyName: target.agency_name ?? "",
+            items: [] as DigestItem[],
+          };
+          forAgency.items.push({
+            tenantName: target.resident_name ?? "",
+            apartmentLabel: target.apartment_label ?? "",
+            amount: formatMoney(Number(charge.amount), target.currency),
+            dueLabel: new Date(charge.due_on).toLocaleDateString("fr-FR"),
+            isOverdue: daysFromDue > 0,
+            whatsappUrl: target.resident_phone
+              ? `https://wa.me/${toWaNumber(target.resident_phone)}?text=${encodeURIComponent(body)}`
+              : null,
+            sentByEmail: true,
+          });
+          digest.set(charge.agency_id, forAgency);
         } else {
           console.error(`reminder email to ${target.resident_email} failed: ${result.error}`);
         }
@@ -197,6 +218,7 @@ export async function GET(request: Request) {
           dueLabel: new Date(charge.due_on).toLocaleDateString("fr-FR"),
           isOverdue: daysFromDue > 0,
           whatsappUrl: `https://wa.me/${toWaNumber(target.resident_phone)}?text=${encodeURIComponent(body)}`,
+          sentByEmail: false,
         });
         digest.set(charge.agency_id, forAgency);
         handedOver++;

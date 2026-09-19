@@ -349,64 +349,80 @@ export function reminderDigestEmail(input: {
     amount: string;
     dueLabel: string;
     isOverdue: boolean;
-    /** Already built by the caller, message included. */
-    whatsappUrl: string;
+    /** Already built by the caller, message included. Null without a number. */
+    whatsappUrl: string | null;
+    /** The tenant already has this one by email; the agency is being told. */
+    sentByEmail?: boolean;
   }[];
 }): Message {
   const fr = input.locale === "fr";
-  const n = input.items.length;
+  const sent = input.items.filter((i) => i.sentByEmail);
+  const todo = input.items.filter((i) => !i.sentByEmail);
 
-  const subject = fr
-    ? n === 1
-      ? "1 rappel de loyer à envoyer aujourd'hui"
-      : `${n} rappels de loyer à envoyer aujourd'hui`
-    : n === 1
-      ? "1 rent reminder to send today"
-      : `${n} rent reminders to send today`;
+  // The subject counts what needs a hand first, because that is the reason
+  // to open it; what already went out is the reassurance underneath.
+  const subject = todo.length === 0
+    ? fr
+      ? `${sent.length} ${sent.length === 1 ? "rappel de loyer envoyé" : "rappels de loyer envoyés"} aujourd'hui`
+      : `${sent.length} rent ${sent.length === 1 ? "reminder" : "reminders"} sent today`
+    : fr
+      ? `${todo.length} ${todo.length === 1 ? "rappel de loyer à envoyer" : "rappels de loyer à envoyer"} aujourd'hui${sent.length ? `, ${sent.length} ${sent.length === 1 ? "envoyé" : "envoyés"}` : ""}`
+      : `${todo.length} rent ${todo.length === 1 ? "reminder" : "reminders"} to send today${sent.length ? `, ${sent.length} sent` : ""}`;
 
   const heading = fr ? "Vos rappels du jour" : "Your reminders for today";
-
-  const intro = fr
-    ? `<p style="margin:0 0 18px;">Voici les loyers à relancer pour <strong>${esc(input.agencyName)}</strong>. Chaque bouton ouvre WhatsApp avec le message déjà écrit : il ne reste qu'à envoyer.</p>`
-    : `<p style="margin:0 0 18px;">Here are the rents to chase for <strong>${esc(input.agencyName)}</strong>. Each button opens WhatsApp with the message already written: all that is left is to send it.</p>`;
-
   const send = fr ? "Envoyer sur WhatsApp" : "Send on WhatsApp";
   const overdue = fr ? "En retard" : "Overdue";
 
-  const rows = input.items
-    .map(
-      (item) => `
+  const card = (item: (typeof input.items)[number]) => `
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 10px;border:1px solid #e7eef0;border-radius:14px;">
         <tr>
           <td style="padding:14px 16px;">
             <p style="margin:0 0 2px;font-size:15px;font-weight:700;color:#020202;">
               ${esc(item.apartmentLabel)} · ${esc(item.tenantName)}
             </p>
-            <p style="margin:0 0 12px;font-size:13px;color:#7b858c;">
+            <p style="margin:0 0 ${item.whatsappUrl ? "12px" : "0"};font-size:13px;color:#7b858c;">
               ${esc(item.amount)} · ${esc(item.dueLabel)}${
-                item.isOverdue
-                  ? ` <span style="color:#b42318;font-weight:600;">${overdue}</span>`
-                  : ""
+                item.isOverdue ? ` <span style="color:#b42318;font-weight:600;">${overdue}</span>` : ""
               }
             </p>
-            <a href="${esc(item.whatsappUrl)}" style="display:inline-block;background:#25D366;color:#ffffff;text-decoration:none;font-size:13px;font-weight:600;padding:9px 18px;border-radius:999px;">${send}</a>
+            ${item.whatsappUrl ? `<a href="${esc(item.whatsappUrl)}" style="display:inline-block;background:#25D366;color:#ffffff;text-decoration:none;font-size:13px;font-weight:600;padding:9px 18px;border-radius:999px;">${send}</a>` : ""}
           </td>
         </tr>
-      </table>`
-    )
-    .join("");
+      </table>`;
+
+  const section = (title: string, note: string, items: typeof input.items) =>
+    items.length === 0
+      ? ""
+      : `<p style="margin:18px 0 4px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#003152;">${esc(title)}</p>
+         <p style="margin:0 0 12px;font-size:13px;color:#7b858c;">${esc(note)}</p>${items.map(card).join("")}`;
+
+  const intro = fr
+    ? `<p style="margin:0 0 6px;">Les loyers relancés aujourd'hui pour <strong>${esc(input.agencyName)}</strong>.</p>`
+    : `<p style="margin:0 0 6px;">Today's rent reminders for <strong>${esc(input.agencyName)}</strong>.</p>`;
+
+  const body =
+    intro +
+    section(
+      fr ? "À envoyer vous même" : "To send yourself",
+      fr ? "Ces locataires n'ont pas d'adresse email. Chaque bouton ouvre WhatsApp avec le message déjà écrit." : "These tenants have no email address. Each button opens WhatsApp with the message already written.",
+      todo
+    ) +
+    section(
+      fr ? "Envoyés par email" : "Sent by email",
+      fr ? "Ces locataires ont reçu le rappel par email, dans vos mots. Le bouton permet d'insister sur WhatsApp si vous le souhaitez." : "These tenants received the reminder by email, in your words. The button lets you follow up on WhatsApp if you wish.",
+      sent
+    );
 
   const footer = fr
-    ? "Ces rappels partiront automatiquement dès que votre compte WhatsApp Business sera approuvé."
-    : "These reminders will go out automatically as soon as your WhatsApp Business account is approved.";
+    ? "Un locataire avec une adresse email reçoit ses rappels tout seul. Ajoutez l'adresse sur sa fiche pour ne plus avoir à l'envoyer vous même."
+    : "A tenant with an email address receives their reminders by themselves. Add the address on their record and you will not have to send it yourself.";
 
+  const line = (i: (typeof input.items)[number]) =>
+    `${i.apartmentLabel} · ${i.tenantName} — ${i.amount} — ${i.dueLabel}${i.whatsappUrl ? `\n${i.whatsappUrl}` : ""}`;
   const text = [
-    fr ? `Rappels du jour pour ${input.agencyName} :` : `Today's reminders for ${input.agencyName}:`,
-    "",
-    ...input.items.map(
-      (i) =>
-        `${i.apartmentLabel} · ${i.tenantName} — ${i.amount} — ${i.dueLabel}\n${i.whatsappUrl}`
-    ),
+    fr ? `Rappels du jour pour ${input.agencyName}` : `Today's reminders for ${input.agencyName}`,
+    ...(todo.length ? ["", fr ? "À envoyer vous même :" : "To send yourself:", ...todo.map(line)] : []),
+    ...(sent.length ? ["", fr ? "Envoyés par email :" : "Sent by email:", ...sent.map(line)] : []),
     "",
     footer,
   ].join("\n");
@@ -417,7 +433,7 @@ export function reminderDigestEmail(input: {
       locale: input.locale,
       preheader: subject,
       heading,
-      body: intro + rows,
+      body,
       cta: { label: fr ? "Ouvrir le tableau de bord" : "Open the dashboard", href: input.dashboardUrl },
       footer,
     }),

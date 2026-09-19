@@ -1046,6 +1046,63 @@ check("and its tickets", typeof hist?.tickets_total === "number" && hist.tickets
 const [never] = await asUser(userA.id, `select tenants_ever, first_lease_on from v_apartment_performance where apartment_id = '${aptE2.id}'`);
 check("a flat let once reads as one tenant, not as never let", never?.tenants_ever === 1 && never?.first_lease_on !== null);
 
+/* ---------------------------------------------------- paying online */
+// Douala Immo is on Cameroon's list, so it can open a checkout.
+let strangerBegin = false;
+try { await asUser(userA.id, `select * from public.begin_subscription_payment('${d1.id}', 'growth', 'monthly', 'CHAAAA0001')`); }
+catch (err) { strangerBegin = /only the owner/.test(err.message); }
+check("only the owner can open a payment for their agency", strangerBegin);
+let badRef = false;
+try { await asUser(userD.id, `select * from public.begin_subscription_payment('${d1.id}', 'growth', 'monthly', 'CH-with-dash')`); }
+catch (err) { badRef = /letters and digits/.test(err.message); }
+check("a transaction id Orange Money would refuse is refused first", badRef);
+let noList = false;
+try { await asUser(userE.id, `select * from public.begin_subscription_payment('${e1.id}', 'growth', 'monthly', 'CHAAAA0002')`); }
+catch (err) { noList = /no list price/.test(err.message); }
+check("a country without a list cannot pay online; a quote is a conversation", noList);
+
+const [opened] = await asUser(userD.id, `select * from public.begin_subscription_payment('${d1.id}', 'growth', 'annual', 'CHAAAA0003')`);
+check("opening a payment records the list price where the agency is",
+  opened?.paid_in === "XAF" && Number(opened?.due) === 300000 && Boolean(opened?.request_id), `${opened?.due} ${opened?.paid_in}`);
+const [mineRow] = await asUser(userD.id, `select status, provider_ref from subscription_payments where id = '${opened.payment_id}'`);
+check("the agency can read its own payment row", mineRow?.status === "initiated" && mineRow?.provider_ref === "CHAAAA0003");
+const notMine = await asUser(userA.id, `select id from subscription_payments where id = '${opened.payment_id}'`);
+check("and nobody else can", notMine.length === 0);
+
+let ownerSettles = false;
+try { await asUser(userD.id, `select * from public.settle_subscription_payment('${opened.payment_id}', 'paid')`); }
+catch (err) { ownerSettles = /permission denied/.test(err.message); }
+check("an owner cannot settle their own payment; only the server can", ownerSettles);
+
+const [pay_before] = await q(`select current_period_end, status, plan from subscriptions where agency_id = '${d1.id}'`);
+const [pay_settled] = await q(`select * from public.settle_subscription_payment('${opened.payment_id}', 'paid', '{"transaction_status":"SUCCESS"}'::jsonb)`);
+const [pay_after] = await q(`select current_period_end, status, plan from subscriptions where agency_id = '${d1.id}'`);
+check("a paid settlement activates the plan for a year",
+  pay_settled?.outcome === "paid" && pay_after.status === "active" && pay_after.plan === "growth" &&
+    (new Date(pay_after.current_period_end) - Date.now()) > 364 * 86400000,
+  `${pay_before.status}/${pay_before.plan} → ${pay_after.status}/${pay_after.plan}`);
+const [reqRow] = await q(`select status from plan_requests where id = '${opened.request_id}'`);
+check("and marks the request it opened as paid", reqRow?.status === "paid");
+const [again] = await q(`select * from public.settle_subscription_payment('${opened.payment_id}', 'paid')`);
+const [afterAgain] = await q(`select current_period_end from subscriptions where agency_id = '${d1.id}'`);
+check("settling twice, as a callback and a return page will, extends the period once",
+  again?.outcome === "paid" && String(afterAgain.current_period_end) === String(pay_after.current_period_end));
+
+const [opened2] = await asUser(userD.id, `select * from public.begin_subscription_payment('${d1.id}', 'business', 'monthly', 'CHAAAA0004')`);
+const [failedRow] = await q(`select * from public.settle_subscription_payment('${opened2.payment_id}', 'failed')`);
+const [afterFail] = await q(`select plan, current_period_end from subscriptions where agency_id = '${d1.id}'`);
+check("a failed payment changes nothing about the plan",
+  failedRow?.outcome === "failed" && afterFail.plan === "growth" && String(afterFail.current_period_end) === String(pay_after.current_period_end));
+let badFinal = false;
+try { await q(`select * from public.settle_subscription_payment('${opened2.payment_id}', 'maybe')`); }
+catch (err) { badFinal = /unknown final status/.test(err.message); }
+check("a settlement must be paid, failed or cancelled", badFinal);
+const [{ admin_agency_detail: fileD }] = await asUser(desk.id, `select public.admin_agency_detail('${d1.id}')`);
+check("the desk sees online payments on the agency's file",
+  Array.isArray(fileD.online_payments) && fileD.online_payments.length === 2 &&
+    fileD.online_payments.some((p) => p.status === "paid" && p.provider_ref === "CHAAAA0003"),
+  fileD.online_payments?.map((p) => `${p.plan}/${p.cycle}:${p.status}`).join(", "));
+
 await db.close();
 
 const failed = results.filter((r) => !r.pass);

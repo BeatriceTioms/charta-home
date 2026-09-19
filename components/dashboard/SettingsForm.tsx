@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { COUNTRIES } from "@/lib/countries";
 import { useStore } from "@/lib/store";
@@ -316,10 +316,12 @@ function PlanSummary({ canEdit, onChoose }: { canEdit: boolean; onChoose: () => 
 function PlanModal({
   agencyId,
   country,
+  canPayOnline,
   onClose,
 }: {
   agencyId: string;
   country: string;
+  canPayOnline: boolean;
   onClose: () => void;
 }) {
   const { t, f, locale } = useI18n();
@@ -333,9 +335,24 @@ function PlanModal({
   const [cycle, setCycle] = useState<BillingCycle>("monthly");
   const [choice, setChoice] = useState<PlanCode>(recommended);
   const [sending, setSending] = useState(false);
+  const [opening, setOpening] = useState(false);
   const [error, setError] = useState<string>();
 
   const bandOf = (code: PlanCode) => f(p.band, { min: PLAN_BANDS[code].min, max: PLAN_BANDS[code].max });
+
+  // The gateway path. The row is opened server side and the browser is sent
+  // to PayUnit's page; it comes back to settings with the payment's id.
+  const payNow = async () => {
+    setOpening(true);
+    setError(undefined);
+    const result = await sb.startCheckout(locale, { agencyId, plan: choice, cycle });
+    if (!result.ok) {
+      setOpening(false);
+      setError(result.error);
+      return;
+    }
+    window.location.assign(result.url);
+  };
 
   return (
     <Modal title={pc.modalTitle} subtitle={pc.modalSubtitle} onClose={onClose}>
@@ -431,16 +448,81 @@ function PlanModal({
 
         {error && <p className="text-xs font-semibold text-red-600">{error}</p>}
 
-        <ModalActions onCancel={onClose} submitLabel={sending ? t.dash.common.saving : pc.send} />
+        {canPayOnline && priceFor(country, choice, cycle) ? (
+          <div className="space-y-3">
+            <button
+              type="button"
+              onClick={payNow}
+              disabled={opening || sending}
+              className="w-full rounded-full bg-onyx py-3 text-sm font-semibold text-white transition hover:bg-azure-900 disabled:opacity-60 dark:bg-soft-500 dark:text-azure-950 dark:hover:bg-soft-400"
+            >
+              {opening ? pc.opening : `${pc.payNow} · ${formatMoney(priceFor(country, choice, cycle)!.amount, priceFor(country, choice, cycle)!.currency)}`}
+            </button>
+            <p className="text-center text-xs leading-relaxed text-onyx/50 dark:text-white/45">{pc.payNowHint}</p>
+            <p className="text-center text-xs text-onyx/40 dark:text-white/35">{pc.orRequest}</p>
+            <div className="flex gap-3">
+              <button
+                type="submit"
+                disabled={sending || opening}
+                className="flex-1 rounded-full border border-azure-900/15 py-2.5 text-sm font-semibold text-azure-800 transition hover:bg-azure-900/5 disabled:opacity-60 dark:border-white/15 dark:text-white dark:hover:bg-white/10"
+              >
+                {sending ? t.dash.common.saving : pc.send}
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-full px-5 py-2.5 text-sm font-semibold text-onyx/55 transition hover:text-azure-950 dark:text-white/55 dark:hover:text-white"
+              >
+                {t.dash.common.cancel}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <ModalActions onCancel={onClose} submitLabel={sending ? t.dash.common.saving : pc.send} />
+        )}
       </form>
     </Modal>
   );
 }
 
-export function SettingsForm({ data }: { data: SettingsData }) {
+export function SettingsForm({
+  data,
+  canPayOnline = false,
+  returnedPayment = null,
+}: {
+  data: SettingsData;
+  canPayOnline?: boolean;
+  returnedPayment?: string | null;
+}) {
   const { t, f, locale } = useI18n();
   const { notify, currentUser } = useStore();
   const [choosingPlan, setChoosingPlan] = useState(false);
+
+  // Back from the gateway. Ask the server what became of the payment, say so
+  // once, and take the id off the address so a reload does not ask again.
+  useEffect(() => {
+    if (!returnedPayment) return;
+    let cancelled = false;
+    (async () => {
+      const result = await sb.confirmPayment(locale, returnedPayment);
+      if (cancelled) return;
+      const pc = t.dash.settings.planCard;
+      if (!result.ok) notify(pc.paymentPending);
+      else if (result.outcome === "paid") {
+        const code = result.plan && isPlanCode(result.plan) ? result.plan : null;
+        const day = result.until
+          ? new Date(result.until).toLocaleDateString(locale === "fr" ? "fr-FR" : "en-GB", { day: "numeric", month: "long", year: "numeric" })
+          : "";
+        notify(f(pc.paid, { plan: code ? tierName(code, country, t.plans.tiers[code].name) : result.plan ?? "", date: day }));
+      } else if (result.outcome === "pending") notify(pc.paymentPending);
+      else notify(pc.paymentFailed);
+      router.replace(window.location.pathname);
+      router.refresh();
+    })();
+    return () => { cancelled = true; };
+    // Runs once for the id the page was opened with.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [returnedPayment]);
   const router = useRouter();
   const s = t.dash.settings;
 
@@ -813,7 +895,7 @@ export function SettingsForm({ data }: { data: SettingsData }) {
       </div>
 
       {choosingPlan && (
-        <PlanModal agencyId={agencyId} country={country} onClose={() => setChoosingPlan(false)} />
+        <PlanModal agencyId={agencyId} country={country} canPayOnline={canPayOnline} onClose={() => setChoosingPlan(false)} />
       )}
 
       {inviting && (

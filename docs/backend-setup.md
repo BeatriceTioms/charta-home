@@ -222,3 +222,22 @@ sends it by WhatsApp (a ready link) or by email (a button). The owner types
 it under Settings, Plan and billing, and the subscription goes active, with
 the period running on from the current one so paying early costs nothing.
 Issuing a second code for an agency expires the first.
+
+## Paying online, in Cameroon
+
+An agency in Cameroon can pay for its plan from Settings, Plan and billing,
+with **Pay now**: a PayUnit checkout collects by MTN MoMo, Orange Money or
+card, and the plan goes active as soon as the payment is confirmed. Nobody
+at the desk is involved. Agencies elsewhere keep the manual path.
+
+Set the four `PAYUNIT_*` variables from your PayUnit dashboard, on Vercel and
+locally. The gateway needs two https addresses, which it takes from
+`NEXT_PUBLIC_SITE_URL`: the return page (`/fr/dashboard/settings?payment=…`)
+and the callback (`/api/payunit/notify`). Register neither in PayUnit; they
+are sent with every transaction.
+
+How a payment settles: the callback is unsigned and is never believed. It,
+or the owner returning to settings, only prompts the server to ask PayUnit
+for the transaction's status by the id we chose. That answer settles the
+row, once, and extends the period from where it ends rather than from
+today. The desk sees online payments on the agency's file.

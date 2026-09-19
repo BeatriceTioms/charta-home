@@ -8,6 +8,8 @@ import { formatMoney } from "@/lib/data";
 import { isPlanCode, planName, type BillingCycle } from "@/lib/pricing";
 import { toE164 } from "@/lib/phone";
 import { isSiteUrlReachable, siteUrl } from "@/lib/site-url";
+import { initializePayment, isPayunitConfigured, newTransactionId } from "@/lib/payunit";
+import { settlePayment } from "@/lib/billing";
 import { validateImage } from "@/lib/uploads";
 import { createAdminClient, createClient } from "./server";
 import type { LeaseCycle, MemberRole, PaymentMethod, ReportChannel, TicketPriority } from "./types";
@@ -1167,4 +1169,91 @@ export async function redeemPlanCode(
   if (!row) return { ok: false, error: "other", detail: "no row returned" };
   revalidateDashboard(locale);
   return { ok: true, plan: row.new_plan, until: row.active_until };
+}
+
+
+/**
+ * Whether this agency can pay online at all.
+ *
+ * PayUnit collects in Cameroon, in XAF. Anywhere else the answer is the
+ * manual path: a request by email and a code from the desk. Asked by the
+ * settings page so it can show one button or the other rather than a
+ * button that fails.
+ */
+export async function onlinePaymentAvailable(agencyId: string): Promise<boolean> {
+  if (!isPayunitConfigured() || !isSiteUrlReachable()) return false;
+  const supabase = await createClient();
+  const { data } = await supabase.from("agencies").select("country, currency").eq("id", agencyId).maybeSingle();
+  return data?.country === "Cameroon" && data?.currency === "XAF";
+}
+
+/**
+ * Opens a PayUnit checkout for a tier and sends back where to go.
+ *
+ * The payment row is written first, with a transaction id we chose, so the
+ * gateway's answer can always be tied back to an agency and a tier even if
+ * the owner closes the tab halfway. A gateway that refuses to open the
+ * transaction marks the row failed rather than leaving it open forever.
+ */
+export async function startCheckout(
+  locale: string,
+  input: { agencyId: string; plan: string; cycle: string }
+): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+  if (!isPlanCode(input.plan)) return { ok: false, error: "unknown plan" };
+  const cycle: BillingCycle = input.cycle === "annual" ? "annual" : "monthly";
+  if (!(await onlinePaymentAvailable(input.agencyId))) {
+    return { ok: false, error: "online payment is not available for this agency" };
+  }
+
+  const supabase = await createClient();
+  const ref = newTransactionId();
+  const { data, error } = await supabase.rpc("begin_subscription_payment", {
+    target_agency: input.agencyId,
+    plan_code: input.plan,
+    cycle_in: cycle,
+    provider_ref_in: ref,
+  });
+  if (error) return { ok: false, error: error.message };
+  const row = data?.[0];
+  if (!row) return { ok: false, error: "the payment was not recorded" };
+
+  const { data: agency } = await supabase.from("agencies").select("name, country").eq("id", input.agencyId).maybeSingle();
+  const base = siteUrl();
+  const opened = await initializePayment({
+    amount: Number(row.due),
+    currency: row.paid_in,
+    transactionId: ref,
+    returnUrl: `${base}/${locale}/dashboard/settings?payment=${row.payment_id}`,
+    notifyUrl: `${base}/api/payunit/notify`,
+    description: `Charta Home ${planName(input.plan, locale, agency?.country ?? "")} ${cycle} · ${agency?.name ?? ""}`.slice(0, 120),
+  });
+  if (!opened.ok) {
+    // Nothing was collected; close the row so it does not sit as pending.
+    const admin = createAdminClient();
+    await admin.rpc("settle_subscription_payment", { payment_id_in: row.payment_id, final_status: "failed", raw_in: { error: opened.error } as never });
+    return { ok: false, error: opened.error };
+  }
+  return { ok: true, url: opened.checkoutUrl };
+}
+
+/**
+ * The owner is back from the checkout. Ask the gateway what happened.
+ *
+ * Only a payment of the reader's own agency is looked at, through row level
+ * security; the settling itself runs with the service role in lib/billing.
+ */
+export async function confirmPayment(
+  locale: string,
+  paymentId: string
+): Promise<
+  | { ok: true; outcome: "paid" | "failed" | "cancelled" | "pending"; plan: string | null; until: string | null }
+  | { ok: false; error: string }
+> {
+  if (!/^[0-9a-f-]{36}$/i.test(paymentId)) return { ok: false, error: "unknown payment" };
+  const supabase = await createClient();
+  const { data: mine } = await supabase.from("subscription_payments").select("id").eq("id", paymentId).maybeSingle();
+  if (!mine) return { ok: false, error: "unknown payment" };
+  const result = await settlePayment({ paymentId });
+  if (result.ok && result.outcome === "paid") revalidateDashboard(locale);
+  return result;
 }

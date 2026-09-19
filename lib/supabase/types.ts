@@ -346,6 +346,24 @@ export type ExpenseRow = {
   receipt_path: string | null;
 };
 
+/** One attempt to pay online, from checkout to the gateway's verdict. */
+export type SubscriptionPaymentRow = {
+  id: string;
+  agency_id: string;
+  request_id: string | null;
+  plan: PlanTier;
+  cycle: BillingCycle;
+  amount: number;
+  currency: string;
+  provider: string;
+  provider_ref: string;
+  status: "initiated" | "paid" | "failed" | "cancelled";
+  started_by: string | null;
+  created_at: string;
+  settled_at: string | null;
+  raw: unknown;
+};
+
 export type SubscriptionRow = {
   agency_id: string;
   plan: PlanTier;
@@ -422,6 +440,7 @@ export type AdminAgencyDetail = {
   };
   requests: { id: string; plan: PlanTier; cycle: BillingCycle; currency: string; amount: number | null; status: "pending" | "paid" | "cancelled"; created_at: string }[];
   codes: { code: string; plan: PlanTier; cycle: BillingCycle; issued_at: string; issued_by: string | null; expires_at: string; used_at: string | null; state: "used" | "expired" | "open" }[];
+  online_payments?: { id: string; plan: PlanTier; cycle: BillingCycle; amount: number; currency: string; provider: string; provider_ref: string; status: "initiated" | "paid" | "failed" | "cancelled"; created_at: string; settled_at: string | null }[];
 };
 
 /** One subscription, with what it costs where the agency is and its activations. */
@@ -534,6 +553,12 @@ export type Database = {
         Update: Partial<PlanRequestRow>;
         Relationships: [];
       };
+      subscription_payments: {
+        Row: SubscriptionPaymentRow;
+        Insert: Partial<SubscriptionPaymentRow>;
+        Update: Partial<SubscriptionPaymentRow>;
+        Relationships: [];
+      };
       subscriptions: {
         Row: SubscriptionRow;
         Insert: Partial<SubscriptionRow>;
@@ -557,6 +582,14 @@ export type Database = {
       admin_list_agencies: { Args: Record<string, never>; Returns: AdminAgencyRow[] };
       admin_list_subscriptions: { Args: Record<string, never>; Returns: AdminSubscriptionRow[] };
       admin_agency_detail: { Args: { target_agency: string }; Returns: AdminAgencyDetail };
+      begin_subscription_payment: {
+        Args: { target_agency: string; plan_code: string; cycle_in: string; provider_ref_in: string };
+        Returns: { payment_id: string; request_id: string | null; due: number; paid_in: string }[];
+      };
+      settle_subscription_payment: {
+        Args: { payment_id_in: string; final_status: string; raw_in?: unknown };
+        Returns: { outcome: string; new_plan: string; active_until: string | null }[];
+      };
       admin_issue_plan_code: {
         Args: { target_agency: string; plan_code: string; cycle_in: string };
         Returns: { issued_code: string; valid_until: string }[];
