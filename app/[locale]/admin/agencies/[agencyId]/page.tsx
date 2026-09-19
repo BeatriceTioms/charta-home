@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { AgencyDetail } from "@/components/admin/AgencyDetail";
 import { adminIdentity, agencyDetail, listAgencies } from "@/lib/supabase/admin-actions";
+import { onlinePaymentCountries } from "@/lib/payunit";
 
 /**
  * One agency's file. A person who is not staff is turned away by the
@@ -21,5 +22,5 @@ export default async function AdminAgencyPage({
     if (staff === null) redirect(`/${locale}/dashboard`);
     notFound();
   }
-  return <AgencyDetail doc={doc} me={await adminIdentity()} />;
+  return <AgencyDetail doc={doc} me={await adminIdentity()} onlineCountries={onlinePaymentCountries()} />;
 }

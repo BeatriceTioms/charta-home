@@ -19,7 +19,7 @@ import { CountryFlag } from "./CountryFlag";
  * because this is the page the desk is on when it has just checked a
  * receipt against the agency's own numbers.
  */
-export function AgencyDetail({ doc, me }: { doc: AdminAgencyDetail; me: AdminIdentity }) {
+export function AgencyDetail({ doc, me, onlineCountries = [] }: { doc: AdminAgencyDetail; me: AdminIdentity; onlineCountries?: string[] }) {
   const { t, f, locale, path } = useI18n();
   const a = t.admin;
   const d = a.detail;
@@ -37,6 +37,8 @@ export function AgencyDetail({ doc, me }: { doc: AdminAgencyDetail; me: AdminIde
   const money = (n: number | null | undefined, currency = doc.agency.currency) => formatMoney(Number(n ?? 0), currency);
 
   const { agency, subscription: sub, members, buildings, money: m, requests, codes } = doc;
+  const online = doc.online_payments ?? [];
+  const paysOnline = onlineCountries.includes(agency.country);
   const owner = members.find((x) => x.role === "owner");
   const pending = requests.find((r) => r.status === "pending");
 
@@ -76,13 +78,19 @@ export function AgencyDetail({ doc, me }: { doc: AdminAgencyDetail; me: AdminIde
         <span className="inline-flex items-center gap-2 rounded-full border border-azure-900/15 px-3 py-1 text-xs font-semibold dark:border-white/15">
           <CountryFlag country={agency.country} /> {agency.city} · {agency.country} · {agency.currency}
         </span>
-        <button
-          type="button"
-          onClick={() => setIssuing(true)}
-          className="ml-auto rounded-full bg-onyx px-5 py-2.5 text-sm font-bold text-white transition hover:bg-azure-900 dark:bg-soft-500 dark:text-azure-950 dark:hover:bg-soft-400"
-        >
-          {a.issue}
-        </button>
+        {paysOnline ? (
+          <span className="ml-auto inline-flex items-center rounded-full bg-azure-900/8 px-3 py-1.5 text-xs font-bold text-azure-900 dark:bg-white/10 dark:text-white">
+            {a.paysOnline}
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setIssuing(true)}
+            className="ml-auto rounded-full bg-onyx px-5 py-2.5 text-sm font-bold text-white transition hover:bg-azure-900 dark:bg-soft-500 dark:text-azure-950 dark:hover:bg-soft-400"
+          >
+            {a.issue}
+          </button>
+        )}
       </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -176,6 +184,28 @@ export function AgencyDetail({ doc, me }: { doc: AdminAgencyDetail; me: AdminIde
         </section>
 
         <section className={card}>
+          <p className={label}>{d.onlinePayments}</p>
+          {online.length === 0 ? <p className={`mt-4 ${muted}`}>{d.noOnlinePayments}</p> : (
+            <table className="mt-4 w-full text-left text-sm">
+              <tbody>
+                {online.map((o) => (
+                  <tr key={o.id} className="border-t border-azure-900/8 dark:border-white/8">
+                    <td className="py-3 font-semibold">{tierLabel(o.plan, agency.country)} <span className={muted}>{cycleWord(o.cycle)}</span></td>
+                    <td className="py-3">{money(o.amount, o.currency)}</td>
+                    <td className="py-3"><StatusChip status={o.status === "paid" ? "active" : o.status === "initiated" ? "trialing" : "cancelled"} label={d.onlineState[o.status]} /></td>
+                    <td className={`py-3 text-right ${muted}`} suppressHydrationWarning>
+                      <span className="block font-mono">{o.provider_ref}</span>
+                      <span className="block">{day(o.settled_at ?? o.created_at)}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </section>
+
+        {!paysOnline && (
+        <section className={card}>
           <p className={label}>{d.codes}</p>
           {codes.length === 0 ? <p className={`mt-4 ${muted}`}>{d.noCodes}</p> : (
             <table className="mt-4 w-full text-left text-sm">
@@ -199,9 +229,10 @@ export function AgencyDetail({ doc, me }: { doc: AdminAgencyDetail; me: AdminIde
             </table>
           )}
         </section>
+        )}
       </div>
 
-      {issuing && <IssueCodeModal row={asRow} onClose={() => { setIssuing(false); router.refresh(); }} />}
+      {issuing && !paysOnline && <IssueCodeModal row={asRow} onClose={() => { setIssuing(false); router.refresh(); }} />}
     </AdminShell>
   );
 }

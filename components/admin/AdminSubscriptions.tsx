@@ -22,7 +22,7 @@ const FILTERS: Filter[] = ["all", "active", "trialing", "past_due", "cancelled"]
  * subscriptions would bring in per month at list price, read in whichever
  * currency the desk picks.
  */
-export function AdminSubscriptions({ rows, me }: { rows: AdminSubscriptionRow[]; me: AdminIdentity }) {
+export function AdminSubscriptions({ rows, me }: { rows: AdminSubscriptionRow[]; me: AdminIdentity; onlineCountries?: string[] }) {
   const { t, f, locale, path } = useI18n();
   const a = t.admin;
   const s = a.subscriptions;

@@ -135,3 +135,13 @@ export function newTransactionId(): string {
   const hex = [...crypto.getRandomValues(new Uint8Array(8))].map((b) => b.toString(16).padStart(2, "0")).join("");
   return `CH${hex.toUpperCase()}`;
 }
+
+/**
+ * The countries whose agencies pay online. The settings page and the desk
+ * both hide the code path for these, because a code is the manual path's
+ * receipt and an agency that pays through the gateway never needs one.
+ * Empty until PayUnit is configured, so nobody is left with neither.
+ */
+export function onlinePaymentCountries(): string[] {
+  return isPayunitConfigured() ? ["Cameroon"] : [];
+}

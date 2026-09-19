@@ -23,7 +23,7 @@ import { CurrencyToggle } from "./CurrencyToggle";
  * itself, over WhatsApp or by email; nothing is activated without a person
  * having looked at the payment.
  */
-export function AdminDashboard({ rows, me }: { rows: AdminAgencyRow[]; me: AdminIdentity }) {
+export function AdminDashboard({ rows, me, onlineCountries = [] }: { rows: AdminAgencyRow[]; me: AdminIdentity; onlineCountries?: string[] }) {
   const { t, f, locale, path } = useI18n();
   const a = t.admin;
   const [target, setTarget] = useState<AdminAgencyRow | null>(null);
@@ -115,23 +115,35 @@ export function AdminDashboard({ rows, me }: { rows: AdminAgencyRow[]; me: Admin
                     <p className={r.pending_plan ? "font-semibold" : "text-onyx/45 dark:text-white/40"}>{request}</p>
                     {r.pending_at && <p className="text-[11px] text-onyx/50 dark:text-white/45" suppressHydrationWarning>{f(a.requestedOn, { date: day(r.pending_at) })}</p>}
                   </td>
-                  <td className="px-4 py-4">
-                    {r.open_code ? (
-                      <>
-                        <p className="font-mono text-base font-bold tracking-[0.2em]">{r.open_code}</p>
-                        <p className="text-[11px] text-onyx/50 dark:text-white/45" suppressHydrationWarning>{f(a.openCode, { time: clock(r.open_code_until ?? "") })}</p>
-                      </>
-                    ) : <span className="text-onyx/45 dark:text-white/40">{a.noCode}</span>}
-                  </td>
-                  <td className="px-4 py-4">
-                    <button
-                      type="button"
-                      onClick={() => setTarget(r)}
-                      className="whitespace-nowrap rounded-full bg-onyx px-4 py-2 text-xs font-bold text-white transition hover:bg-azure-900 dark:bg-soft-500 dark:text-azure-950 dark:hover:bg-soft-400"
-                    >
-                      {a.issue}
-                    </button>
-                  </td>
+                  {/* An agency that pays through the gateway is never issued a
+                      code, so neither the column nor the button applies. */}
+                  {onlineCountries.includes(r.agency_country) ? (
+                    <td className="px-4 py-4" colSpan={2}>
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-azure-900/8 px-2.5 py-1 text-[11px] font-bold text-azure-900 dark:bg-white/10 dark:text-white">
+                        {a.paysOnline}
+                      </span>
+                    </td>
+                  ) : (
+                    <>
+                      <td className="px-4 py-4">
+                        {r.open_code ? (
+                          <>
+                            <p className="font-mono text-base font-bold tracking-[0.2em]">{r.open_code}</p>
+                            <p className="text-[11px] text-onyx/50 dark:text-white/45" suppressHydrationWarning>{f(a.openCode, { time: clock(r.open_code_until ?? "") })}</p>
+                          </>
+                        ) : <span className="text-onyx/45 dark:text-white/40">{a.noCode}</span>}
+                      </td>
+                      <td className="px-4 py-4">
+                        <button
+                          type="button"
+                          onClick={() => setTarget(r)}
+                          className="whitespace-nowrap rounded-full bg-onyx px-4 py-2 text-xs font-bold text-white transition hover:bg-azure-900 dark:bg-soft-500 dark:text-azure-950 dark:hover:bg-soft-400"
+                        >
+                          {a.issue}
+                        </button>
+                      </td>
+                    </>
+                  )}
                 </tr>
               );
             })}

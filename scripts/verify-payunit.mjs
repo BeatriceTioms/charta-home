@@ -132,6 +132,42 @@ check("the callback answers 200 whatever the outcome, so the gateway does not re
 check("a pending answer settles nothing",
   /answer\.status === "PENDING"\) return \{ ok: true, outcome: "pending"/.test(billing));
 
+
+/* ------------------------------------------------ where the code is not
+ * A code is the manual path's receipt. An agency that pays through the
+ * gateway never gets one, so the field, the button and the column go away
+ * for it, on settings and at the desk alike, and only once PayUnit is
+ * really configured, so nobody is left with neither path.
+ */
+import { onlinePaymentCountries } from "../lib/payunit.ts";
+delete process.env.PAYUNIT_API_KEY;
+check("with no gateway configured, no country pays online", onlinePaymentCountries().length === 0,
+  "the manual path stays until the gateway is real");
+process.env.PAYUNIT_API_KEY = "k";
+check("with the gateway configured, Cameroon pays online and Guinea does not",
+  onlinePaymentCountries().includes("Cameroon") && !onlinePaymentCountries().includes("Guinea"));
+
+const settings = await readFile("components/dashboard/SettingsForm.tsx", "utf8");
+check("the code field is gone for an agency that pays online",
+  /canEdit && !canPayOnline && \(/.test(settings) && /pc\.codeLabel/.test(settings),
+  "and still there for everyone else");
+check("the plan chooser offers an online agency only the gateway",
+  !/pc\.orRequest/.test(settings) && /canPayOnline \? pc\.modalSubtitleOnline/.test(settings),
+  "no request by email, no code to wait for");
+const dash = await readFile("components/admin/AdminDashboard.tsx", "utf8");
+const detail = await readFile("components/admin/AgencyDetail.tsx", "utf8");
+check("the desk shows no code and no Issue button for an online agency",
+  /onlineCountries\.includes\(r\.agency_country\)/.test(dash) && /a\.paysOnline/.test(dash) &&
+    /paysOnline \?/.test(detail) && /\{!paysOnline && \(/.test(detail) && /issuing && !paysOnline/.test(detail),
+  "row, file and modal alike");
+check("the desk shows online payments on the agency's file",
+  /d\.onlinePayments/.test(detail) && /online\.map\(/.test(detail));
+for (const p of ["app/[locale]/admin/page.tsx", "app/[locale]/admin/agencies/[agencyId]/page.tsx"]) {
+  const page = await readFile(p, "utf8");
+  check(`${p.split("/").slice(-2).join("/")} hands the desk the online countries from the server`,
+    /onlineCountries=\{onlinePaymentCountries\(\)\}/.test(page));
+}
+
 const failed = results.filter((r) => !r.pass);
 console.log(`\n${results.length - failed.length}/${results.length} checks passed`);
 process.exit(failed.length === 0 ? 0 : 1);

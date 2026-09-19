@@ -178,7 +178,7 @@ function InviteModal({
  * Writing the reminder in the agency's own words, with a preview so the
  * placeholders are obviously placeholders before anything reaches a tenant.
  */
-function PlanSummary({ canEdit, onChoose }: { canEdit: boolean; onChoose: () => void }) {
+function PlanSummary({ canEdit, canPayOnline, onChoose }: { canEdit: boolean; canPayOnline: boolean; onChoose: () => void }) {
   const { t, f, locale } = useI18n();
   const { plan, buildings, notify, agencyInfo } = useStore();
   const router = useRouter();
@@ -261,7 +261,7 @@ function PlanSummary({ canEdit, onChoose }: { canEdit: boolean; onChoose: () => 
                   plan: nameOf(plan.pending.plan),
                   date: day(plan.pending.createdAt),
                 })
-              : f(pc.pending, {
+              : f(canPayOnline ? pc.pendingOnline : pc.pending, {
                   plan: nameOf(plan.pending.plan),
                   cycle: plan.pending.cycle === "annual" ? pc.annual : pc.monthly,
                   amount: formatMoney(plan.pending.amount, plan.pending.currency),
@@ -271,7 +271,9 @@ function PlanSummary({ canEdit, onChoose }: { canEdit: boolean; onChoose: () => 
         </div>
       )}
 
-      {canEdit && (
+      {/* A code is the manual path's receipt. An agency that pays through
+          the gateway never receives one, so the field would only puzzle. */}
+      {canEdit && !canPayOnline && (
         <div className="rounded-2xl border border-azure-900/10 p-4 dark:border-white/10">
           <Field label={pc.codeLabel} hint={pc.codeHint} hintAfter error={codeError}>
             <div className="flex gap-2">
@@ -355,7 +357,7 @@ function PlanModal({
   };
 
   return (
-    <Modal title={pc.modalTitle} subtitle={pc.modalSubtitle} onClose={onClose}>
+    <Modal title={pc.modalTitle} subtitle={canPayOnline ? pc.modalSubtitleOnline : pc.modalSubtitle} onClose={onClose}>
       <form
         className="space-y-4"
         onSubmit={async (e) => {
@@ -459,23 +461,13 @@ function PlanModal({
               {opening ? pc.opening : `${pc.payNow} · ${formatMoney(priceFor(country, choice, cycle)!.amount, priceFor(country, choice, cycle)!.currency)}`}
             </button>
             <p className="text-center text-xs leading-relaxed text-onyx/50 dark:text-white/45">{pc.payNowHint}</p>
-            <p className="text-center text-xs text-onyx/40 dark:text-white/35">{pc.orRequest}</p>
-            <div className="flex gap-3">
-              <button
-                type="submit"
-                disabled={sending || opening}
-                className="flex-1 rounded-full border border-azure-900/15 py-2.5 text-sm font-semibold text-azure-800 transition hover:bg-azure-900/5 disabled:opacity-60 dark:border-white/15 dark:text-white dark:hover:bg-white/10"
-              >
-                {sending ? t.dash.common.saving : pc.send}
-              </button>
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-full px-5 py-2.5 text-sm font-semibold text-onyx/55 transition hover:text-azure-950 dark:text-white/55 dark:hover:text-white"
-              >
-                {t.dash.common.cancel}
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full rounded-full py-2.5 text-sm font-semibold text-onyx/55 transition hover:text-azure-950 dark:text-white/55 dark:hover:text-white"
+            >
+              {t.dash.common.cancel}
+            </button>
           </div>
         ) : (
           <ModalActions onCancel={onClose} submitLabel={sending ? t.dash.common.saving : pc.send} />
@@ -880,7 +872,7 @@ export function SettingsForm({
         {/* plan */}
         <Card>
           <CardTitle>{s.plan}</CardTitle>
-          <PlanSummary canEdit={canEdit} onChoose={() => setChoosingPlan(true)} />
+          <PlanSummary canEdit={canEdit} canPayOnline={canPayOnline} onChoose={() => setChoosingPlan(true)} />
           <p className="mt-5 text-xs leading-relaxed text-onyx/50 dark:text-white/45">{s.dataNotice}</p>
           <ExportButton
             label={s.exportData}

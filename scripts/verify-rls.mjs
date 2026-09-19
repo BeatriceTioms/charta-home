@@ -1091,6 +1091,9 @@ check("settling twice, as a callback and a return page will, extends the period 
 const [opened2] = await asUser(userD.id, `select * from public.begin_subscription_payment('${d1.id}', 'business', 'monthly', 'CHAAAA0004')`);
 const [failedRow] = await q(`select * from public.settle_subscription_payment('${opened2.payment_id}', 'failed')`);
 const [afterFail] = await q(`select plan, current_period_end from subscriptions where agency_id = '${d1.id}'`);
+const [closedReq] = await q(`select status from plan_requests where id = '${opened2.request_id}'`);
+check("a failed checkout closes the request it opened, so the desk is not waiting for a code",
+  closedReq?.status === "cancelled", String(closedReq?.status));
 check("a failed payment changes nothing about the plan",
   failedRow?.outcome === "failed" && afterFail.plan === "growth" && String(afterFail.current_period_end) === String(pay_after.current_period_end));
 let badFinal = false;
