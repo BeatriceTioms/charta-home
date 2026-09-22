@@ -168,6 +168,22 @@ for (const p of ["app/[locale]/admin/page.tsx", "app/[locale]/admin/agencies/[ag
     /onlineCountries=\{onlinePaymentCountries\(\)\}/.test(page));
 }
 
+
+/* An agency that pays online never raises a request, and so never sends the
+ * desk the request email. Checked on both sides: the checkout path carries
+ * no mail at all, and the request action refuses such an agency before it
+ * records or sends anything, whatever the browser asked for.
+ */
+const actions = await readFile("lib/supabase/actions.ts", "utf8");
+const checkout = actions.slice(actions.indexOf("export async function startCheckout"), actions.indexOf("export async function confirmPayment"));
+check("opening a checkout sends no request email",
+  !/sendEmail|planRequestEmail|platformAdminEmails/.test(checkout), "the gateway's answer is the notification");
+const request = actions.slice(actions.indexOf("export async function requestPlan"), actions.indexOf("export async function redeemPlanCode"));
+check("a request from an agency that pays online is refused before anything is recorded or sent",
+  request.indexOf("onlinePaymentAvailable(input.agencyId)") < request.indexOf('rpc("request_plan"') &&
+    request.indexOf("onlinePaymentAvailable(input.agencyId)") < request.indexOf("sendEmail"),
+  "so the desk is not emailed about a plan the gateway already settled");
+
 const failed = results.filter((r) => !r.pass);
 console.log(`\n${results.length - failed.length}/${results.length} checks passed`);
 process.exit(failed.length === 0 ? 0 : 1);

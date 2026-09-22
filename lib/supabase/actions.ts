@@ -1070,6 +1070,14 @@ export async function requestPlan(
   if (!isPlanCode(input.plan)) return { ok: false, error: "unknown plan" };
   const cycle: BillingCycle = input.cycle === "annual" ? "annual" : "monthly";
 
+  // An agency that pays through the gateway has nothing to request: the
+  // plan activates when the gateway answers, and a request email would ask
+  // the desk to issue a code that is never needed. The interface hides the
+  // button; this holds whatever the browser sends.
+  if (await onlinePaymentAvailable(input.agencyId)) {
+    return { ok: false, error: "pays-online" };
+  }
+
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("request_plan", {
     target_agency: input.agencyId,
