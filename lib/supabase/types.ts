@@ -553,6 +553,12 @@ export type Database = {
         Update: Partial<PlanRequestRow>;
         Relationships: [];
       };
+      platform_admins: {
+        Row: { user_id: string; created_at: string };
+        Insert: { user_id: string; created_at?: string };
+        Update: { user_id?: string; created_at?: string };
+        Relationships: [];
+      };
       subscription_payments: {
         Row: SubscriptionPaymentRow;
         Insert: Partial<SubscriptionPaymentRow>;

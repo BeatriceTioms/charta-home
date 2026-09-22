@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { isEmailConfigured, planCodeEmail, sendEmail } from "@/lib/email";
 import { isPlanCode, planName, type BillingCycle } from "@/lib/pricing";
 import { siteUrl } from "@/lib/site-url";
-import { createClient } from "./server";
+import { createAdminClient, createClient } from "./server";
 import type { AdminAgencyDetail, AdminAgencyRow, AdminSubscriptionRow } from "./types";
 
 /**
@@ -101,4 +101,23 @@ export async function emailPlanCode(
   const sent = await sendEmail({ to: agency.owner_email, ...message });
   if (!sent.ok) return { ok: false, error: sent.error };
   return { ok: true, to: agency.owner_email };
+}
+
+/**
+ * The addresses of everyone at the platform desk.
+ *
+ * Read with the service role, because platform_admins has no policies on
+ * purpose and auth.users is not a table a signed in user can see. Used to
+ * tell the desk that an agency has asked for a plan, so the request is in
+ * the inbox of whoever will act on it and not only in a shared one.
+ */
+export async function platformAdminEmails(): Promise<string[]> {
+  const admin = createAdminClient();
+  const { data: rows } = await admin.from("platform_admins").select("user_id");
+  if (!rows || rows.length === 0) return [];
+  const wanted = new Set(rows.map((r) => r.user_id));
+  const { data: users } = await admin.auth.admin.listUsers({ perPage: 1000 });
+  return (users?.users ?? [])
+    .filter((u) => wanted.has(u.id) && u.email)
+    .map((u) => (u.email as string).toLowerCase());
 }

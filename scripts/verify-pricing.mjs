@@ -133,6 +133,14 @@ check("signup bills in the country's currency",
   /agency_currency: currencyFor\(country\)/.test(auth));
 
 const settings = await read("components", "dashboard", "SettingsForm.tsx");
+const actions = await read("lib", "supabase", "actions.ts");
+const adminActions = await read("lib", "supabase", "admin-actions.ts");
+check("a plan request is emailed to everyone at the desk as well as the sales inbox",
+  /platformAdminEmails\(\)/.test(actions) && /new Set\(\[sales, \.\.\./.test(actions) && /for \(const to of recipients\)/.test(actions),
+  "each address once, however many ways it is listed");
+check("the desk's addresses are read with the service role, not as the requesting owner",
+  /export async function platformAdminEmails/.test(adminActions) && /createAdminClient\(\)/.test(adminActions.slice(adminActions.indexOf("platformAdminEmails"))),
+  "platform_admins has no policies and auth.users is not readable by an owner");
 check("settings sends the request through the server action",
   /sb\.requestPlan\(/.test(settings) && !/notify\(s\.changePlan\)/.test(settings),
   "it used to toast the button's own label");

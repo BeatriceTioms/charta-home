@@ -10,6 +10,7 @@ import { toE164 } from "@/lib/phone";
 import { isSiteUrlReachable, siteUrl } from "@/lib/site-url";
 import { initializePayment, isPayunitConfigured, newTransactionId } from "@/lib/payunit";
 import { settlePayment } from "@/lib/billing";
+import { platformAdminEmails } from "./admin-actions";
 import { validateImage } from "@/lib/uploads";
 import { createAdminClient, createClient } from "./server";
 import type { LeaseCycle, MemberRole, PaymentMethod, ReportChannel, TicketPriority } from "./types";
@@ -1113,9 +1114,15 @@ export async function requestPlan(
       amount,
       locale,
     });
-    const sales = process.env.SALES_EMAIL || "hello@chartahome.com";
-    const sentTeam = await sendEmail({ to: sales, ...toTeam });
-    if (!sentTeam.ok) console.error("plan request email failed:", sentTeam.error);
+    // The sales inbox and everyone at the desk, once each. The desk is where
+    // the code will be issued from, so the request lands with the people who
+    // will act on it rather than only in a shared box somebody has to watch.
+    const sales = (process.env.SALES_EMAIL || "hello@chartahome.com").toLowerCase();
+    const recipients = [...new Set([sales, ...(await platformAdminEmails())])];
+    for (const to of recipients) {
+      const sent = await sendEmail({ to, ...toTeam });
+      if (!sent.ok) console.error(`plan request email to ${to} failed:`, sent.error);
+    }
 
     if (ownerEmail) {
       const receipt = planRequestReceiptEmail({
