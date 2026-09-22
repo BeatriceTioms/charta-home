@@ -404,7 +404,7 @@ function PlanModal({
               >
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2">
-                    <span className="text-sm font-bold">{tierName(code, country, p.tiers[code].name)}</span>
+                    <span className={`text-sm font-bold ${active ? "" : "text-azure-950 dark:text-white"}`}>{tierName(code, country, p.tiers[code].name)}</span>
                     {current && (
                       <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${active ? "bg-white/20" : "bg-azure-900/10 dark:bg-white/10"}`}>
                         {pc.currentTag}
