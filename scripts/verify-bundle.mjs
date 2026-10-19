@@ -84,8 +84,9 @@ const [tables] = await q(
 // A deliberate canary: this number is expected to change when the schema
 // grows, and a mismatch means either a new table or a bundle that truncated.
 // 28: plan_limits went; plans, plan_prices, plan_requests, platform_admins
-// and plan_codes arrived.
-check("every table is created", tables.n === 31, `${tables.n} tables`);
+// and plan_codes arrived. 34: the resident app added lease_requests,
+// resident_payments and resident_devices.
+check("every table is created", tables.n === 34, `${tables.n} tables`);
 
 const [views] = await q(
   `select count(*)::int as n from pg_views where schemaname = 'public'`

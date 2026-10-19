@@ -1,0 +1,101 @@
+/**
+ * Checks the resident-app migration against every other migration, in an
+ * in-process Postgres (PGlite), then exercises it: package prices, holds and
+ * clashes, claiming a resident profile, tickets and payment settlement.
+ *
+ * Copy to the web project's scripts/ and run: node scripts/verify-resident-app.mjs
+ */
+import { PGlite } from "@electric-sql/pglite";
+import { citext } from "@electric-sql/pglite/contrib/citext";
+import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
+import { readdir, readFile } from "node:fs/promises";
+import path from "node:path";
+
+const DIR = path.join(process.cwd(), "supabase", "migrations");
+const MINE_FILE = "20260808123000_resident_app.sql";
+const SAAS = DIR;
+const MINE = path.join(DIR, MINE_FILE);
+
+const db = new PGlite({ extensions: { citext, pgcrypto } });
+await db.exec(`create extension if not exists pgcrypto; create extension if not exists citext;`);
+await db.exec(`
+do $$ begin
+  if not exists (select 1 from pg_roles where rolname = 'anon') then create role anon; end if;
+  if not exists (select 1 from pg_roles where rolname = 'authenticated') then create role authenticated; end if;
+  if not exists (select 1 from pg_roles where rolname = 'service_role') then create role service_role; end if;
+end $$;
+create schema if not exists auth; create schema if not exists storage;
+create table auth.users (id uuid primary key default gen_random_uuid(), email text unique, raw_user_meta_data jsonb not null default '{}');
+create or replace function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+create table storage.buckets (id text primary key, name text not null, public boolean not null default false);
+create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text references storage.buckets (id), name text not null, owner uuid);
+alter table storage.objects enable row level security;
+create or replace function storage.foldername(name text) returns text[] language sql immutable as $$ select string_to_array(name, '/') $$;
+`);
+for (const f of (await readdir(SAAS)).filter((f) => f.endsWith(".sql") && f !== MINE_FILE).sort()) {
+  try { await db.exec(await readFile(`${SAAS}/${f}`, "utf8")); } catch (e) { console.error("SAAS FAIL", f, e.message); process.exit(1); }
+}
+await db.exec(await readFile(MINE, "utf8"));
+console.log("migration applied");
+
+const one = async (sql, p = []) => (await db.query(sql, p)).rows[0];
+const ok = (cond, msg) => { if (!cond) { console.error("FAIL:", msg); process.exit(1); } console.log("ok -", msg); };
+const as = (uid) => db.exec(`select set_config('request.jwt.claim.sub', '${uid ?? ""}', false)`);
+
+const ag = await one(`insert into agencies (name, country, city, currency) values ('Charta Immobilier','Cameroon','Yaoundé','XAF') returning id`);
+const b = await one(`insert into buildings (agency_id, name, city) values ($1,'Les Palmiers','Yaoundé') returning id`, [ag.id]);
+const ap = await one(`insert into apartments (agency_id, building_id, label, base_rent, short_stay, listed) values ($1,$2,'B2',350000,true,true) returning id`, [ag.id, b.id]);
+for (const [n, price] of [[1, 35000], [3, 99000], [7, 220000]])
+  await db.query(`insert into stay_rates (agency_id, apartment_id, nights, price) values ($1,$2,$3,$4)`, [ag.id, ap.id, n, price]);
+
+const q = async (n) => Number((await one(`select public.stay_quote($1,$2) v`, [ap.id, n])).v);
+ok(await q(1) === 35000, "1 night = package price");
+ok(await q(2) === 70000, "2 nights = 2 × nightly");
+ok(await q(3) === 99000, "3 nights = 3-night package");
+ok(await q(10) === Math.round(220000 / 7 * 10), "10 nights use the 7-night per-night price");
+
+const u = await one(`insert into auth.users (email, raw_user_meta_data) values ('ada@mail.cm', '{"full_name":"Ada N","phone":"+237677000000"}') returning id`);
+const u2 = await one(`insert into auth.users (email) values ('bob@mail.cm') returning id`);
+await as(u.id);
+const inDays = (n) => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
+const r = await one(`select public.book_stay($1, $2::date, $3::date) j`, [ap.id, inDays(2), inDays(5)]);
+ok(Number(r.j.amount) === 99000 && r.j.stay_id, "book_stay holds 3 nights at the package price");
+await as(u2.id);
+let clash = null;
+try { await db.query(`select public.book_stay($1, $2::date, $3::date)`, [ap.id, inDays(4), inDays(6)]); } catch (e) { clash = e; }
+ok(clash && clash.code === "23P01" && clash.detail === inDays(4), "overlapping booking refused, detail = first taken night");
+const taken = await db.query(`select * from public.listing_taken_nights(array[$1]::uuid[])`, [ap.id]);
+ok(taken.rows.length === 1, "taken nights visible without guest details");
+await db.exec(`update stays set hold_expires_at = now() - interval '1 minute'`);
+const r2 = await one(`select public.book_stay($1, $2::date, $3::date) j`, [ap.id, inDays(4), inDays(6)]);
+ok(r2.j.stay_id, "a lapsed unpaid hold frees its nights");
+
+// resident flow
+await as(null);
+const res = await one(`insert into residents (agency_id, full_name, phone_e164, email) values ($1,'Ada N','+237677000000','ADA@mail.cm') returning id`, [ag.id]);
+const lease = await one(`insert into leases (agency_id, apartment_id, resident_id, rent_amount, due_day, starts_on) values ($1,$2,$3,350000,5,current_date - 60) returning id`, [ag.id, ap.id, res.id]);
+const ch = await one(`insert into rent_charges (agency_id, lease_id, period_start, period_end, amount, due_on) values ($1,$2,date_trunc('month',current_date)::date,(date_trunc('month',current_date)+interval '1 month - 1 day')::date,350000,current_date) returning id`, [ag.id, lease.id]);
+await as(u.id);
+ok(Number((await one(`select public.claim_resident_profile() n`)).n) === 1, "sign-up claims the agency's resident row by email");
+const t = await one(`select public.resident_create_ticket('Leak','Sink drips','plumbing','high','Kitchen', array[$1 || '/a.jpg','someone-else/b.jpg']) j`, [u.id]);
+ok(t.j.number, "resident opens a ticket on their home");
+const tk = await one(`select photo_paths, reported_via::text rv from tickets where id = $1`, [t.j.id]);
+ok(tk.photo_paths.length === 1 && tk.rv === "app", "only own photos kept, channel = app");
+
+// settlement (service role)
+await as(null);
+const next = new Date(); next.setDate(1); next.setMonth(next.getMonth() + 1);
+const adv = next.toISOString().slice(0, 10);
+await db.query(`insert into resident_payments (agency_id, user_id, kind, lease_id, charge_ids, advance_periods, amount, currency, method, provider_ref) values ($1,$2,'rent',$3,array[$4]::uuid[],array[$5]::date[],700000,'XAF','mobile_money','CHTEST01')`, [ag.id, u.id, lease.id, ch.id, adv]);
+ok((await one(`select public.settle_resident_payment('CHTEST01','paid','{"provider":"Orange Money"}') s`)).s === "paid", "rent payment settles");
+ok((await one(`select public.settle_resident_payment('CHTEST01','paid') s`)).s === "paid", "settling twice changes nothing");
+const pays = await db.query(`select method::text m from payments where lease_id = $1`, [lease.id]);
+ok(pays.rows.length === 1 && pays.rows[0].m === "orange_money", "one payment row, network from PayUnit");
+const bal = await db.query(`select balance from v_charge_status where lease_id = $1`, [lease.id]);
+ok(bal.rows.length === 2 && bal.rows.every((x) => Number(x.balance) === 0), "current month and month ahead both paid");
+
+await db.query(`insert into resident_payments (agency_id, user_id, kind, stay_id, amount, currency, method, provider_ref) values ($1,$2,'stay',$3,99000,'XAF','card','CSTEST01')`, [ag.id, u.id, r.j.stay_id]);
+await db.query(`select public.settle_resident_payment('CSTEST01','paid')`);
+const st = await one(`select paid, hold_expires_at from stays where id = $1`, [r.j.stay_id]);
+ok(Number(st.paid) === 99000 && st.hold_expires_at === null, "stay paid and hold cleared");
+console.log("\nALL CHECKS PASSED");

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { settlePayment } from "@/lib/billing";
+import { settleResidentPayment } from "@/lib/resident-payments";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,9 @@ export const dynamic = "force-dynamic";
  * PayUnit is asked directly. An answer of 200 goes back whatever happened,
  * because a gateway that is told "error" retries, and a retry of a callback
  * that was never trusted changes nothing.
+ *
+ * Two kinds of payment arrive here: an agency's subscription, and a
+ * resident's rent or stay paid in the app. The id says which.
  */
 export async function POST(request: Request) {
   let ref = "";
@@ -30,6 +34,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "no transaction id" }, { status: 400 });
   }
   const result = await settlePayment({ providerRef: ref });
+  if (!result.ok && result.error === "unknown payment") {
+    const resident = await settleResidentPayment(ref);
+    return NextResponse.json({ ok: true, outcome: resident.ok ? resident.outcome : "unverified" });
+  }
   return NextResponse.json({ ok: true, outcome: result.ok ? result.outcome : "unverified" });
 }
 
