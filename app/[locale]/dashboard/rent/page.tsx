@@ -14,8 +14,9 @@ import { ReceiptModal, type ReceiptData } from "@/components/dashboard/ReceiptMo
 import { Field, Modal, ModalActions, fieldCls } from "@/components/dashboard/Modal";
 import { ReminderModal } from "@/components/dashboard/ReminderModal";
 import { RemindersPanel } from "@/components/dashboard/RemindersPanel";
+import { StaysPanel } from "@/components/dashboard/StaysPanel";
 
-type Tab = "leases" | "tenants" | "reminders";
+type Tab = "leases" | "tenants" | "stays" | "reminders";
 type StatusFilter = "all" | RentStatus;
 
 const selectCls =
@@ -197,7 +198,7 @@ function RecordPaymentModal({ onClose }: { onClose: () => void }) {
 
 export default function RentPage() {
   const { building } = useBuilding();
-  const { markReminded, remindedKeys, notify } = useStore();
+  const { markReminded, remindedKeys, stays, notify } = useStore();
   const { t, f, s: ts, path } = useI18n();
   const { fmt } = useMoney();
 
@@ -253,9 +254,17 @@ export default function RentPage() {
     [leased, status, search]
   );
 
+  // Bookings that have not finished, which is what somebody opening the tab
+  // wants a number for; a year of past guests is not a to do list.
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const stayCount = stays.filter(
+    (x) => x.buildingId === building.id && x.status !== "cancelled" && x.checkOut > todayIso
+  ).length;
+
   const tabs: { key: Tab; label: string; count?: number }[] = [
     { key: "leases", label: t.dash.rent.tabs.leases, count: counts.all },
     { key: "tenants", label: t.dash.rent.tabs.tenants, count: leased.length },
+    { key: "stays", label: t.dash.rent.tabs.stays, count: stayCount },
     // No count: a cadence is not a number of things.
     { key: "reminders", label: t.dash.rent.tabs.reminders },
   ];
@@ -364,7 +373,9 @@ export default function RentPage() {
 
       <Tabs tabs={tabs} active={tab} onChange={setTab} />
 
-      {tab === "reminders" ? (
+      {tab === "stays" ? (
+        <StaysPanel />
+      ) : tab === "reminders" ? (
         <RemindersPanel />
       ) : tab === "tenants" ? (
         <TenantsPanel />

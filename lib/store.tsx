@@ -27,6 +27,7 @@ import type { MemberRole, PaymentMethod, ReminderRuleRow } from "@/lib/supabase/
 import {
   type ActivityItem,
   type RecentEvent,
+  type Stay,
   type Apartment,
   type ApartmentPhoto,
   type Building,
@@ -47,6 +48,8 @@ type StoreValue = {
   recent: RecentEvent[];
   /** The agency's reminder cadence. */
   reminderRules: ReminderRuleRow[];
+  /** Every booking by the night, newest first. */
+  stays: Stay[];
   /** The subscription and its ceiling. Null until the catalogue is in place. */
   plan: PlanInfo | null;
   agencyInfo: {
@@ -179,6 +182,7 @@ export type StoreSeed = {
   activity: ActivityItem[];
   recent: RecentEvent[];
   reminderRules?: ReminderRuleRow[];
+  stays?: Stay[];
   plan?: PlanInfo | null;
 };
 
@@ -219,6 +223,7 @@ export function StoreProvider({
   const [activity, setActivity] = useState<ActivityItem[]>(() => seed.activity);
   const [recent, setRecent] = useState<RecentEvent[]>(() => seed.recent ?? []);
   const [reminderRules, setReminderRules] = useState<ReminderRuleRow[]>(() => seed.reminderRules ?? []);
+  const [stays, setStays] = useState<Stay[]>(() => seed.stays ?? []);
   const [remindedKeys, setRemindedKeys] = useState<string[]>([]);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
@@ -250,6 +255,7 @@ export function StoreProvider({
     setActivity(seed.activity);
     setRecent(seed.recent ?? []);
     setReminderRules(seed.reminderRules ?? []);
+    setStays(seed.stays ?? []);
   }, [seed]);
 
   /** Sends a write to the server, surfaces failure, and pulls back truth. */
@@ -323,7 +329,8 @@ export function StoreProvider({
             cycle: input.cycle,
             rentStatus: "pending",
             performance: { collected: 0, expenses: 0, net: 0, marginPct: null },
-        history: { tenantsEver: 0, collectedLifetime: 0, paymentsCount: 0, expensesLifetime: 0, ticketsTotal: 0, ticketsOpen: 0 },
+        shortStay: { enabled: false, rates: [] },
+        history: { tenantsEver: 0, collectedLifetime: 0, paymentsCount: 0, expensesLifetime: 0, ticketsTotal: 0, ticketsOpen: 0, guestsEver: 0, nightsLet: 0, nightsLetYtd: 0 },
             payments: [],
             // The first photo doubles as the cover shown in the apartment grid.
             photos: (input.photos ?? []).map((src, n) => ({ id: `${id}-p${n}`, src })),
@@ -891,6 +898,7 @@ export function StoreProvider({
       activity,
       recent,
       reminderRules,
+      stays,
       plan,
       agencyInfo,
       agencies,
@@ -926,7 +934,7 @@ export function StoreProvider({
       remindedKeys,
     }),
     [
-      buildings, tickets, activity, recent, reminderRules, plan, agencyInfo, agencies, currentUser, toasts, agencyId, addBuilding, notify, dismissToast, addApartment, updateApartment2, deleteApartment, updateTenant, endLease,
+      buildings, tickets, activity, recent, reminderRules, stays, plan, agencyInfo, agencies, currentUser, toasts, agencyId, addBuilding, notify, dismissToast, addApartment, updateApartment2, deleteApartment, updateTenant, endLease,
       setBuildingPhoto, removeBuildingPhoto, addLease,
       recordPayment, markReminded, addTicket, updateTicket, deleteTicket, assignTicket,
       resolveTicket, photosFor, addPhoto, updatePhoto, deletePhoto, technicians,

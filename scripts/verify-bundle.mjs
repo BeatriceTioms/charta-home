@@ -85,7 +85,7 @@ const [tables] = await q(
 // grows, and a mismatch means either a new table or a bundle that truncated.
 // 28: plan_limits went; plans, plan_prices, plan_requests, platform_admins
 // and plan_codes arrived.
-check("every table is created", tables.n === 29, `${tables.n} tables`);
+check("every table is created", tables.n === 31, `${tables.n} tables`);
 
 const [views] = await q(
   `select count(*)::int as n from pg_views where schemaname = 'public'`

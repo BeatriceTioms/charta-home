@@ -29,7 +29,8 @@
     "activity:check": "node --experimental-strip-types --no-warnings scripts/verify-activity.mjs",
     "pricing:check": "node --experimental-strip-types --no-warnings scripts/verify-pricing.mjs",
     "admin:grant": "node --experimental-strip-types --no-warnings scripts/grant-admin.mjs",
-    "payunit:check": "node --experimental-strip-types --no-warnings scripts/verify-payunit.mjs"
+    "payunit:check": "node --experimental-strip-types --no-warnings scripts/verify-payunit.mjs",
+    "stays:check": "node scripts/verify-stays.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

@@ -1272,3 +1272,126 @@ export async function confirmPayment(
   if (result.ok && result.outcome === "paid") revalidateDashboard(locale);
   return result;
 }
+
+
+/* ------------------------------------------------------- letting by night */
+
+/**
+ * The packages a unit is sold by: so many nights at this price.
+ *
+ * Sent whole rather than one at a time, because the card edits the list as a
+ * list: rows removed in the interface are removed here, and a night count
+ * that already exists is repriced rather than duplicated.
+ */
+export async function setStayRates(
+  locale: string,
+  input: { agencyId: string; apartmentId: string; rates: { nights: number; price: number }[] }
+): Promise<ActionResult> {
+  const clean = input.rates
+    .map((r) => ({ nights: Math.trunc(Number(r.nights)), price: Math.trunc(Number(r.price)) }))
+    .filter((r) => Number.isFinite(r.nights) && Number.isFinite(r.price) && r.nights >= 1 && r.nights <= 365 && r.price > 0);
+  // Two rows for the same number of nights is a price list that cannot answer
+  // its own question, and the database's own unique index would refuse it.
+  const seen = new Set<number>();
+  for (const r of clean) {
+    if (seen.has(r.nights)) return { ok: false, error: "stay-duplicate-nights" };
+    seen.add(r.nights);
+  }
+
+  const supabase = await createClient();
+  const { error: wipe } = await supabase
+    .from("stay_rates")
+    .delete()
+    .eq("apartment_id", input.apartmentId)
+    .not("nights", "in", `(${[...seen].join(",") || "0"})`);
+  if (wipe) return { ok: false, error: wipe.message };
+
+  if (clean.length > 0) {
+    const { error } = await supabase.from("stay_rates").upsert(
+      clean.map((r) => ({
+        agency_id: input.agencyId,
+        apartment_id: input.apartmentId,
+        nights: r.nights,
+        price: r.price,
+      })),
+      { onConflict: "apartment_id,nights" }
+    );
+    if (error) return { ok: false, error: error.message };
+  }
+
+  // Offering a price by the night is what makes a unit a short stay unit.
+  const { error: flag } = await supabase
+    .from("apartments")
+    .update({ short_stay: clean.length > 0 })
+    .eq("id", input.apartmentId);
+  if (flag) return { ok: false, error: flag.message };
+
+  revalidateDashboard(locale);
+  return { ok: true };
+}
+
+/**
+ * Books a guest in.
+ *
+ * The clash check is the database's, under a lock, so two bookings for the
+ * same week cannot both land. Its refusal names the dates and the guest
+ * already there, which is what the person booking needs to hear.
+ */
+export async function createStay(
+  locale: string,
+  input: {
+    apartmentId: string;
+    guestName: string;
+    guestPhone?: string;
+    guestEmail?: string;
+    checkIn: string;
+    checkOut: string;
+    amount: number;
+    paid?: number;
+    paidOn?: string;
+    notes?: string;
+  }
+): Promise<ActionResult> {
+  const phone = toE164(input.guestPhone ?? "");
+  if ((input.guestPhone ?? "").trim() && !phone) return { ok: false, error: "lease-bad-phone" };
+  const email = (input.guestEmail ?? "").trim().toLowerCase();
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { ok: false, error: "lease-bad-email" };
+  if (!(Date.parse(input.checkOut) > Date.parse(input.checkIn))) {
+    return { ok: false, error: "stay-dates-ordered" };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("create_stay", {
+    target_apartment: input.apartmentId,
+    guest_name_in: input.guestName,
+    check_in_in: input.checkIn,
+    check_out_in: input.checkOut,
+    amount_in: Math.trunc(input.amount),
+    guest_phone_in: phone || null,
+    guest_email_in: email || null,
+    paid_in: Math.trunc(input.paid ?? 0),
+    paid_on_in: input.paidOn || null,
+    notes_in: input.notes || null,
+  });
+  if (error) return { ok: false, error: error.message };
+  revalidateDashboard(locale);
+  return { ok: true, id: String(data) };
+}
+
+/** Money received against a stay, and where the stay has got to. */
+export async function updateStay(
+  locale: string,
+  input: { stayId: string; paid?: number; paidOn?: string; status?: string; notes?: string }
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("update_stay", {
+    stay_id: input.stayId,
+    paid_in: input.paid === undefined ? null : Math.trunc(input.paid),
+    paid_on_in: input.paidOn || null,
+    status_in: input.status ?? null,
+    notes_in: input.notes ?? null,
+  });
+  if (error) return { ok: false, error: error.message };
+  revalidateDashboard(locale);
+  return { ok: true };
+}

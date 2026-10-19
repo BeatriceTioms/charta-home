@@ -13,6 +13,7 @@ import { useI18n } from "@/lib/i18n/context";
 import { Card, CardTitle, PageTitle, PhotoPlaceholder, RentChip, StatCard, TicketChip } from "@/components/dashboard/ui";
 import { Field, Modal, ModalActions, fieldCls } from "@/components/dashboard/Modal";
 import { PhotoGallery } from "@/components/dashboard/PhotoGallery";
+import { StayRatesCard } from "@/components/dashboard/StayRatesCard";
 import { ReminderModal } from "@/components/dashboard/ReminderModal";
 
 function LeaseModal({
@@ -342,6 +343,14 @@ export default function ApartmentPage() {
     { label: hist.collectedLifetime, value: fmt(h.collectedLifetime), foot: h.paymentsCount > 0 ? `${f(hist.payments, { count: h.paymentsCount })} · ${f(hist.lastPayment, { date: dayOf(h.lastPaymentOn) })}` : hist.noPayment },
     { label: hist.collectedYear, value: fmt(apartment.performance.collected), foot: tenure || undefined },
     { label: hist.expensesLifetime, value: fmt(h.expensesLifetime), foot: `${hist.tickets} ${h.ticketsTotal} · ${f(hist.ticketsOpen, { count: h.ticketsOpen })}` },
+    // Only for a unit that is actually let by the night.
+    ...(apartment.shortStay.enabled || h.nightsLet > 0
+      ? [{
+          label: t.dash.stays.nightsLet,
+          value: String(h.nightsLet),
+          foot: `${f(t.dash.stays.guestsEver, { count: h.guestsEver })} · ${f(t.dash.stays.nightsThisYear, { count: h.nightsLetYtd })}`,
+        }]
+      : []),
   ];
 
   return (
@@ -662,6 +671,37 @@ export default function ApartmentPage() {
                 </button>
               </>
             )}
+          </Card>
+
+          {/* Letting by the night. Its own card, because a nightly package is
+              not a rent and reads as nonsense beside one. */}
+          <Card>
+            <div className="mb-1 flex items-center justify-between">
+              <h2 className="text-[15px] font-bold text-azure-950 dark:text-white">
+                {t.dash.stays.ratesTitle}
+              </h2>
+              {apartment.shortStay.current && (
+                <span className="rounded-full bg-soft-500 px-2.5 py-0.5 text-[11px] font-bold text-azure-950">
+                  {t.dash.stays.occupiedNow}
+                </span>
+              )}
+            </div>
+            {apartment.shortStay.current ? (
+              <p className="text-xs text-onyx/55 dark:text-white/50" suppressHydrationWarning>
+                {f(t.dash.stays.guestUntil, {
+                  guest: apartment.shortStay.current.guest,
+                  date: dayOf(apartment.shortStay.current.until),
+                })}
+              </p>
+            ) : apartment.shortStay.next ? (
+              <p className="text-xs text-onyx/55 dark:text-white/50" suppressHydrationWarning>
+                {f(t.dash.stays.nextGuest, {
+                  guest: apartment.shortStay.next.guest,
+                  date: dayOf(apartment.shortStay.next.from),
+                })}
+              </p>
+            ) : null}
+            <StayRatesCard apartment={apartment} />
           </Card>
 
           <Card>

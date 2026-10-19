@@ -1106,6 +1106,113 @@ check("the desk sees online payments on the agency's file",
     fileD.online_payments.some((p) => p.status === "paid" && p.provider_ref === "CHAAAA0003"),
   fileD.online_payments?.map((p) => `${p.plan}/${p.cycle}:${p.status}`).join(", "));
 
+/* ------------------------------------------------------ letting by night */
+// A unit of Amina's, offered by the night.
+const [aptN] = await asUser(userA.id, `
+  insert into apartments (agency_id, building_id, label, rooms, bathrooms, sqm, base_rent)
+  values ('${a1.id}', '${bA.id}', 'Studio Nuit', 1, 1, 32, 0) returning id`);
+await asUser(userA.id, `
+  insert into stay_rates (agency_id, apartment_id, nights, price) values
+    ('${a1.id}', '${aptN.id}', 1, 350000),
+    ('${a1.id}', '${aptN.id}', 3, 900000),
+    ('${a1.id}', '${aptN.id}', 7, 1900000)`);
+const ratesSeen = await asUser(userA.id, `select nights, price from stay_rates where apartment_id = '${aptN.id}' order by nights`);
+check("an agency sets its own durations and prices",
+  ratesSeen.length === 3 && Number(ratesSeen[1].price) === 900000,
+  ratesSeen.map((r) => `${r.nights}n=${r.price}`).join(" "));
+let twoSameNights = false;
+try { await asUser(userA.id, `insert into stay_rates (agency_id, apartment_id, nights, price) values ('${a1.id}', '${aptN.id}', 3, 800000)`); }
+catch (err) { twoSameNights = /duplicate key|unique/i.test(err.message); }
+check("one price per duration, so the list can answer its own question", twoSameNights);
+
+const [stayA] = await asUser(userA.id, `
+  select public.create_stay('${aptN.id}', 'Awa Baldé', date '2026-11-10', date '2026-11-13', 900000, '+224620111222', 'awa@example.com', 400000) as id`);
+const [stayRow] = await asUser(userA.id, `select guest_name, guest_email::text as email, amount, paid, paid_on, status, (check_out - check_in) as nights from stays where id = '${stayA.id}'`);
+check("a stay records the guest, the nights and what was agreed",
+  stayRow?.nights === 3 && Number(stayRow.amount) === 900000 && Number(stayRow.paid) === 400000 && stayRow.status === "booked" && stayRow.email === "awa@example.com",
+  `${stayRow?.nights} nights, ${stayRow?.paid} of ${stayRow?.amount}`);
+check("and taking a booking marks the unit as let by the night",
+  (await asUser(userA.id, `select short_stay from apartments where id = '${aptN.id}'`))[0]?.short_stay === true);
+
+// The whole point: one flat, one guest at a time.
+let clash = "";
+try { await asUser(userA.id, `select public.create_stay('${aptN.id}', 'Ibrahim Sow', date '2026-11-12', date '2026-11-15', 900000)`); }
+catch (err) { clash = err.message; }
+check("a second guest cannot be booked over the first",
+  /is taken from 10\/11\/2026 to 13\/11\/2026 by Awa Baldé/.test(clash), clash || "no refusal");
+let inside = false;
+try { await asUser(userA.id, `select public.create_stay('${aptN.id}', 'X', date '2026-11-11', date '2026-11-12', 1)`); }
+catch (err) { inside = /is taken from/.test(err.message); }
+check("nor inside the first", inside);
+let wraps = false;
+try { await asUser(userA.id, `select public.create_stay('${aptN.id}', 'X', date '2026-11-09', date '2026-11-20', 1)`); }
+catch (err) { wraps = /is taken from/.test(err.message); }
+check("nor around it", wraps);
+
+// Half open dates: the guest leaving on the 13th frees the night of the 13th.
+const [sameDay] = await asUser(userA.id, `
+  select public.create_stay('${aptN.id}', 'Kadiatou Barry', date '2026-11-13', date '2026-11-14', 350000) as id`);
+check("the night of check out is free for the next guest", Boolean(sameDay?.id),
+  "13 to 14 follows 10 to 13 with no gap");
+
+let backwards = false;
+try { await asUser(userA.id, `select public.create_stay('${aptN.id}', 'X', date '2026-12-05', date '2026-12-05', 1)`); }
+catch (err) { backwards = /must end after it begins/.test(err.message); }
+check("a stay of no nights is refused", backwards);
+let overpaid = false;
+try { await asUser(userA.id, `select public.create_stay('${aptN.id}', 'X', date '2026-12-05', date '2026-12-07', 100, null, null, 500)`); }
+catch (err) { overpaid = /cannot exceed/.test(err.message); }
+check("more received than agreed is refused", overpaid);
+let outsiderBooks = false;
+try { await asUser(userB.id, `select public.create_stay('${aptN.id}', 'X', date '2027-01-05', date '2027-01-07', 100)`); }
+catch (err) { outsiderBooks = /not allowed to book/.test(err.message); }
+check("somebody outside the agency cannot book its units", outsiderBooks);
+// A manager runs the portfolio, so a manager takes bookings. Booked and then
+// cancelled, so the counts below are about the guests, not about this check.
+const [byManager] = await asUser(manager.id, `
+  select public.create_stay('${aptN.id}', 'Booked by Karim', date '2027-01-05', date '2027-01-07', 100) as id`);
+check("a manager of the agency can", Boolean(byManager?.id));
+await asUser(manager.id, `select public.update_stay('${byManager.id}', null, null, 'cancelled')`);
+const strangerSees = await asUser(userB.id, `select id from stays where apartment_id = '${aptN.id}'`);
+check("and cannot read its bookings either", strangerSees.length === 0);
+
+// A cancelled stay holds no dates.
+await asUser(userA.id, `select public.update_stay('${sameDay.id}', null, null, 'cancelled')`);
+const [reused] = await asUser(userA.id, `
+  select public.create_stay('${aptN.id}', 'Mamadou Diallo', date '2026-11-13', date '2026-11-16', 900000) as id`);
+check("a cancelled booking frees its dates", Boolean(reused?.id));
+
+// Money: what a guest paid counts for the unit and the building, dated by
+// when it arrived rather than by when the stay is.
+await asUser(userA.id, `select public.update_stay('${stayA.id}', 900000, current_date, 'checked_out')`);
+const [perfN] = await asUser(userA.id, `select collected_ytd, collected_lifetime, nights_let, guests_ever, nights_let_ytd from v_apartment_performance where apartment_id = '${aptN.id}'`);
+check("what a guest paid is the unit's income",
+  Number(perfN?.collected_ytd) === 900000 && Number(perfN?.collected_lifetime) === 900000,
+  `${perfN?.collected_ytd} this year`);
+check("and the unit counts its nights and its guests",
+  perfN?.nights_let === 6 && perfN?.guests_ever === 2 && perfN?.nights_let_ytd === 3,
+  `${perfN?.nights_let} nights over ${perfN?.guests_ever} stays, ${perfN?.nights_let_ytd} paid this year`);
+const [perfB] = await asUser(userA.id, `select income_ytd from v_building_performance where building_id = '${bA.id}'`);
+check("the building's year includes what the night lets took",
+  Number(perfB?.income_ytd) >= 900000, `${perfB?.income_ytd}`);
+
+// A booking in the future is money promised, not money collected.
+const [future] = await asUser(userA.id, `
+  select public.create_stay('${aptN.id}', 'Sira Keita', date '2027-03-01', date '2027-03-08', 1900000) as id`);
+const [perfAfter] = await asUser(userA.id, `select collected_ytd from v_apartment_performance where apartment_id = '${aptN.id}'`);
+check("a booking nobody has paid for yet is not income",
+  Number(perfAfter?.collected_ytd) === 900000, `still ${perfAfter?.collected_ytd}`);
+
+// The unit's state knows who is in it and who is next.
+await asUser(userA.id, `select public.create_stay('${aptN.id}', 'Guest Today', current_date - 1, current_date + 2, 350000)`);
+const [stateN] = await asUser(userA.id, `select short_stay, stay_guest, next_stay_guest, is_occupied from v_apartment_state where apartment_id = '${aptN.id}'`);
+check("the unit shows the guest in it and the one after",
+  stateN?.stay_guest === "Guest Today" && stateN?.next_stay_guest === "Awa Baldé" && stateN?.short_stay === true,
+  `${stateN?.stay_guest} now, then the earliest booking after today: ${stateN?.next_stay_guest}`);
+check("and a short stay is not a tenancy, so vacancy for long lets is unmoved",
+  stateN?.is_occupied === false, "no lease on this unit");
+void future;
+
 await db.close();
 
 const failed = results.filter((r) => !r.pass);

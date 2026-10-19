@@ -102,6 +102,15 @@ export type Apartment = {
     net: number;
     marginPct: number | null;
   };
+  /** Let by the night, with the agency's own packages. */
+  shortStay: {
+    enabled: boolean;
+    rates: StayRate[];
+    /** The guest in it today, if any. */
+    current?: { guest: string; from: string; until: string };
+    /** The next booking after today. */
+    next?: { guest: string; from: string };
+  };
   /** What the unit has been, from its first lease to today. */
   history: {
     tenantsEver: number;
@@ -113,6 +122,9 @@ export type Apartment = {
     expensesLifetime: number;
     ticketsTotal: number;
     ticketsOpen: number;
+    guestsEver: number;
+    nightsLet: number;
+    nightsLetYtd: number;
   };
   payments: Payment[];
 };
@@ -267,6 +279,31 @@ export type RecentEvent = {
   buildingId: string;
   /** The tenant, or the ticket's subject. */
   detail: string;
+};
+
+/** A package the agency sells: so many nights at this price. */
+export type StayRate = { id: string; nights: number; price: number };
+
+export type StayStatus = "booked" | "checked_in" | "checked_out" | "cancelled";
+
+/** One guest in one unit between two dates. */
+export type Stay = {
+  id: string;
+  apartmentId: string;
+  apartmentLabel: string;
+  buildingId: string;
+  guestName: string;
+  guestPhone?: string;
+  guestEmail?: string;
+  /** ISO dates. The night of check out is not charged. */
+  checkIn: string;
+  checkOut: string;
+  nights: number;
+  amount: number;
+  paid: number;
+  paidOn?: string;
+  status: StayStatus;
+  notes?: string;
 };
 
 export type ActivityItem = {

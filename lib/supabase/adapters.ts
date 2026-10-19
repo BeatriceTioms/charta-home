@@ -1,4 +1,4 @@
-import { periodValue, type ActivityItem, type Building, type LeaseCycle, type Payment, type PaymentRecord, type RecentEvent, type RentStatus, type Technician, type Ticket } from "@/lib/data";
+import { periodValue, type ActivityItem, type Building, type LeaseCycle, type Payment, type PaymentRecord, type RecentEvent, type RentStatus, type Stay, type Technician, type Ticket } from "@/lib/data";
 import { requestedAgencyId } from "@/lib/agency";
 import { isPlanCode, PLAN_BANDS, type PlanInfo } from "@/lib/pricing";
 import { isSupabaseConfigured } from "./config";
@@ -69,6 +69,8 @@ export type Portfolio = {
   recent: RecentEvent[];
   /** The agency's reminder cadence, as rows. */
   reminderRules: ReminderRuleRow[];
+  /** Every booking by the night, newest first. */
+  stays: Stay[];
   /** The subscription, its ceiling, and any request awaiting payment. */
   plan: PlanInfo | null;
 };
@@ -164,6 +166,8 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
     { data: photoRows },
     { data: eventRows },
     { data: reminderRuleRows },
+    { data: stayRateRows },
+    { data: stayRows },
     { data: paymentEventRows },
     { data: leaseEventRows },
     // Every one of these is filtered by agency now. Row level security answers
@@ -205,6 +209,13 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
     // which had its own loader; it lives on the rent page now, which is a
     // client component with no loader of its own.
     supabase.from("reminder_rules").select("*").eq("agency_id", agencyId).order("offset_days"),
+    // Letting by the night: the agency's own packages, and every booking.
+    supabase.from("stay_rates").select("*").eq("agency_id", agencyId).order("nights"),
+    supabase
+      .from("stays")
+      .select("*, apartments(label, building_id)")
+      .eq("agency_id", agencyId)
+      .order("check_in", { ascending: false }),
     // The recent activity feed used to be assembled from whatever happened to
     // be in the arrays already loaded: any paid unit became "rent received",
     // the last flat in the list became "lease renewed", and the times were
@@ -409,6 +420,16 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
               ? null
               : Number(perfByApartment.get(u.apartment_id)!.net_margin_pct),
         },
+        shortStay: {
+          enabled: Boolean(u.short_stay),
+          rates: ratesByApartment.get(u.apartment_id) ?? [],
+          current: u.stay_guest && u.stay_from && u.stay_until
+            ? { guest: u.stay_guest, from: u.stay_from, until: u.stay_until }
+            : undefined,
+          next: u.next_stay_guest && u.next_stay_from
+            ? { guest: u.next_stay_guest, from: u.next_stay_from }
+            : undefined,
+        },
         history: {
           tenantsEver: Number(perfByApartment.get(u.apartment_id)?.tenants_ever ?? 0),
           firstLeaseOn: perfByApartment.get(u.apartment_id)?.first_lease_on ?? undefined,
@@ -419,6 +440,9 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
           expensesLifetime: Number(perfByApartment.get(u.apartment_id)?.expenses_lifetime ?? 0),
           ticketsTotal: Number(perfByApartment.get(u.apartment_id)?.tickets_total ?? 0),
           ticketsOpen: Number(perfByApartment.get(u.apartment_id)?.tickets_open ?? 0),
+          guestsEver: Number(perfByApartment.get(u.apartment_id)?.guests_ever ?? 0),
+          nightsLet: Number(perfByApartment.get(u.apartment_id)?.nights_let ?? 0),
+          nightsLetYtd: Number(perfByApartment.get(u.apartment_id)?.nights_let_ytd ?? 0),
         },
         payments: u.lease_id ? paymentsByLease.get(u.lease_id) ?? [] : [],
         receipts: u.lease_id ? receiptsByLease.get(u.lease_id) ?? [] : [],
@@ -426,6 +450,38 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
         photos: photosByApartment.get(u.apartment_id) ?? [],
       })),
     } as Building;
+  });
+
+  // Packages by unit, so each apartment carries its own price list.
+  const ratesByApartment = new Map<string, { id: string; nights: number; price: number }[]>();
+  for (const r of stayRateRows ?? []) {
+    const list = ratesByApartment.get(r.apartment_id) ?? [];
+    list.push({ id: r.id, nights: r.nights, price: Number(r.price) });
+    ratesByApartment.set(r.apartment_id, list);
+  }
+
+  const nightsBetween = (from: string, to: string) =>
+    Math.max(0, Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000));
+
+  const stays: Stay[] = (stayRows ?? []).map((x) => {
+    const flat = (x as unknown as { apartments: { label: string; building_id: string } | null }).apartments;
+    return {
+      id: x.id,
+      apartmentId: x.apartment_id,
+      apartmentLabel: flat?.label ?? "",
+      buildingId: flat?.building_id ?? "",
+      guestName: x.guest_name,
+      guestPhone: x.guest_phone ? readablePhone(x.guest_phone) : undefined,
+      guestEmail: x.guest_email ?? undefined,
+      checkIn: x.check_in,
+      checkOut: x.check_out,
+      nights: nightsBetween(x.check_in, x.check_out),
+      amount: Number(x.amount),
+      paid: Number(x.paid),
+      paidOn: x.paid_on ?? undefined,
+      status: x.status,
+      notes: x.notes ?? undefined,
+    };
   });
 
   const now = new Date().toISOString();
@@ -616,5 +672,6 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
   };
 
   return { agencyId, agencies, agencyInfo, currentUser, buildings, tickets, technicians, activity, recent,
-    reminderRules: (reminderRuleRows ?? []) as ReminderRuleRow[], plan };
+    reminderRules: (reminderRuleRows ?? []) as ReminderRuleRow[],
+    stays, plan };
 }

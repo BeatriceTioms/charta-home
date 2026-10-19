@@ -82,6 +82,8 @@ export type ApartmentRow = {
   sqm: number | null;
   base_rent: number;
   photo_path: string | null;
+  /** Offered by the night, with its own packages in stay_rates. */
+  short_stay: boolean;
 };
 
 export type ApartmentState = {
@@ -102,6 +104,13 @@ export type ApartmentState = {
   lease_started_on: string | null;
   lease_ends_on: string | null;
   resident_email: string | null;
+  short_stay: boolean;
+  stay_id: string | null;
+  stay_guest: string | null;
+  stay_from: string | null;
+  stay_until: string | null;
+  next_stay_from: string | null;
+  next_stay_guest: string | null;
   is_occupied: boolean;
   rent_state: ChargeState;
 };
@@ -136,6 +145,9 @@ export type ApartmentPerformance = {
   expenses_lifetime: number;
   tickets_total: number;
   tickets_open: number;
+  guests_ever: number;
+  nights_let: number;
+  nights_let_ytd: number;
 };
 
 export type ChargeStatusRow = {
@@ -364,6 +376,38 @@ export type SubscriptionPaymentRow = {
   raw: unknown;
 };
 
+/** One package the agency sells: so many nights at this price. */
+export type StayRateRow = {
+  id: string;
+  agency_id: string;
+  apartment_id: string;
+  nights: number;
+  price: number;
+  created_at: string;
+};
+
+export type StayStatus = "booked" | "checked_in" | "checked_out" | "cancelled";
+
+/** One guest in one unit between two dates. */
+export type StayRow = {
+  id: string;
+  agency_id: string;
+  apartment_id: string;
+  guest_name: string;
+  guest_phone: string | null;
+  guest_email: string | null;
+  check_in: string;
+  check_out: string;
+  amount: number;
+  paid: number;
+  paid_on: string | null;
+  status: StayStatus;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type SubscriptionRow = {
   agency_id: string;
   plan: PlanTier;
@@ -553,6 +597,18 @@ export type Database = {
         Update: Partial<PlanRequestRow>;
         Relationships: [];
       };
+      stay_rates: {
+        Row: StayRateRow;
+        Insert: Partial<StayRateRow>;
+        Update: Partial<StayRateRow>;
+        Relationships: [];
+      };
+      stays: {
+        Row: StayRow;
+        Insert: Partial<StayRow>;
+        Update: Partial<StayRow>;
+        Relationships: [];
+      };
       platform_admins: {
         Row: { user_id: string; created_at: string };
         Insert: { user_id: string; created_at?: string };
@@ -619,6 +675,18 @@ export type Database = {
           plan_code?: string;
         };
         Returns: string;
+      };
+      create_stay: {
+        Args: {
+          target_apartment: string; guest_name_in: string; check_in_in: string; check_out_in: string;
+          amount_in: number; guest_phone_in?: string | null; guest_email_in?: string | null;
+          paid_in?: number; paid_on_in?: string | null; notes_in?: string | null;
+        };
+        Returns: string;
+      };
+      update_stay: {
+        Args: { stay_id: string; paid_in?: number | null; paid_on_in?: string | null; status_in?: string | null; notes_in?: string | null };
+        Returns: undefined;
       };
       create_lease: {
         Args: {
