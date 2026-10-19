@@ -25,12 +25,11 @@ type MetaKey = "features" | "pricing" | "contact" | "login" | "signup" | "forgot
  */
 export function pageMetadata(
   locale: string,
-  key: MetaKey,
+  key: MetaKey | { title: string; description: string },
   path: string,
   { index = true }: { index?: boolean } = {}
 ): Metadata {
-  const t = getDictionary(locale);
-  const meta = t.meta[key];
+  const meta = typeof key === "string" ? getDictionary(locale).meta[key] : key;
 
   return {
     title: meta.title,

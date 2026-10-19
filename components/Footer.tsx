@@ -27,8 +27,8 @@ export function Footer() {
     {
       title: t.footer.legal,
       links: [
-        { label: t.footer.privacy, href: path("/contact") },
-        { label: t.footer.terms, href: path("/contact") },
+        { label: t.footer.privacy, href: path("/privacy") },
+        { label: t.footer.terms, href: path("/terms") },
       ],
     },
   ];

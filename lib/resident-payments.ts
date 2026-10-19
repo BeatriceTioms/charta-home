@@ -38,7 +38,8 @@ export async function settleResidentPayment(providerRef: string): Promise<{ ok: 
 
   // The receipt, through Resend. Only on the transition to paid, so a second
   // prompt for the same payment does not send it twice.
-  if (settled === "paid" && row.status === "initiated") {
+  // The payer may have deleted their account meanwhile (user_id is then null).
+  if (settled === "paid" && row.status === "initiated" && row.user_id) {
     const { data: u } = await admin.auth.admin.getUserById(row.user_id);
     const { data: agency } = await admin.from("agencies").select("name, locale").eq("id", row.agency_id).single();
     if (u.user?.email) {

@@ -32,10 +32,15 @@ create table storage.objects (id uuid primary key default gen_random_uuid(), buc
 alter table storage.objects enable row level security;
 create or replace function storage.foldername(name text) returns text[] language sql immutable as $$ select string_to_array(name, '/') $$;
 `);
-for (const f of (await readdir(SAAS)).filter((f) => f.endsWith(".sql") && f !== MINE_FILE).sort()) {
+const all = (await readdir(SAAS)).filter((f) => f.endsWith(".sql")).sort();
+for (const f of all.filter((f) => f < MINE_FILE)) {
   try { await db.exec(await readFile(`${SAAS}/${f}`, "utf8")); } catch (e) { console.error("SAAS FAIL", f, e.message); process.exit(1); }
 }
 await db.exec(await readFile(MINE, "utf8"));
+// Later migrations build on this one (account deletion).
+for (const f of all.filter((f) => f > MINE_FILE)) {
+  try { await db.exec(await readFile(`${SAAS}/${f}`, "utf8")); } catch (e) { console.error("LATER FAIL", f, e.message); process.exit(1); }
+}
 console.log("migration applied");
 
 const one = async (sql, p = []) => (await db.query(sql, p)).rows[0];
@@ -98,4 +103,17 @@ await db.query(`insert into resident_payments (agency_id, user_id, kind, stay_id
 await db.query(`select public.settle_resident_payment('CSTEST01','paid')`);
 const st = await one(`select paid, hold_expires_at from stays where id = $1`, [r.j.stay_id]);
 ok(Number(st.paid) === 99000 && st.hold_expires_at === null, "stay paid and hold cleared");
+
+// account deletion: u2 holds unpaid nights and owns a photo, then leaves
+await as(u2.id);
+const h = await one(`select public.book_stay($1, $2::date, $3::date) j`, [ap.id, inDays(20), inDays(22)]);
+await as(null);
+await db.query(`insert into storage.objects (bucket_id, name, owner) values ('ticket-photos', $1::text || '/c.jpg', $1::uuid)`, [u2.id]);
+await db.query(`select public.forget_resident_user($1)`, [u2.id]);
+ok((await one(`select status from stays where id = $1`, [h.j.stay_id])).status === "cancelled", "deleting an account frees its unpaid hold");
+ok(Number((await one(`select count(*) n from storage.objects where owner = $1`, [u2.id])).n) === 0, "photos no longer owned by the leaving user");
+await db.query(`delete from auth.users where id = $1`, [u.id]);
+const kept = await one(`select count(*) n, count(user_id) linked from resident_payments`);
+ok(Number(kept.n) === 2 && Number(kept.linked) === 0, "payments survive the payer's account, unlinked");
+ok(Number((await one(`select paid from stays where id = $1`, [r.j.stay_id])).paid) === 99000, "paid stay kept for the agency");
 console.log("\nALL CHECKS PASSED");

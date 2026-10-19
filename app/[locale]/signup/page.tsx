@@ -142,11 +142,11 @@ function SignupForm() {
         </SubmitButton>
         <p className="text-center text-xs leading-relaxed text-onyx/45">
           {t.auth.signup.terms}{" "}
-          <Link href={path("/contact")} className="underline hover:text-azure-800">
+          <Link href={path("/terms")} className="underline hover:text-azure-800">
             {t.auth.signup.termsLink}
           </Link>{" "}
           {t.auth.signup.and}{" "}
-          <Link href={path("/contact")} className="underline hover:text-azure-800">
+          <Link href={path("/privacy")} className="underline hover:text-azure-800">
             {t.auth.signup.privacyLink}
           </Link>
           .
