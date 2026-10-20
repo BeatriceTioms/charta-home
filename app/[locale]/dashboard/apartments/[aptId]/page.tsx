@@ -326,32 +326,8 @@ export default function ApartmentPage() {
   const photos = apartment.photos ?? [];
   const shown = photos[Math.min(view, Math.max(0, photos.length - 1))];
 
-  // What the flat has been, from its first lease to today. Every figure is a
-  // record; the strip of weekdays that used to sit here was pinned to one
-  // week in August 2026 and meant nothing.
-  const h = apartment.history;
-  const hist = t.dash.apartment.history;
   const dayOf = (iso?: string) =>
     iso ? new Date(iso).toLocaleDateString(locale === "fr" ? "fr-FR" : "en-GB", { day: "numeric", month: "short", year: "numeric" }) : "";
-  const tenure = apartment.tenant && apartment.leaseStartsOn
-    ? f(hist.occupiedSince, { date: dayOf(apartment.leaseStartsOn) })
-    : h.lastLeaseEndedOn
-      ? f(hist.vacantSince, { date: dayOf(h.lastLeaseEndedOn) })
-      : h.firstLeaseOn ? "" : hist.neverLet;
-  const figures: { label: string; value: string; foot?: string }[] = [
-    { label: hist.tenantsEver, value: String(h.tenantsEver), foot: h.firstLeaseOn ? f(hist.since, { date: dayOf(h.firstLeaseOn) }) : hist.neverLet },
-    { label: hist.collectedLifetime, value: fmt(h.collectedLifetime), foot: h.paymentsCount > 0 ? `${f(hist.payments, { count: h.paymentsCount })} · ${f(hist.lastPayment, { date: dayOf(h.lastPaymentOn) })}` : hist.noPayment },
-    { label: hist.collectedYear, value: fmt(apartment.performance.collected), foot: tenure || undefined },
-    { label: hist.expensesLifetime, value: fmt(h.expensesLifetime), foot: `${hist.tickets} ${h.ticketsTotal} · ${f(hist.ticketsOpen, { count: h.ticketsOpen })}` },
-    // Only for a unit that is actually let by the night.
-    ...(apartment.shortStay.enabled || h.nightsLet > 0
-      ? [{
-          label: t.dash.stays.nightsLet,
-          value: String(h.nightsLet),
-          foot: `${f(t.dash.stays.guestsEver, { count: h.guestsEver })} · ${f(t.dash.stays.nightsThisYear, { count: h.nightsLetYtd })}`,
-        }]
-      : []),
-  ];
 
   return (
     <>
@@ -702,69 +678,6 @@ export default function ApartmentPage() {
               </p>
             ) : null}
             <StayRatesCard apartment={apartment} />
-          </Card>
-
-          <Card>
-            <div className="mb-1 flex items-center justify-between">
-              <h2 className="text-[15px] font-bold text-azure-950 dark:text-white">
-                {hist.title}
-              </h2>
-            </div>
-
-            <div className="mt-4 space-y-2">
-              {figures.map((x) => (
-                <div key={x.label} className="flex items-center justify-between gap-4 rounded-xl border border-azure-900/8 bg-white/50 px-4 py-2.5 dark:border-white/8 dark:bg-white/[0.04]">
-                  <span className="min-w-0">
-                    <span className="block text-[11px] font-semibold uppercase tracking-wider text-onyx/40 dark:text-white/35">{x.label}</span>
-                    {x.foot && <span className="block truncate text-[11px] text-onyx/50 dark:text-white/45" suppressHydrationWarning>{x.foot}</span>}
-                  </span>
-                  <span className="shrink-0 text-base font-bold text-azure-950 dark:text-white">{x.value}</span>
-                </div>
-              ))}
-            </div>
-            <div className="mt-2.5 flex -space-x-2">
-              {team.map((x) => (
-                <span
-                  key={x}
-                  className="grid h-9 w-9 place-items-center rounded-full border-2 border-white bg-azure-800 text-[11px] font-bold text-soft-500 dark:border-onyx"
-                >
-                  {x}
-                </span>
-              ))}
-            </div>
-
-            <div className="mt-6 space-y-4">
-              {schedule.map((item) => (
-                <div key={`${item.time}-${item.title}`} className="flex gap-3">
-                  <div className="w-12 shrink-0 pt-3 text-right">
-                    <p className="text-sm font-bold text-azure-950 dark:text-white">{item.time}</p>
-                  </div>
-                  <div
-                    className={`flex-1 rounded-2xl p-4 ${
-                      item.kind === "viewing"
-                        ? "bg-soft-200 text-azure-950 dark:bg-white/10 dark:text-white"
-                        : "bg-onyx text-white dark:bg-white/[0.06]"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold">{item.title}</p>
-                        <p className={`mt-0.5 text-xs ${item.kind === "viewing" ? "opacity-60" : "text-white/65"}`}>
-                          {item.detail}
-                        </p>
-                      </div>
-                      <span
-                        className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-[10px] font-bold ${
-                          item.kind === "viewing" ? "bg-white text-azure-800" : "bg-white/15 text-soft-500"
-                        }`}
-                      >
-                        {item.who}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
           </Card>
 
           <Card>

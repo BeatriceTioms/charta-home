@@ -22,7 +22,8 @@ create schema if not exists auth;
 create schema if not exists storage;
 create extension if not exists pgcrypto;
 create extension if not exists citext;
-create table auth.users (id uuid primary key default gen_random_uuid(), email text unique);
+create table auth.users (id uuid primary key default gen_random_uuid(), email text unique,
+  raw_user_meta_data jsonb);
 create or replace function auth.uid() returns uuid language sql stable as $$
   select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 create table storage.buckets (id text primary key, name text not null, public boolean not null default false);
@@ -1212,6 +1213,38 @@ check("the unit shows the guest in it and the one after",
 check("and a short stay is not a tenancy, so vacancy for long lets is unmoved",
   stateN?.is_occupied === false, "no lease on this unit");
 void future;
+
+/* ------------------------------------- every unit is on the app, by date */
+// aptN is let by the night and holds no lease: free now.
+const [aptLet] = await asUser(userA.id, `
+  insert into apartments (agency_id, building_id, label, rooms, bathrooms, sqm, base_rent)
+  values ('${a1.id}', '${bA.id}', 'Apt Occupe', 2, 1, 50, 900000) returning id`);
+await asUser(userA.id, `
+  select public.create_lease('${aptLet.id}', 'ZZ Occupant', '+224620777888', 900000, 'monthly',
+                             current_date, 0, current_date + 60)`);
+await q(`update apartments set short_stay = true where id = '${aptLet.id}'`);
+await q(`insert into stay_rates (agency_id, apartment_id, nights, price)
+         values ('${a1.id}', '${aptLet.id}', 1, 200000) on conflict do nothing`);
+
+// The flag an agency used to have to switch on decides nothing now.
+await q(`update apartments set listed = false where id = '${aptN.id}'`);
+const taken = await asUser(userA.id, `select * from public.listing_taken_nights(array['${aptN.id}']::uuid[])`);
+check("a unit nobody published still shows its calendar",
+  Array.isArray(taken), `${taken.length} booked ranges`);
+
+// Booking by the night is a date question, not a flag question.
+const [guest] = await q(`insert into auth.users (email) values ('guest@app.test') returning id`);
+let duringLease = "";
+try {
+  await asUser(guest.id, `select public.book_stay('${aptLet.id}', current_date + 5, current_date + 7)`);
+} catch (err) { duringLease = err.message; }
+check("a unit with a tenant in it cannot be booked for those nights",
+  /is let on these dates/.test(duringLease), duringLease || "no refusal");
+
+const afterLease = await asUser(guest.id,
+  `select public.book_stay('${aptLet.id}', current_date + 70, current_date + 72) as r`);
+check("and can be booked for after the tenancy ends",
+  Boolean(afterLease[0]?.r), "the unit comes free and the app can sell it");
 
 await db.close();
 

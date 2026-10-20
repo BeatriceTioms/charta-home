@@ -462,20 +462,6 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
             ? { guest: u.next_stay_guest, from: u.next_stay_from }
             : undefined,
         },
-        history: {
-          tenantsEver: Number(perfByApartment.get(u.apartment_id)?.tenants_ever ?? 0),
-          firstLeaseOn: perfByApartment.get(u.apartment_id)?.first_lease_on ?? undefined,
-          lastLeaseEndedOn: perfByApartment.get(u.apartment_id)?.last_lease_ended_on ?? undefined,
-          collectedLifetime: Number(perfByApartment.get(u.apartment_id)?.collected_lifetime ?? 0),
-          paymentsCount: Number(perfByApartment.get(u.apartment_id)?.payments_count ?? 0),
-          lastPaymentOn: perfByApartment.get(u.apartment_id)?.last_payment_on ?? undefined,
-          expensesLifetime: Number(perfByApartment.get(u.apartment_id)?.expenses_lifetime ?? 0),
-          ticketsTotal: Number(perfByApartment.get(u.apartment_id)?.tickets_total ?? 0),
-          ticketsOpen: Number(perfByApartment.get(u.apartment_id)?.tickets_open ?? 0),
-          guestsEver: Number(perfByApartment.get(u.apartment_id)?.guests_ever ?? 0),
-          nightsLet: Number(perfByApartment.get(u.apartment_id)?.nights_let ?? 0),
-          nightsLetYtd: Number(perfByApartment.get(u.apartment_id)?.nights_let_ytd ?? 0),
-        },
         payments: u.lease_id ? paymentsByLease.get(u.lease_id) ?? [] : [],
         receipts: u.lease_id ? receiptsByLease.get(u.lease_id) ?? [] : [],
         // Only what the agency actually uploaded.

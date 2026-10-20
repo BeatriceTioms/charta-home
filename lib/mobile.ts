@@ -81,8 +81,8 @@ export async function toListing(row: any) {
     description: row.listing_description ?? b.notes ?? "",
     agency: row.agencies?.name ?? "",
     agent: { name: row.agencies?.name ?? "", phone: row.agencies?.whatsapp_number ?? "" },
-    // A unit under an active lease can still be listed for short stays,
-    // but not offered for a new lease until it ends.
+    // Every unit is listed, so a let one says when it comes free: the end
+    // of the tenancy, or the date the agency set, or today.
     available_from: lease?.ends_on ?? row.available_from ?? new Date().toISOString().slice(0, 10),
     lat: b.latitude != null ? Number(b.latitude) : null,
     lng: b.longitude != null ? Number(b.longitude) : null,
