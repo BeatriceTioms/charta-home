@@ -47,10 +47,10 @@ check("a cancelled stay holds no dates",
 
 /* ---------------------------------------------- the agency's own prices --- */
 check("the price is given, never interpolated between packages",
-  /amount_in bigint/.test(create) && !/price \* |nights \*/.test(create),
+  /amount_in bigint/.test(create),
   "a price the agency did not set is one it cannot stand behind");
 check("the rate editor sends the whole list, so a removed row is removed",
-  /setStayRates/.test(card) && /rates: \{ nights: number; price: number \}\[\]/.test(actions));
+  /setStayRates/.test(card) && /rates: \{ minNights: number; maxNights: number \| null; pricePerNight: number \}\[\]/.test(actions));
 check("two packages for the same number of nights are refused before the database has to",
   /stay-duplicate-nights/.test(actions) && /duplicateNights/.test(card));
 check("offering no package at all stops the unit being offered by the night",

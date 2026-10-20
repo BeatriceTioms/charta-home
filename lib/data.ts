@@ -267,7 +267,13 @@ export type RecentEvent = {
 };
 
 /** A package the agency sells: so many nights at this price. */
-export type StayRate = { id: string; nights: number; price: number };
+export type StayRate = {
+  id: string;
+  /** From this many nights to that many. Null max is open ended. */
+  minNights: number;
+  maxNights: number | null;
+  pricePerNight: number;
+};
 
 export type StayStatus = "booked" | "checked_in" | "checked_out" | "cancelled";
 

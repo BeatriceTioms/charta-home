@@ -24,7 +24,7 @@ export function StayRatesCard({ apartment }: { apartment: Apartment }) {
   const s = t.dash.stays;
   const [editing, setEditing] = useState(false);
 
-  const rates = [...apartment.shortStay.rates].sort((a, b) => a.nights - b.nights);
+  const rates = [...apartment.shortStay.rates].sort((a, b) => a.minNights - b.minNights);
 
   return (
     <>
@@ -39,9 +39,16 @@ export function StayRatesCard({ apartment }: { apartment: Apartment }) {
                 className="flex items-center justify-between gap-4 rounded-xl border border-azure-900/8 bg-white/50 px-4 py-2.5 dark:border-white/8 dark:bg-white/[0.04]"
               >
                 <span className="text-sm font-semibold text-azure-950 dark:text-white">
-                  {f(r.nights === 1 ? s.nightOne : s.nights, { count: r.nights })}
+                  {r.maxNights === null
+                    ? f(s.bandOpen, { min: r.minNights })
+                    : r.maxNights === r.minNights
+                      ? f(r.minNights === 1 ? s.nightOne : s.nights, { count: r.minNights })
+                      : f(s.band, { min: r.minNights, max: r.maxNights })}
                 </span>
-                <span className="text-sm font-bold text-azure-950 dark:text-white">{fmt(r.price)}</span>
+                <span className="text-sm font-bold text-azure-950 dark:text-white">
+                  {fmt(r.pricePerNight)}
+                  <span className="ml-1 text-[11px] font-medium text-onyx/45 dark:text-white/40">{s.perNight}</span>
+                </span>
               </li>
             ))}
           </ul>
@@ -60,7 +67,7 @@ export function StayRatesCard({ apartment }: { apartment: Apartment }) {
   );
 }
 
-type Draft = { nights: string; price: string };
+type Draft = { min: string; max: string; price: string };
 
 function RatesModal({ apartment, onClose }: { apartment: Apartment; onClose: () => void }) {
   const { t, locale } = useI18n();
@@ -68,13 +75,21 @@ function RatesModal({ apartment, onClose }: { apartment: Apartment; onClose: () 
   const router = useRouter();
   const s = t.dash.stays;
 
-  const existing = [...apartment.shortStay.rates].sort((a, b) => a.nights - b.nights);
+  const existing = [...apartment.shortStay.rates].sort((a, b) => a.minNights - b.minNights);
   const [rows, setRows] = useState<Draft[]>(
     existing.length > 0
-      ? existing.map((r) => ({ nights: String(r.nights), price: String(r.price) }))
-      // The three durations most agencies start from. All editable, and a
-      // row left blank is simply not a package.
-      : [{ nights: "1", price: "" }, { nights: "3", price: "" }, { nights: "7", price: "" }]
+      ? existing.map((r) => ({
+          min: String(r.minNights),
+          max: r.maxNights === null ? "" : String(r.maxNights),
+          price: String(r.pricePerNight),
+        }))
+      // The three bands most agencies start from, the last one open ended.
+      // All editable, and a row with no price is simply not a band.
+      : [
+          { min: "1", max: "3", price: "" },
+          { min: "4", max: "7", price: "" },
+          { min: "8", max: "", price: "" },
+        ]
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>();
@@ -85,18 +100,42 @@ function RatesModal({ apartment, onClose }: { apartment: Apartment; onClose: () 
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const rates = rows
-      .map((r) => ({ nights: Number(r.nights), price: Number(r.price) }))
-      .filter((r) => r.nights >= 1 && r.price > 0);
-    if (new Set(rates.map((r) => r.nights)).size !== rates.length) {
+      .map((r) => ({
+        minNights: Number(r.min),
+        maxNights: r.max.trim() === "" ? null : Number(r.max),
+        pricePerNight: Number(r.price),
+      }))
+      .filter((r) => r.minNights >= 1 && r.pricePerNight > 0)
+      .sort((a, b) => a.minNights - b.minNights);
+    if (new Set(rates.map((r) => r.minNights)).size !== rates.length) {
       setError(s.duplicateNights);
       return;
+    }
+    // A band that ends before it starts, or that runs into the next one.
+    for (let i = 0; i < rates.length; i++) {
+      const r = rates[i];
+      if (r.maxNights !== null && r.maxNights < r.minNights) {
+        setError(s.bandBackwards);
+        return;
+      }
+      const prev = rates[i - 1];
+      if (prev && prev.maxNights !== null && r.minNights <= prev.maxNights) {
+        setError(s.overlappingBands);
+        return;
+      }
     }
     setSaving(true);
     setError(undefined);
     const result = await sb.setStayRates(locale, { agencyId, apartmentId: apartment.id, rates });
     setSaving(false);
     if (!result.ok) {
-      setError(result.error === "stay-duplicate-nights" ? s.duplicateNights : t.dash.common.saveFailed);
+      setError(
+        result.error === "stay-duplicate-nights"
+          ? s.duplicateNights
+          : result.error === "stay-overlapping-bands"
+            ? s.overlappingBands
+            : t.dash.common.saveFailed
+      );
       return;
     }
     notify(s.ratesSaved);
@@ -112,17 +151,28 @@ function RatesModal({ apartment, onClose }: { apartment: Apartment; onClose: () 
         <div className="space-y-2">
           {rows.map((row, i) => (
             <div key={i} className="flex items-end gap-2">
-              <Field label={i === 0 ? s.nightsLabel : ""}>
+              <Field label={i === 0 ? s.fromLabel : ""}>
                 <input
                   type="number"
                   min={1}
                   max={365}
-                  value={row.nights}
-                  onChange={(e) => setRow(i, { nights: e.target.value })}
+                  value={row.min}
+                  onChange={(e) => setRow(i, { min: e.target.value })}
                   className={fieldCls}
                 />
               </Field>
-              <Field label={i === 0 ? s.priceLabel : ""}>
+              <Field label={i === 0 ? s.toLabel : ""}>
+                <input
+                  type="number"
+                  min={1}
+                  max={365}
+                  value={row.max}
+                  placeholder={s.openEnded}
+                  onChange={(e) => setRow(i, { max: e.target.value })}
+                  className={fieldCls}
+                />
+              </Field>
+              <Field label={i === 0 ? s.perNightLabel : ""}>
                 <input
                   type="number"
                   min={0}
@@ -147,7 +197,7 @@ function RatesModal({ apartment, onClose }: { apartment: Apartment; onClose: () 
 
         <button
           type="button"
-          onClick={() => setRows((list) => [...list, { nights: "", price: "" }])}
+          onClick={() => setRows((list) => [...list, { min: "", max: "", price: "" }])}
           className="w-full rounded-2xl border border-dashed border-azure-900/20 py-2.5 text-sm font-semibold text-azure-800 transition hover:bg-azure-900/5 dark:border-white/20 dark:text-soft-500 dark:hover:bg-white/10"
         >
           {s.addRate}

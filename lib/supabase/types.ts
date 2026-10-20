@@ -381,8 +381,10 @@ export type StayRateRow = {
   id: string;
   agency_id: string;
   apartment_id: string;
-  nights: number;
-  price: number;
+  /** The band: from this many nights to that many. Null max is open ended. */
+  min_nights: number;
+  max_nights: number | null;
+  price_per_night: number;
   created_at: string;
 };
 

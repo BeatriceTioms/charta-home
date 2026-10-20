@@ -1,4 +1,4 @@
-import { periodValue, type ActivityItem, type Building, type LeaseCycle, type Payment, type PaymentRecord, type RecentEvent, type RentStatus, type Stay, type Technician, type Ticket } from "@/lib/data";
+import { periodValue, type ActivityItem, type Building, type LeaseCycle, type Payment, type PaymentRecord, type RecentEvent, type RentStatus, type Stay, type StayRate, type Technician, type Ticket } from "@/lib/data";
 import { requestedAgencyId } from "@/lib/agency";
 import { isPlanCode, PLAN_BANDS, type PlanInfo } from "@/lib/pricing";
 import { isSupabaseConfigured } from "./config";
@@ -210,7 +210,7 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
     // client component with no loader of its own.
     supabase.from("reminder_rules").select("*").eq("agency_id", agencyId).order("offset_days"),
     // Letting by the night: the agency's own packages, and every booking.
-    supabase.from("stay_rates").select("*").eq("agency_id", agencyId).order("nights"),
+    supabase.from("stay_rates").select("*").eq("agency_id", agencyId),
     supabase
       .from("stays")
       .select("*, apartments(label, building_id)")
@@ -367,10 +367,22 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
   );
 
   // Packages by unit, so each apartment carries its own price list.
-  const ratesByApartment = new Map<string, { id: string; nights: number; price: number }[]>();
+  const ratesByApartment = new Map<string, StayRate[]>();
   for (const r of stayRateRows ?? []) {
     const list = ratesByApartment.get(r.apartment_id) ?? [];
-    list.push({ id: r.id, nights: r.nights, price: Number(r.price) });
+    // Tolerant of the window between a deploy and its migration, when these
+    // rows are still packages: a total for exactly so many nights.
+    const row = r as unknown as Record<string, number | null>;
+    const min = Number(row.min_nights ?? row.nights ?? 1);
+    list.push({
+      id: r.id,
+      minNights: min,
+      maxNights: row.min_nights != null ? (row.max_nights === null ? null : Number(row.max_nights)) : min,
+      pricePerNight:
+        row.price_per_night != null
+          ? Number(row.price_per_night)
+          : Math.round(Number(row.price ?? 0) / Math.max(1, Number(row.nights ?? 1))),
+    });
     ratesByApartment.set(r.apartment_id, list);
   }
 

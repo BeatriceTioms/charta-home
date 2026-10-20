@@ -96,12 +96,15 @@ export async function addApartment(
     bathrooms: number;
     sqm: number;
     baseRent: number;
+    /** Let by the night rather than on a tenancy. Rates come next. */
+    shortStay?: boolean;
   }
 ): Promise<ActionResult> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("apartments")
     .insert({
+      short_stay: input.shortStay ?? false,
       agency_id: input.agencyId,
       building_id: input.buildingId,
       label: input.label,
@@ -1285,25 +1288,45 @@ export async function confirmPayment(
  */
 export async function setStayRates(
   locale: string,
-  input: { agencyId: string; apartmentId: string; rates: { nights: number; price: number }[] }
+  input: {
+    agencyId: string;
+    apartmentId: string;
+    rates: { minNights: number; maxNights: number | null; pricePerNight: number }[];
+  }
 ): Promise<ActionResult> {
   const clean = input.rates
-    .map((r) => ({ nights: Math.trunc(Number(r.nights)), price: Math.trunc(Number(r.price)) }))
-    .filter((r) => Number.isFinite(r.nights) && Number.isFinite(r.price) && r.nights >= 1 && r.nights <= 365 && r.price > 0);
-  // Two rows for the same number of nights is a price list that cannot answer
-  // its own question, and the database's own unique index would refuse it.
-  const seen = new Set<number>();
-  for (const r of clean) {
-    if (seen.has(r.nights)) return { ok: false, error: "stay-duplicate-nights" };
-    seen.add(r.nights);
+    .map((r) => ({
+      min_nights: Math.trunc(Number(r.minNights)),
+      max_nights: r.maxNights === null || r.maxNights === undefined ? null : Math.trunc(Number(r.maxNights)),
+      price_per_night: Math.trunc(Number(r.pricePerNight)),
+    }))
+    .filter(
+      (r) =>
+        Number.isFinite(r.min_nights) && r.min_nights >= 1 && r.min_nights <= 365 &&
+        (r.max_nights === null || (Number.isFinite(r.max_nights) && r.max_nights >= r.min_nights && r.max_nights <= 365)) &&
+        Number.isFinite(r.price_per_night) && r.price_per_night > 0
+    )
+    .sort((a, b) => a.min_nights - b.min_nights);
+
+  // Two bands starting at the same length is a price list that cannot answer
+  // its own question, and so is one that starts inside the one before it.
+  for (let i = 0; i < clean.length; i++) {
+    if (i > 0 && clean[i].min_nights === clean[i - 1].min_nights) {
+      return { ok: false, error: "stay-duplicate-nights" };
+    }
+    const prev = clean[i - 1];
+    if (prev && prev.max_nights !== null && clean[i].min_nights <= prev.max_nights) {
+      return { ok: false, error: "stay-overlapping-bands" };
+    }
   }
 
   const supabase = await createClient();
+  const keep = clean.map((r) => r.min_nights);
   const { error: wipe } = await supabase
     .from("stay_rates")
     .delete()
     .eq("apartment_id", input.apartmentId)
-    .not("nights", "in", `(${[...seen].join(",") || "0"})`);
+    .not("min_nights", "in", `(${keep.join(",") || "0"})`);
   if (wipe) return { ok: false, error: wipe.message };
 
   if (clean.length > 0) {
@@ -1311,10 +1334,9 @@ export async function setStayRates(
       clean.map((r) => ({
         agency_id: input.agencyId,
         apartment_id: input.apartmentId,
-        nights: r.nights,
-        price: r.price,
+        ...r,
       })),
-      { onConflict: "apartment_id,nights" }
+      { onConflict: "apartment_id,min_nights" }
     );
     if (error) return { ok: false, error: error.message };
   }

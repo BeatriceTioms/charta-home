@@ -1113,18 +1113,38 @@ const [aptN] = await asUser(userA.id, `
   insert into apartments (agency_id, building_id, label, rooms, bathrooms, sqm, base_rent)
   values ('${a1.id}', '${bA.id}', 'Studio Nuit', 1, 1, 32, 0) returning id`);
 await asUser(userA.id, `
-  insert into stay_rates (agency_id, apartment_id, nights, price) values
-    ('${a1.id}', '${aptN.id}', 1, 350000),
-    ('${a1.id}', '${aptN.id}', 3, 900000),
-    ('${a1.id}', '${aptN.id}', 7, 1900000)`);
-const ratesSeen = await asUser(userA.id, `select nights, price from stay_rates where apartment_id = '${aptN.id}' order by nights`);
-check("an agency sets its own durations and prices",
-  ratesSeen.length === 3 && Number(ratesSeen[1].price) === 900000,
-  ratesSeen.map((r) => `${r.nights}n=${r.price}`).join(" "));
+  insert into stay_rates (agency_id, apartment_id, min_nights, max_nights, price_per_night) values
+    ('${a1.id}', '${aptN.id}', 1, 3, 350000),
+    ('${a1.id}', '${aptN.id}', 4, 7, 300000),
+    ('${a1.id}', '${aptN.id}', 8, null, 250000)`);
+const ratesSeen = await asUser(userA.id, `select min_nights, max_nights, price_per_night from stay_rates where apartment_id = '${aptN.id}' order by min_nights`);
+check("an agency sets its own bands and a nightly price for each",
+  ratesSeen.length === 3 && Number(ratesSeen[1].price_per_night) === 300000 && ratesSeen[2].max_nights === null,
+  ratesSeen.map((r) => `${r.min_nights}..${r.max_nights ?? "∞"}=${r.price_per_night}`).join(" "));
 let twoSameNights = false;
-try { await asUser(userA.id, `insert into stay_rates (agency_id, apartment_id, nights, price) values ('${a1.id}', '${aptN.id}', 3, 800000)`); }
+try { await asUser(userA.id, `insert into stay_rates (agency_id, apartment_id, min_nights, max_nights, price_per_night) values ('${a1.id}', '${aptN.id}', 4, 9, 800000)`); }
 catch (err) { twoSameNights = /duplicate key|unique/i.test(err.message); }
-check("one price per duration, so the list can answer its own question", twoSameNights);
+check("one band per starting length, so the list can answer its own question", twoSameNights);
+
+// The gap an agency leaves. 1 to 3 and 4 to 7 and 8 up cover everything, so
+// add a unit whose bands skip a length and check it is still quoted.
+const [aptGap] = await asUser(userA.id, `
+  insert into apartments (agency_id, building_id, label, rooms, bathrooms, sqm, base_rent)
+  values ('${a1.id}', '${bA.id}', 'Studio Trou', 1, 1, 28, 0) returning id`);
+await asUser(userA.id, `
+  insert into stay_rates (agency_id, apartment_id, min_nights, max_nights, price_per_night) values
+    ('${a1.id}', '${aptGap.id}', 1, 3, 100000),
+    ('${a1.id}', '${aptGap.id}', 5, 7, 80000)`);
+const [q3] = await asUser(userA.id, `select public.stay_quote('${aptGap.id}', 3) as t`);
+const [q4] = await asUser(userA.id, `select public.stay_quote('${aptGap.id}', 4) as t`);
+const [q6] = await asUser(userA.id, `select public.stay_quote('${aptGap.id}', 6) as t`);
+const [q9] = await asUser(userA.id, `select public.stay_quote('${aptGap.id}', 9) as t`);
+check("a stay is the nights times its band's nightly rate",
+  Number(q3.t) === 300000 && Number(q6.t) === 480000, `3 nights ${q3.t}, 6 nights ${q6.t}`);
+check("a length the agency wrote no band for takes the last band below it",
+  Number(q4.t) === 400000, `4 nights ${q4.t}, at the 1 to 3 rate rather than refused`);
+check("and so does one past the last band",
+  Number(q9.t) === 720000, `9 nights ${q9.t}, at the 5 to 7 rate`);
 
 const [stayA] = await asUser(userA.id, `
   select public.create_stay('${aptN.id}', 'Awa Baldé', date '2026-11-10', date '2026-11-13', 900000, '+224620111222', 'awa@example.com', 400000) as id`);
@@ -1223,8 +1243,8 @@ await asUser(userA.id, `
   select public.create_lease('${aptLet.id}', 'ZZ Occupant', '+224620777888', 900000, 'monthly',
                              current_date, 0, current_date + 60)`);
 await q(`update apartments set short_stay = true where id = '${aptLet.id}'`);
-await q(`insert into stay_rates (agency_id, apartment_id, nights, price)
-         values ('${a1.id}', '${aptLet.id}', 1, 200000) on conflict do nothing`);
+await q(`insert into stay_rates (agency_id, apartment_id, min_nights, max_nights, price_per_night)
+         values ('${a1.id}', '${aptLet.id}', 1, null, 200000) on conflict do nothing`);
 
 // The flag an agency used to have to switch on decides nothing now.
 await q(`update apartments set listed = false where id = '${aptN.id}'`);

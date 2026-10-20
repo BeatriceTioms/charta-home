@@ -21,6 +21,7 @@ function AddApartmentModal({ onClose }: { onClose: () => void }) {
   const { building } = useBuilding();
   const { addApartment, notify } = useStore();
   const m = t.dash.apartments.addModal;
+  const [letting, setLetting] = useState<"monthly" | "nightly">("monthly");
   const [error, setError] = useState<string>();
   const [photos, setPhotos] = useState<string[]>([]);
 
@@ -33,6 +34,7 @@ function AddApartmentModal({ onClose }: { onClose: () => void }) {
       return;
     }
     addApartment(building.id, {
+      shortStay: letting === "nightly",
       label,
       rooms: Number(data.get("rooms") ?? 2),
       bathrooms: Number(data.get("bathrooms") ?? 1),
@@ -49,6 +51,29 @@ function AddApartmentModal({ onClose }: { onClose: () => void }) {
   return (
     <Modal title={m.title} subtitle={f(m.subtitle, { building: building.name })} onClose={onClose}>
       <form onSubmit={submit} className="space-y-4">
+        {/* How it is let, because the two are priced in different places: a
+            monthly rent here, a nightly band on the unit's own page. */}
+        <Field label={m.letting} hint={letting === "nightly" ? m.nightlyHint : m.lettingHint} hintAfter>
+          <div role="radiogroup" aria-label={m.letting} className="flex gap-2">
+            {([["monthly", m.monthlyLet], ["nightly", m.nightlyLet]] as const).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                role="radio"
+                aria-checked={letting === key}
+                onClick={() => setLetting(key)}
+                className={`flex-1 rounded-2xl border px-4 py-2.5 text-sm font-semibold transition ${
+                  letting === key
+                    ? "border-azure-950 bg-azure-950 text-white dark:border-soft-500 dark:bg-soft-500 dark:text-azure-950"
+                    : "border-azure-900/15 text-onyx/60 hover:bg-azure-900/5 dark:border-white/15 dark:text-white/60 dark:hover:bg-white/10"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </Field>
+
         <Field label={m.label} error={error}>
           <input name="label" placeholder={m.labelPlaceholder} className={fieldCls} />
         </Field>
@@ -67,9 +92,11 @@ function AddApartmentModal({ onClose }: { onClose: () => void }) {
             not a property of a room, and it is agreed with whoever signs. The
             field that used to sit beside this one was never saved: apartments
             has no such column, so the choice vanished on the next refresh. */}
+        {letting === "monthly" && (
         <Field label={m.rent} hint={m.rentHint} hintAfter>
           <input name="rent" type="number" min={0} step={50} defaultValue={800} className={fieldCls} />
         </Field>
+        )}
         <Field plain label={m.photos} hint={m.photosHint}>
           <MultiPhotoPicker
             value={photos}

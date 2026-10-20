@@ -30,7 +30,16 @@ create table if not exists stay_rates (
   unique (apartment_id, nights)
 );
 
-create index if not exists stay_rates_apartment_idx on stay_rates (apartment_id, nights);
+do $idx$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'stay_rates' and column_name = 'nights'
+  ) then
+    execute 'create index if not exists stay_rates_apartment_idx on public.stay_rates (apartment_id, nights)';
+  end if;
+end
+$idx$;
 
 comment on table stay_rates is
   'What a unit costs for a given number of nights. One row per package the agency sells.';

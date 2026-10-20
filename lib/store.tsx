@@ -76,6 +76,8 @@ type StoreValue = {
       sqm: number;
       rent: number;
       cycle: LeaseCycle;
+      /** Let by the night rather than on a tenancy. */
+      shortStay?: boolean;
       photos?: string[];
     }
   ) => void;
@@ -329,7 +331,7 @@ export function StoreProvider({
             cycle: input.cycle,
             rentStatus: "pending",
             performance: { collected: 0, expenses: 0, net: 0, marginPct: null },
-        shortStay: { enabled: false, rates: [] },
+        shortStay: { enabled: input.shortStay ?? false, rates: [] },
             payments: [],
             // The first photo doubles as the cover shown in the apartment grid.
             photos: (input.photos ?? []).map((src, n) => ({ id: `${id}-p${n}`, src })),
@@ -342,6 +344,7 @@ export function StoreProvider({
       // cannot go through persist(): it needs the new row's id back first.
       persist(async () => {
         const created = await sb.addApartment(locale, {
+          shortStay: input.shortStay ?? false,
           buildingId,
           agencyId,
           label: input.label,

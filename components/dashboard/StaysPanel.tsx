@@ -214,12 +214,13 @@ function BookStayModal({ onClose }: { onClose: () => void }) {
   const bookable = building.apartments.filter((a) => a.shortStay.enabled);
   const [apartmentId, setApartmentId] = useState(bookable[0]?.id ?? "");
   const unit = bookable.find((a) => a.id === apartmentId);
-  const rates = [...(unit?.shortStay.rates ?? [])].sort((a, b) => a.nights - b.nights);
+  const rates = [...(unit?.shortStay.rates ?? [])].sort((a, b) => a.minNights - b.minNights);
 
   const today = new Date().toISOString().slice(0, 10);
   const [checkIn, setCheckIn] = useState(today);
   const [checkOut, setCheckOut] = useState("");
   const [amount, setAmount] = useState("");
+  const [amountTouched, setAmountTouched] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>();
 
@@ -228,11 +229,20 @@ function BookStayModal({ onClose }: { onClose: () => void }) {
       ? Math.max(0, Math.round((Date.parse(checkOut) - Date.parse(checkIn)) / 86_400_000))
       : 0;
 
-  /** Picking a package sets the dates and the price in one go. */
-  const applyRate = (rateNights: number, price: number) => {
+  /** Picking a band sets the dates to its shortest stay and prices it. */
+  const applyRate = (rateNights: number, pricePerNight: number) => {
     const out = new Date(Date.parse(checkIn) + rateNights * 86_400_000).toISOString().slice(0, 10);
     setCheckOut(out);
-    setAmount(String(price));
+    setAmount(String(rateNights * pricePerNight));
+  };
+
+  // What the agency charges for the length actually chosen: the band that
+  // covers it, or the last one that starts at or below it, which is what
+  // the database quotes too.
+  const rateFor = (n: number) => {
+    const covering = rates.filter((r) => r.minNights <= n && (r.maxNights === null || r.maxNights >= n));
+    const below = rates.filter((r) => r.minNights <= n);
+    return covering[covering.length - 1] ?? below[below.length - 1] ?? null;
   };
 
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -302,10 +312,15 @@ function BookStayModal({ onClose }: { onClose: () => void }) {
                 <button
                   key={r.id}
                   type="button"
-                  onClick={() => applyRate(r.nights, r.price)}
+                  onClick={() => applyRate(r.minNights, r.pricePerNight)}
                   className="rounded-full border border-azure-900/15 px-3 py-1.5 text-xs font-semibold text-azure-800 transition hover:bg-azure-900/5 dark:border-white/15 dark:text-soft-500 dark:hover:bg-white/10"
                 >
-                  {f(r.nights === 1 ? s.nightOne : s.nights, { count: r.nights })} · {fmt(r.price)}
+                  {r.maxNights === null
+                    ? f(s.bandOpen, { min: r.minNights })
+                    : r.maxNights === r.minNights
+                      ? f(r.minNights === 1 ? s.nightOne : s.nights, { count: r.minNights })
+                      : f(s.band, { min: r.minNights, max: r.maxNights })}{" "}
+                  · {fmt(r.pricePerNight)} {s.perNight}
                 </button>
               ))}
             </div>
@@ -320,14 +335,30 @@ function BookStayModal({ onClose }: { onClose: () => void }) {
           <Field label={s.checkIn}>
             <input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} className={fieldCls} />
           </Field>
-          <Field label={s.checkOut} hint={nights > 0 ? f(nights === 1 ? s.nightOne : s.nights, { count: nights }) : undefined} hintAfter>
+          <Field
+            label={s.checkOut}
+            hint={
+              nights > 0
+                ? rateFor(nights)
+                  ? `${f(nights === 1 ? s.nightOne : s.nights, { count: nights })} · ${f(s.atRate, { rate: fmt(rateFor(nights)!.pricePerNight) })}`
+                  : f(nights === 1 ? s.nightOne : s.nights, { count: nights })
+                : undefined
+            }
+            hintAfter
+          >
             <input type="date" value={checkOut} min={checkIn} onChange={(e) => setCheckOut(e.target.value)} className={fieldCls} />
           </Field>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label={s.amount}>
-            <input type="number" min={0} value={amount} onChange={(e) => setAmount(e.target.value)} className={fieldCls} />
+            <input
+              type="number"
+              min={0}
+              value={amount}
+              onChange={(e) => { setAmount(e.target.value); setAmountTouched(true); }}
+              className={fieldCls}
+            />
           </Field>
           <Field label={s.paidNow} hint={s.paidNowHint} hintAfter>
             <input name="paid" type="number" min={0} defaultValue={0} className={fieldCls} />

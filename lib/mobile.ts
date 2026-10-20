@@ -60,7 +60,30 @@ export async function toListing(row: any, availability?: { free_from: string | n
     ...(await signedUrls("building-photos", [b.photo_path, b.interior_path])),
   ];
   const rates: Record<string, number> = {};
-  for (const r of row.stay_rates ?? []) rates[String(r.nights)] = Number(r.price);
+  // Bands are what the agency sets: so many nights to so many, at this much
+  // per night. `rates` keeps the old shape the app already reads, one entry
+  // per band at the length it starts, so nothing breaks while the app moves
+  // to `rate_bands`, which is the whole truth.
+  // A deployment reaches Vercel before its migration is pasted into
+  // Supabase, and in that window these rows are still the old packages: so
+  // many nights for a total. Read either, so the order of the two cannot
+  // take the listings down.
+  const bands = [...(row.stay_rates ?? [])]
+    .map((r: Record<string, number | null>) => {
+      const min = Number(r.min_nights ?? r.nights ?? 1);
+      const perNight =
+        r.price_per_night != null
+          ? Number(r.price_per_night)
+          : Math.round(Number(r.price ?? 0) / Math.max(1, Number(r.nights ?? 1)));
+      return {
+        min_nights: min,
+        max_nights: r.min_nights != null ? (r.max_nights === null ? null : Number(r.max_nights)) : min,
+        price_per_night: perNight,
+      };
+    })
+    .filter((b) => b.price_per_night > 0)
+    .sort((a, b) => a.min_nights - b.min_nights);
+  for (const b of bands) rates[String(b.min_nights)] = b.min_nights * b.price_per_night;
   const lease = (row.leases ?? []).find((l: { status: string }) => l.status === "active");
   return {
     id: row.id,
@@ -93,6 +116,7 @@ export async function toListing(row: any, availability?: { free_from: string | n
     lat: b.latitude != null ? Number(b.latitude) : null,
     lng: b.longitude != null ? Number(b.longitude) : null,
     stay_rates: row.short_stay ? rates : {},
+    rate_bands: row.short_stay ? bands : [],
     verified: true,
   };
 }
@@ -102,6 +126,6 @@ export const listingSelect = `
   listing_title, listing_description, available_from,
   buildings ( name, city, neighborhood, latitude, longitude, photo_path, interior_path, amenities, notes ),
   agencies ( name, whatsapp_number, currency ),
-  stay_rates ( nights, price ),
+  stay_rates ( * ),
   leases ( status, ends_on )
 `;
