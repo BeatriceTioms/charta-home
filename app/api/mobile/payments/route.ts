@@ -6,12 +6,13 @@ export const dynamic = "force-dynamic";
 
 /**
  * Opens a PayUnit checkout for the resident: rent (charges of their own
- * lease, plus months ahead) or a short stay they hold. The amount is always
+ * lease, plus months ahead), a short stay they hold, or a monthly rental they
+ * hold (first month and deposit, see book_lease). The amount is always
  * computed here from the database, never taken from the app.
  *
- * Body: { kind: "rent" | "stay", method: "mobile_money" | "card",
+ * Body: { kind: "rent" | "stay" | "booking", method: "mobile_money" | "card",
  *         charge_ids?: string[]  (uuids, or "adv:YYYY-MM-01" for a month ahead),
- *         stay_id?: string }
+ *         stay_id?: string, lease_request_id?: string }
  * Answer: { reference, amount, checkout_url }
  */
 export async function POST(request: Request) {
@@ -24,6 +25,7 @@ export async function POST(request: Request) {
     method?: string;
     charge_ids?: string[];
     stay_id?: string;
+    lease_request_id?: string;
   };
   const method = body.method === "card" ? "card" : "mobile_money";
   const admin = mobileDb();
@@ -54,6 +56,28 @@ export async function POST(request: Request) {
     amount = Number(stay.amount) - Number(stay.paid);
     description = `Stay ${stay.check_in} → ${stay.check_out}`;
     Object.assign(row, { kind: "stay", stay_id: stay.id });
+  } else if (body.kind === "booking") {
+    const { data: req } = await admin
+      .from("lease_requests")
+      .select("id, agency_id, amount, paid, status, hold_expires_at, move_in, months, agencies ( currency )")
+      .eq("id", body.lease_request_id ?? "")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (!req || req.status !== "held") return json({ error_key: "err_generic", error: "unknown booking" }, 404);
+    if (!req.hold_expires_at || Date.parse(req.hold_expires_at) < Date.now()) {
+      return json({ error_key: "hold_expired", error: "the hold lapsed, book again" }, 409);
+    }
+    await admin
+      .from("lease_requests")
+      .update({ hold_expires_at: new Date(Date.now() + 20 * 60e3).toISOString() })
+      .eq("id", req.id)
+      .eq("status", "held");
+    agencyId = req.agency_id;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    currency = (req as any).agencies?.currency ?? "XAF";
+    amount = Number(req.amount ?? 0) - Number(req.paid ?? 0);
+    description = `Rental from ${req.move_in}, ${req.months} months`;
+    Object.assign(row, { kind: "booking", lease_request_id: req.id });
   } else {
     const { data: residents } = await admin.from("residents").select("id").eq("user_id", user.id);
     const { data: lease } = await admin

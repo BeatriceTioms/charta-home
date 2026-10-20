@@ -53,7 +53,7 @@ export const unauthorized = () => json({ error_key: "err_generic", error: "sign 
  * _property). Rows come from the `listingRows` query below.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function toListing(row: any) {
+export async function toListing(row: any, availability?: { free_from: string | null; occupied: boolean }) {
   const b = row.buildings ?? {};
   const photos = [
     ...(await signedUrls("apartment-photos", [row.photo_path])),
@@ -81,9 +81,15 @@ export async function toListing(row: any) {
     description: row.listing_description ?? b.notes ?? "",
     agency: row.agencies?.name ?? "",
     agent: { name: row.agencies?.name ?? "", phone: row.agencies?.whatsapp_number ?? "" },
-    // Every unit is listed, so a let one says when it comes free: the end
-    // of the tenancy, or the date the agency set, or today.
-    available_from: lease?.ends_on ?? row.available_from ?? new Date().toISOString().slice(0, 10),
+    // Every unit is listed, so a let one says when it comes free. With
+    // `availability` (apartments_availability) that also counts upcoming
+    // leases and months already reserved in the app, and is null when the
+    // tenancy has no end date. Without it: the end of the tenancy, or the
+    // date the agency set, or today.
+    available_from: availability
+      ? availability.free_from
+      : lease?.ends_on ?? row.available_from ?? new Date().toISOString().slice(0, 10),
+    occupied: availability ? availability.occupied : Boolean(lease),
     lat: b.latitude != null ? Number(b.latitude) : null,
     lng: b.longitude != null ? Number(b.longitude) : null,
     stay_rates: row.short_stay ? rates : {},

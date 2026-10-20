@@ -31,7 +31,8 @@
     "admin:grant": "node --experimental-strip-types --no-warnings scripts/grant-admin.mjs",
     "payunit:check": "node --experimental-strip-types --no-warnings scripts/verify-payunit.mjs",
     "stays:check": "node scripts/verify-stays.mjs",
-    "portfolio:check": "node scripts/verify-portfolio.mjs"
+    "portfolio:check": "node scripts/verify-portfolio.mjs",
+    "resident:check": "node --experimental-strip-types --no-warnings scripts/verify-resident-app.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

@@ -9,6 +9,7 @@ import { useMoney } from "@/lib/money";
 import { useI18n } from "@/lib/i18n/context";
 import { RelativeTime } from "@/components/dashboard/RelativeTime";
 import { Card, CardTitle, PhotoPlaceholder, TicketChip } from "@/components/dashboard/ui";
+import { AppBookings } from "@/components/dashboard/AppBookings";
 
 function WorkOrdersDonut({
   segments,
@@ -325,6 +326,8 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
+
+          <AppBookings />
 
           <Card>
             <div className="mb-5 flex items-center justify-between">

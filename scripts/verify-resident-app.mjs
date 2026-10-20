@@ -104,9 +104,18 @@ await db.query(`select public.settle_resident_payment('CSTEST01','paid')`);
 const st = await one(`select paid, hold_expires_at from stays where id = $1`, [r.j.stay_id]);
 ok(Number(st.paid) === 99000 && st.hold_expires_at === null, "stay paid and hold cleared");
 
-// account deletion: u2 holds unpaid nights and owns a photo, then leaves
+// a unit with a tenant cannot take guests by the night
 await as(u2.id);
-const h = await one(`select public.book_stay($1, $2::date, $3::date) j`, [ap.id, inDays(20), inDays(22)]);
+let letClash = null;
+try { await db.query(`select public.book_stay($1, $2::date, $3::date)`, [ap.id, inDays(20), inDays(22)]); } catch (e) { letClash = e; }
+ok(letClash?.code === "23P01", "nights inside a tenancy are refused");
+
+// account deletion: u2 holds unpaid nights and owns a photo, then leaves
+await as(null);
+const apS = await one(`insert into apartments (agency_id, building_id, label, base_rent, short_stay) values ($1,$2,'S1',200000,true) returning id`, [ag.id, b.id]);
+await db.query(`insert into stay_rates (agency_id, apartment_id, nights, price) values ($1,$2,1,30000)`, [ag.id, apS.id]);
+await as(u2.id);
+const h = await one(`select public.book_stay($1, $2::date, $3::date) j`, [apS.id, inDays(20), inDays(22)]);
 await as(null);
 await db.query(`insert into storage.objects (bucket_id, name, owner) values ('ticket-photos', $1::text || '/c.jpg', $1::uuid)`, [u2.id]);
 await db.query(`select public.forget_resident_user($1)`, [u2.id]);
@@ -116,4 +125,48 @@ await db.query(`delete from auth.users where id = $1`, [u.id]);
 const kept = await one(`select count(*) n, count(user_id) linked from resident_payments`);
 ok(Number(kept.n) === 2 && Number(kept.linked) === 0, "payments survive the payer's account, unlinked");
 ok(Number((await one(`select paid from stays where id = $1`, [r.j.stay_id])).paid) === 99000, "paid stay kept for the agency");
+
+// open listings and monthly booking
+const free = async (id) => (await one(`select public.apartment_free_from($1) d`, [id])).d;
+ok((await free(ap.id)) === null, "unit under a lease with no end date has no free day");
+const ap2 = await one(`insert into apartments (agency_id, building_id, label, base_rent) values ($1,$2,'C1',200000) returning id`, [ag.id, b.id]);
+const ap3 = await one(`insert into apartments (agency_id, building_id, label, base_rent) values ($1,$2,'C2',150000) returning id`, [ag.id, b.id]);
+const res3 = await one(`insert into residents (agency_id, full_name) values ($1,'Old tenant') returning id`, [ag.id]);
+await db.query(`insert into leases (agency_id, apartment_id, resident_id, rent_amount, starts_on, ends_on) values ($1,$2,$3,150000,current_date - 300, current_date + 30)`, [ag.id, ap3.id, res3.id]);
+const day = (d) => new Date(d).toISOString().slice(0, 10);
+ok(day(await free(ap2.id)) === inDays(0), "vacant unit is free today");
+ok(day(await free(ap3.id)) === inDays(31), "occupied unit is free the day after its lease ends");
+const av = await db.query(`select * from public.apartments_availability(array[$1,$2,$3]::uuid[]) order by free_from nulls first`, [ap.id, ap2.id, ap3.id]);
+ok(av.rows.length === 3 && av.rows[0].free_from === null && av.rows[0].occupied === true, "availability feed covers every unit");
+
+await as(u2.id);
+let refused = false;
+try { await db.query(`select public.book_lease($1, $2::date, 12)`, [ap3.id, inDays(10)]); } catch (e) { refused = e.code === "23P01"; }
+ok(refused, "booking before the lease ends is refused");
+const bk = await one(`select public.book_lease($1, $2::date, 12, 'Bob', '+237600000002') j`, [ap3.id, inDays(31)]);
+ok(Number(bk.j.amount) === 450000, "booking costs first month + two-month deposit");
+await as(u.id);
+let bookClash = false;
+try { await db.query(`select public.book_lease($1, $2::date, 6)`, [ap3.id, inDays(40)]); } catch (e) { bookClash = e.code === "23P01"; }
+ok(bookClash, "a held booking blocks the same months for others");
+await as(null);
+await db.query(`insert into resident_payments (agency_id, user_id, kind, lease_request_id, amount, currency, method, provider_ref) values ($1,$2,'booking',$3,450000,'XAF','mobile_money','BKTEST01')`, [ag.id, u2.id, bk.j.request_id]);
+ok((await one(`select public.settle_resident_payment('BKTEST01','paid') s`)).s === "paid", "booking payment settles");
+const lr = await one(`select status, paid, hold_expires_at, contact_name from lease_requests where id = $1`, [bk.j.request_id]);
+ok(lr.status === "reserved" && Number(lr.paid) === 450000 && lr.hold_expires_at === null && lr.contact_name === "Bob", "paid booking becomes a reservation");
+ok(day(await free(ap3.id)) > inDays(390), "reserved months are no longer free");
+
+// nights and months never overlap, whichever was booked first
+await db.query(`update apartments set short_stay = true where id = $1`, [ap3.id]);
+await db.query(`insert into stay_rates (agency_id, apartment_id, nights, price) values ($1,$2,1,20000)`, [ag.id, ap3.id]);
+const u3 = await one(`insert into auth.users (email) values ('cleo@mail.cm') returning id`);
+await as(u3.id);
+let nightClash = null;
+try { await db.query(`select public.book_stay($1, $2::date, $3::date)`, [ap3.id, inDays(60), inDays(62)]); } catch (e) { nightClash = e; }
+ok(nightClash?.code === "23P01", "reserved months cannot be booked by the night");
+await one(`select public.book_stay($1, $2::date, $3::date) j`, [apS.id, inDays(5), inDays(7)]);
+let monthClash = null;
+try { await db.query(`select public.book_lease($1, $2::date, 6)`, [apS.id, inDays(1)]); } catch (e) { monthClash = e; }
+ok(monthClash?.code === "23P01" && monthClash.detail === inDays(7), "guests' nights block a lease until they leave");
+ok(Boolean((await one(`select public.book_lease($1, $2::date, 6) j`, [apS.id, inDays(7)])).j.request_id), "the lease can start the day the guests leave");
 console.log("\nALL CHECKS PASSED");

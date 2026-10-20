@@ -14,5 +14,11 @@ export async function GET() {
   const admin = mobileDb();
   const { data, error } = await admin.from("apartments").select(listingSelect).limit(200);
   if (error) return json({ error: error.message }, 500);
-  return json(await Promise.all((data ?? []).map(toListing)));
+  const rows = data ?? [];
+  // When each unit comes free: leases, reservations and running holds.
+  const { data: free } = await admin.rpc("apartments_availability", { ids: rows.map((r) => r.id) });
+  const byId = new Map(
+    ((free ?? []) as { apartment_id: string; free_from: string | null; occupied: boolean }[]).map((f) => [f.apartment_id, f]),
+  );
+  return json(await Promise.all(rows.map((r) => toListing(r, byId.get(r.id)))));
 }
