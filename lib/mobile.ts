@@ -85,6 +85,27 @@ export async function toListing(row: any, availability?: { free_from: string | n
     .sort((a, b) => a.min_nights - b.min_nights);
   for (const b of bands) rates[String(b.min_nights)] = b.min_nights * b.price_per_night;
   const lease = (row.leases ?? []).find((l: { status: string }) => l.status === "active");
+
+  // With `availability` (apartments_availability) this counts upcoming
+  // leases and months already reserved in the app, and is null when the
+  // tenancy has no end date. Without it: the end of the tenancy, or the date
+  // the agency set, or today.
+  const today = new Date().toISOString().slice(0, 10);
+  const freeFrom: string | null = availability
+    ? availability.free_from
+    : lease?.ends_on ?? row.available_from ?? today;
+
+  /**
+   * Which of three things the app has to say:
+   *   now       take it today
+   *   on_date   taken until available_from, and bookable from that day
+   *   on_notice taken on a tenancy with no end date, so there is no day to
+   *             promise. The app should offer to register interest rather
+   *             than print an empty date.
+   */
+  const availabilityState: "now" | "on_date" | "on_notice" =
+    freeFrom === null ? "on_notice" : freeFrom <= today ? "now" : "on_date";
+
   return {
     id: row.id,
     title: row.listing_title || `${b.name ?? ""} · ${row.label}`,
@@ -104,14 +125,13 @@ export async function toListing(row: any, availability?: { free_from: string | n
     description: row.listing_description ?? b.notes ?? "",
     agency: row.agencies?.name ?? "",
     agent: { name: row.agencies?.name ?? "", phone: row.agencies?.whatsapp_number ?? "" },
-    // Every unit is listed, so a let one says when it comes free. With
-    // `availability` (apartments_availability) that also counts upcoming
-    // leases and months already reserved in the app, and is null when the
-    // tenancy has no end date. Without it: the end of the tenancy, or the
-    // date the agency set, or today.
-    available_from: availability
-      ? availability.free_from
-      : lease?.ends_on ?? row.available_from ?? new Date().toISOString().slice(0, 10),
+    // When it comes free, and the word for it. A null date is not "unknown
+    // availability", it is a tenancy with no end date: the unit is taken
+    // until somebody gives notice. The app cannot tell that from a date it
+    // failed to parse, so the state is named rather than inferred from a
+    // null, and the date is kept beside it for the one case that has one.
+    available_from: freeFrom,
+    availability: availabilityState,
     occupied: availability ? availability.occupied : Boolean(lease),
     lat: b.latitude != null ? Number(b.latitude) : null,
     lng: b.longitude != null ? Number(b.longitude) : null,

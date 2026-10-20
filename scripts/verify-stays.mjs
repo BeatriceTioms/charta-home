@@ -81,6 +81,26 @@ const missing = [...new Set(keys)].filter(
 check("every label the stays screens show exists in both languages",
   missing.length === 0, missing.length ? `missing: ${missing.join(", ")}` : `${new Set(keys).size} keys`);
 
+
+/* --------------------------------------------- when a unit comes free ---
+ * Every unit is on the app, so most of them are taken. A null date there is
+ * not a missing value: it is a tenancy with no end date, and the app has to
+ * say so rather than print a blank where a day should be.
+ */
+const mobile = await read("lib", "mobile.ts");
+check("the listing names which of the three things it is",
+  /availability: availabilityState/.test(mobile) &&
+    /"now" \| "on_date" \| "on_notice"/.test(mobile),
+  "the app never has to read meaning into a null");
+check("a tenancy with no end date reads as on notice, not as available today",
+  /freeFrom === null \? "on_notice"/.test(mobile),
+  "null is a unit taken until somebody gives notice");
+check("a date already past reads as available now",
+  /freeFrom <= today \? "now"/.test(mobile),
+  "including a date the agency set that has since arrived");
+check("and the date itself is still carried for the one case that has one",
+  /available_from: freeFrom/.test(mobile));
+
 const failed = results.filter((r) => !r.pass);
 console.log(`\n${results.length - failed.length}/${results.length} checks passed`);
 process.exit(failed.length === 0 ? 0 : 1);
