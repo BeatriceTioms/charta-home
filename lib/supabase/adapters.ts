@@ -366,6 +366,38 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
     (unitPerformance ?? []).map((p) => [p.apartment_id, p])
   );
 
+  // Packages by unit, so each apartment carries its own price list.
+  const ratesByApartment = new Map<string, { id: string; nights: number; price: number }[]>();
+  for (const r of stayRateRows ?? []) {
+    const list = ratesByApartment.get(r.apartment_id) ?? [];
+    list.push({ id: r.id, nights: r.nights, price: Number(r.price) });
+    ratesByApartment.set(r.apartment_id, list);
+  }
+
+  const nightsBetween = (from: string, to: string) =>
+    Math.max(0, Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000));
+
+  const stays: Stay[] = (stayRows ?? []).map((x) => {
+    const flat = (x as unknown as { apartments: { label: string; building_id: string } | null }).apartments;
+    return {
+      id: x.id,
+      apartmentId: x.apartment_id,
+      apartmentLabel: flat?.label ?? "",
+      buildingId: flat?.building_id ?? "",
+      guestName: x.guest_name,
+      guestPhone: x.guest_phone ? readablePhone(x.guest_phone) : undefined,
+      guestEmail: x.guest_email ?? undefined,
+      checkIn: x.check_in,
+      checkOut: x.check_out,
+      nights: nightsBetween(x.check_in, x.check_out),
+      amount: Number(x.amount),
+      paid: Number(x.paid),
+      paidOn: x.paid_on ?? undefined,
+      status: x.status,
+      notes: x.notes ?? undefined,
+    };
+  });
+
   const buildings: Building[] = buildingRows.map((b) => {
     const perf = perfByBuilding.get(b.id);
     const units = (states ?? []).filter((s) => s.building_id === b.id);
@@ -450,38 +482,6 @@ export async function loadPortfolio(): Promise<Portfolio | null> {
         photos: photosByApartment.get(u.apartment_id) ?? [],
       })),
     } as Building;
-  });
-
-  // Packages by unit, so each apartment carries its own price list.
-  const ratesByApartment = new Map<string, { id: string; nights: number; price: number }[]>();
-  for (const r of stayRateRows ?? []) {
-    const list = ratesByApartment.get(r.apartment_id) ?? [];
-    list.push({ id: r.id, nights: r.nights, price: Number(r.price) });
-    ratesByApartment.set(r.apartment_id, list);
-  }
-
-  const nightsBetween = (from: string, to: string) =>
-    Math.max(0, Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000));
-
-  const stays: Stay[] = (stayRows ?? []).map((x) => {
-    const flat = (x as unknown as { apartments: { label: string; building_id: string } | null }).apartments;
-    return {
-      id: x.id,
-      apartmentId: x.apartment_id,
-      apartmentLabel: flat?.label ?? "",
-      buildingId: flat?.building_id ?? "",
-      guestName: x.guest_name,
-      guestPhone: x.guest_phone ? readablePhone(x.guest_phone) : undefined,
-      guestEmail: x.guest_email ?? undefined,
-      checkIn: x.check_in,
-      checkOut: x.check_out,
-      nights: nightsBetween(x.check_in, x.check_out),
-      amount: Number(x.amount),
-      paid: Number(x.paid),
-      paidOn: x.paid_on ?? undefined,
-      status: x.status,
-      notes: x.notes ?? undefined,
-    };
   });
 
   const now = new Date().toISOString();
