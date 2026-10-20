@@ -77,11 +77,18 @@ export async function initializePayment(input: Parameters<typeof initializeBody>
     return { ok: false, error: "return_url and notify_url must be https" };
   }
   try {
-    const r = await fetch(`${BASE}/api/gateway/initialize`, {
-      method: "POST",
-      headers: payunitHeaders(),
-      body: JSON.stringify(initializeBody(input)),
-    });
+    // The gateway answers 502/503/504 ("no healthy upstream") during its own
+    // outages, often for a few seconds only. Opening a transaction twice is
+    // harmless (same id, nothing is charged until the payer approves), so a
+    // short retry saves the payer from tapping Pay again.
+    let r = await openTransaction(input);
+    for (let attempt = 1; attempt < 3 && [502, 503, 504].includes(r.status); attempt++) {
+      await new Promise((done) => setTimeout(done, 1500 * attempt));
+      r = await openTransaction(input);
+    }
+    if ([502, 503, 504].includes(r.status)) {
+      return { ok: false, error: `payunit is unavailable (${r.status})` };
+    }
     const body = (await r.json().catch(() => ({}))) as {
       status?: string;
       message?: string;
@@ -95,6 +102,14 @@ export async function initializePayment(input: Parameters<typeof initializeBody>
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "payunit unreachable" };
   }
+}
+
+function openTransaction(input: Parameters<typeof initializeBody>[0]) {
+  return fetch(`${BASE}/api/gateway/initialize`, {
+    method: "POST",
+    headers: payunitHeaders(),
+    body: JSON.stringify(initializeBody(input)),
+  });
 }
 
 /** The gateway's word on a transaction, by the id we chose. */
