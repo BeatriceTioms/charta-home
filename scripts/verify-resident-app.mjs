@@ -51,13 +51,13 @@ const ag = await one(`insert into agencies (name, country, city, currency) value
 const b = await one(`insert into buildings (agency_id, name, city) values ($1,'Les Palmiers','Yaoundé') returning id`, [ag.id]);
 const ap = await one(`insert into apartments (agency_id, building_id, label, base_rent, short_stay, listed) values ($1,$2,'B2',350000,true,true) returning id`, [ag.id, b.id]);
 for (const [n, price] of [[1, 35000], [3, 99000], [7, 220000]])
-  await db.query(`insert into stay_rates (agency_id, apartment_id, nights, price) values ($1,$2,$3,$4)`, [ag.id, ap.id, n, price]);
+  await db.query(`insert into stay_rates (agency_id, apartment_id, min_nights, max_nights, price_per_night) values ($1,$2,$3,$3,round($4::numeric/greatest($3,1)))`, [ag.id, ap.id, n, price]);
 
 const q = async (n) => Number((await one(`select public.stay_quote($1,$2) v`, [ap.id, n])).v);
 ok(await q(1) === 35000, "1 night = package price");
 ok(await q(2) === 70000, "2 nights = 2 × nightly");
 ok(await q(3) === 99000, "3 nights = 3-night package");
-ok(await q(10) === Math.round(220000 / 7 * 10), "10 nights use the 7-night per-night price");
+ok(await q(10) === Math.round(220000 / 7) * 10, "10 nights take the last band at or below them, at its nightly rate");
 
 const u = await one(`insert into auth.users (email, raw_user_meta_data) values ('ada@mail.cm', '{"full_name":"Ada N","phone":"+237677000000"}') returning id`);
 const u2 = await one(`insert into auth.users (email) values ('bob@mail.cm') returning id`);
@@ -77,6 +77,7 @@ ok(r2.j.stay_id, "a lapsed unpaid hold frees its nights");
 
 // resident flow
 await as(null);
+const ap2 = await one(`insert into apartments (agency_id, building_id, label, base_rent) values ($1,$2,'C1',200000) returning id`, [ag.id, b.id]);
 const res = await one(`insert into residents (agency_id, full_name, phone_e164, email) values ($1,'Ada N','+237677000000','ADA@mail.cm') returning id`, [ag.id]);
 const lease = await one(`insert into leases (agency_id, apartment_id, resident_id, rent_amount, due_day, starts_on) values ($1,$2,$3,350000,5,current_date - 60) returning id`, [ag.id, ap.id, res.id]);
 const ch = await one(`insert into rent_charges (agency_id, lease_id, period_start, period_end, amount, due_on) values ($1,$2,date_trunc('month',current_date)::date,(date_trunc('month',current_date)+interval '1 month - 1 day')::date,350000,current_date) returning id`, [ag.id, lease.id]);
@@ -86,6 +87,12 @@ const t = await one(`select public.resident_create_ticket('Leak','Sink drips','p
 ok(t.j.number, "resident opens a ticket on their home");
 const tk = await one(`select photo_paths, reported_via::text rv from tickets where id = $1`, [t.j.id]);
 ok(tk.photo_paths.length === 1 && tk.rv === "app", "only own photos kept, channel = app");
+const t2 = await one(`select public.resident_create_ticket('Door','Lock stuck','locks','normal','Entrance', '{}'::text[], $1) j`, [ap.id]);
+const tk2 = await one(`select apartment_id, resident_id from tickets where id = $1`, [t2.j.id]);
+ok(tk2.apartment_id === ap.id && tk2.resident_id === res.id, "a request names the home the tenant picked");
+let notMine = null;
+try { await db.query(`select public.resident_create_ticket('Door','Lock stuck','locks','normal','Entrance', '{}'::text[], $1)`, [ap2.id]); } catch (e) { notMine = e; }
+ok(notMine?.code === "42501", "a request for a home that is not theirs is refused");
 
 // settlement (service role)
 await as(null);
@@ -113,7 +120,7 @@ ok(letClash?.code === "23P01", "nights inside a tenancy are refused");
 // account deletion: u2 holds unpaid nights and owns a photo, then leaves
 await as(null);
 const apS = await one(`insert into apartments (agency_id, building_id, label, base_rent, short_stay) values ($1,$2,'S1',200000,true) returning id`, [ag.id, b.id]);
-await db.query(`insert into stay_rates (agency_id, apartment_id, nights, price) values ($1,$2,1,30000)`, [ag.id, apS.id]);
+await db.query(`insert into stay_rates (agency_id, apartment_id, min_nights, max_nights, price_per_night) values ($1,$2,1,null,30000)`, [ag.id, apS.id]);
 await as(u2.id);
 const h = await one(`select public.book_stay($1, $2::date, $3::date) j`, [apS.id, inDays(20), inDays(22)]);
 await as(null);
@@ -129,7 +136,6 @@ ok(Number((await one(`select paid from stays where id = $1`, [r.j.stay_id])).pai
 // open listings and monthly booking
 const free = async (id) => (await one(`select public.apartment_free_from($1) d`, [id])).d;
 ok((await free(ap.id)) === null, "unit under a lease with no end date has no free day");
-const ap2 = await one(`insert into apartments (agency_id, building_id, label, base_rent) values ($1,$2,'C1',200000) returning id`, [ag.id, b.id]);
 const ap3 = await one(`insert into apartments (agency_id, building_id, label, base_rent) values ($1,$2,'C2',150000) returning id`, [ag.id, b.id]);
 const res3 = await one(`insert into residents (agency_id, full_name) values ($1,'Old tenant') returning id`, [ag.id]);
 await db.query(`insert into leases (agency_id, apartment_id, resident_id, rent_amount, starts_on, ends_on) values ($1,$2,$3,150000,current_date - 300, current_date + 30)`, [ag.id, ap3.id, res3.id]);
@@ -158,7 +164,7 @@ ok(day(await free(ap3.id)) > inDays(390), "reserved months are no longer free");
 
 // nights and months never overlap, whichever was booked first
 await db.query(`update apartments set short_stay = true where id = $1`, [ap3.id]);
-await db.query(`insert into stay_rates (agency_id, apartment_id, nights, price) values ($1,$2,1,20000)`, [ag.id, ap3.id]);
+await db.query(`insert into stay_rates (agency_id, apartment_id, min_nights, max_nights, price_per_night) values ($1,$2,1,null,20000)`, [ag.id, ap3.id]);
 const u3 = await one(`insert into auth.users (email) values ('cleo@mail.cm') returning id`);
 await as(u3.id);
 let nightClash = null;
@@ -169,4 +175,16 @@ let monthClash = null;
 try { await db.query(`select public.book_lease($1, $2::date, 6)`, [apS.id, inDays(1)]); } catch (e) { monthClash = e; }
 ok(monthClash?.code === "23P01" && monthClash.detail === inDays(7), "guests' nights block a lease until they leave");
 ok(Boolean((await one(`select public.book_lease($1, $2::date, 6) j`, [apS.id, inDays(7)])).j.request_id), "the lease can start the day the guests leave");
+
+// a guest reports a repair on the home they are staying in today
+await as(null);
+const u5 = await one(`insert into auth.users (email) values ('dan@mail.cm') returning id`);
+await db.query(`insert into stays (agency_id, apartment_id, guest_name, check_in, check_out, amount, paid, guest_user_id) values ($1,$2,'Dan',current_date,current_date + 2,60000,60000,$3)`, [ag.id, apS.id, u5.id]);
+await as(u5.id);
+const t3 = await one(`select public.resident_create_ticket('Shower','No hot water','plumbing','high','Bathroom', '{}'::text[], $1) j`, [apS.id]);
+const tk3 = await one(`select apartment_id, resident_id from tickets where id = $1`, [t3.j.id]);
+ok(tk3.apartment_id === apS.id && tk3.resident_id === null, "a guest staying today can report on that home");
+let guestElsewhere = null;
+try { await db.query(`select public.resident_create_ticket('Shower','No hot water','plumbing','high','Bathroom', '{}'::text[], $1)`, [ap3.id]); } catch (e) { guestElsewhere = e; }
+ok(guestElsewhere?.code === "42501", "but not on another home");
 console.log("\nALL CHECKS PASSED");
